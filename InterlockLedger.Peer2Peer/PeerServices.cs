@@ -6,25 +6,23 @@
 
 using Microsoft.Extensions.Logging;
 using System;
-using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
     public class PeerServices
     {
-        public PeerServices(ILoggerFactory loggerFactory) => _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+        public PeerServices(ILoggerFactory loggerFactory, IExternalAccessDiscoverer discoverer) {
+            _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+            _discoverer = discoverer ?? throw new ArgumentNullException(nameof(discoverer));
+        }
 
-        public Task<IListener> StartAsync(INodeSink nodeSink) {
+        public IListener CreateFor(INodeSink nodeSink) {
             if (nodeSink == null)
                 throw new ArgumentNullException(nameof(nodeSink));
-            return DoStartAsync(nodeSink, _loggerFactory.CreateLogger<PeerServices>());
+            return new PeerListener(nodeSink, _loggerFactory.CreateLogger<PeerListener>(), _discoverer);
         }
 
+        private readonly IExternalAccessDiscoverer _discoverer;
         private readonly ILoggerFactory _loggerFactory;
-
-        private async Task<IListener> DoStartAsync(INodeSink nodeSink, ILogger<PeerServices> logger) {
-            logger.LogInformation($"Starting listener for {nodeSink.NetworkName} network on {nodeSink.NetworkProtocolName} protocol!");
-            return await PeerListener.Create(nodeSink, logger);
-        }
     }
 }

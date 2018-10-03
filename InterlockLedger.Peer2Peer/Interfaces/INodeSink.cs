@@ -11,6 +11,7 @@ namespace InterlockLedger.Peer2Peer
 {
     public interface INodeSink
     {
+        string DefaultAddress { get; }
         int DefaultPort { get; }
         IEnumerable<string> LocalResources { get; }
         string NetworkName { get; }

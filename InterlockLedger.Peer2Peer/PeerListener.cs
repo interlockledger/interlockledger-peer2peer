@@ -7,7 +7,6 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
-using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,60 +16,59 @@ namespace InterlockLedger.Peer2Peer
 #pragma warning disable S3881 // "IDisposable" should be implemented correctly
 
     internal class PeerListener : IListener
-#pragma warning restore S3881 // "IDisposable" should be implemented correctly
     {
-        public static async Task<IListener> Create(INodeSink nodeSink, ILogger<PeerServices> logger) {
-            var listener = new PeerListener(nodeSink, logger);
-            await listener.StartAsync();
-            return listener;
+        public PeerListener(INodeSink nodeSink, ILogger<PeerListener> logger, IExternalAccessDiscoverer discoverer) {
+            _nodeSink = nodeSink ?? throw new ArgumentNullException(nameof(nodeSink));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _discoverer = discoverer ?? throw new ArgumentNullException(nameof(discoverer));
+            Alive = true;
         }
+
+        public bool Alive { get; private set; }
 
         public void Dispose() => Dispose(true);
 
-        public Task StopAsync() => throw new NotImplementedException();
+        public async Task StartAsync() {
+            _logger.LogInformation($"Starting listener for {_nodeSink.NetworkName} network on {_nodeSink.NetworkProtocolName} protocol!");
+            (_address, _port, _listener) = await _discoverer.DetermineExternalAccessAsync(_nodeSink);
+            _nodeSink.PublishedAs(_address, _port);
+            _logger.LogInformation($"== Listening at {_address}:{_port}");
+            new Thread(DoWork).Start();
+        }
+
+        public Task StopAsync() {
+            if (!_abandon) {
+                _abandon = true;
+                _listener.Stop();
+            }
+            while (Alive)
+                Task.Delay(_resolutionInMilliseconds);
+            return Task.CompletedTask;
+        }
 
         protected virtual void Dispose(bool disposing) {
             if (!_disposedValue) {
-                if (disposing) {
-                    // TODO: dispose managed state (managed objects).
+                if (disposing && Alive) {
+                    Task.WaitAll(StopAsync());
                 }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
-                // TODO: set large fields to null.
-
                 _disposedValue = true;
             }
         }
 
-        private readonly ILogger<PeerServices> _logger;
-
+        private const int _resolutionInMilliseconds = 10;
+        private readonly IExternalAccessDiscoverer _discoverer;
+        private readonly ILogger<PeerListener> _logger;
         private readonly INodeSink _nodeSink;
-
+        private bool _abandon = false;
         private string _address;
-
         private bool _disposedValue = false;
-
         private TcpListener _listener;
-
         private int _port;
-        private Thread _thread;
-
-        private PeerListener(INodeSink nodeSink, ILogger<PeerServices> logger) {
-            _nodeSink = nodeSink;
-            _logger = logger;
-        }
-
-        private static IPAddress GetAddress(string name) {
-            if (IPAddress.TryParse(name, out IPAddress address))
-                return address;
-            IPAddress[] addressList = Dns.GetHostEntry(name).AddressList;
-            return addressList.FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork) ?? addressList.First();
-        }
 
         private async Task Background_Listen() {
             try {
                 TcpClient client = await _listener.AcceptTcpClientAsync();
-                if (client?.Connected ?? false) {
+                if (client != null && client.Connected) {
                     using (var stream = client.GetStream()) {
                         IPipeLine pipe = new PipeLine(stream);
                         try {
@@ -93,40 +91,24 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        private Task<(string, int)> DetermineExternalAccessAsync(string defaultAddress, int defaultPort) {
-            IPAddress localaddr = GetAddress(defaultAddress);
-            _listener = GetListener(localaddr, (ushort)defaultPort);
-            var port = ((IPEndPoint)_listener.LocalEndpoint).Port;
-            return Task.FromResult((defaultAddress, port));
-        }
-
-        private TcpListener GetListener(IPAddress localaddr, ushort portNumber) {
-            TcpListener InnerGetListener(ushort port) {
+        private void DoWork() {
+            do {
                 try {
-                    var listener = new TcpListener(localaddr, port);
-                    listener.Start(1024);
-                    return listener;
+                    Task.WaitAll(Background_Listen());
                 } catch (Exception e) {
-                    _logger.LogError(e, $"-- Error while trying to listen to clients.");
-                    return null;
+                    _logger.LogError(e, "Error while listening");
                 }
-            }
-
-            for (ushort tries = 5; tries > 0; tries--) {
-                var tcpListener = InnerGetListener(portNumber);
-                if (tcpListener != null)
-                    return tcpListener;
-                portNumber -= 18;
-            }
-            return InnerGetListener(0);
+            } while (SleepAtMost(30));
+            Dispose();
+            Alive = false;
         }
 
-        private async Task StartAsync() {
-            (_address, _port) = await DetermineExternalAccessAsync("localhost", _nodeSink.DefaultPort);
-            _nodeSink.PublishedAs(_address, _port);
-            _logger.LogInformation($"Listening protocol {_nodeSink.NetworkProtocolName} at {_address}:{_port}");
-            _thread = new Thread(() => Task.WaitAll(Background_Listen()));
-            _thread.Start();
+        private bool SleepAtMost(int millisecondsTimeout) {
+            while (millisecondsTimeout > 0 && !_abandon) {
+                Thread.Sleep(_resolutionInMilliseconds);
+                millisecondsTimeout -= _resolutionInMilliseconds;
+            }
+            return !_abandon;
         }
     }
 }

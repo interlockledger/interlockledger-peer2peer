@@ -14,6 +14,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
     public class FakeLogging : ILoggerFactory, ILogger
     {
         public string LastLog { get; private set; }
+
         void ILoggerFactory.AddProvider(ILoggerProvider provider) {
             // Nothing to emulate here
         }

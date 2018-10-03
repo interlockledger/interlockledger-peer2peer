@@ -14,10 +14,25 @@ namespace UnitTest.InterlockLedger.Peer2Peer
     public class UnitTestPeerServices
     {
         [TestMethod]
-        public void TestCreation() {
-            Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(null));
+        public void TestPeerListenerCreation() {
             var fakeLogger = new FakeLogging();
-            var peerServices = new PeerServices(fakeLogger);
+            var fakeDiscoverer = new FakeDiscoverer();
+            var peerServices = new PeerServices(fakeLogger, fakeDiscoverer);
+            Assert.IsNotNull(peerServices);
+            Assert.IsNull(fakeLogger.LastLog);
+            INodeSink fakeNodeSink = new FakeNodeSync();
+            var peerListener = peerServices.CreateFor(fakeNodeSink);
+            Assert.IsNotNull(peerListener);
+            Assert.IsNull(fakeLogger.LastLog);
+        }
+
+        [TestMethod]
+        public void TestPeerServicesCreation() {
+            var fakeLogger = new FakeLogging();
+            var fakeDiscoverer = new FakeDiscoverer();
+            Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(null, fakeDiscoverer));
+            Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(fakeLogger, null));
+            var peerServices = new PeerServices(fakeLogger, fakeDiscoverer);
             Assert.IsNotNull(peerServices);
             Assert.IsNull(fakeLogger.LastLog);
         }

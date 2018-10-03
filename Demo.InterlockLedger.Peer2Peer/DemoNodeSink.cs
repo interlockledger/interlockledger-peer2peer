@@ -8,6 +8,7 @@ namespace Demo.InterlockLedger.Peer2Peer
 {
     internal class DemoNodeSink : INodeSink
     {
+        public string DefaultAddress => "localhost";
         public int DefaultPort => 8080;
 
         public IEnumerable<string> LocalResources {
@@ -41,11 +42,6 @@ namespace Demo.InterlockLedger.Peer2Peer
                         await pipe.WriteBytesAsync(Encoding.UTF8.GetBytes(Url));
                         await SendNewLine(pipe);
                         await pipe.CompleteAsync();
-                    } else if (bytesRead[0] == 0x73) { // is stop message?
-                        pipe.RecognizedFeature("Stop");
-                        await SendNewLine(pipe);
-                        await pipe.CompleteAsync();
-                        Program.StillListening = false;
                     } else {
                         await pipe.RejectAsync(1); // unrecognized message
                     }
@@ -53,8 +49,10 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
         }
 
-        private async Task SendNewLine(IPipeLine pipe) => await pipe.WriteBytesAsync(Encoding.UTF8.GetBytes(Environment.NewLine));
         private string _address;
+
         private int _externalPort;
+
+        private async Task SendNewLine(IPipeLine pipe) => await pipe.WriteBytesAsync(Encoding.UTF8.GetBytes(Environment.NewLine));
     }
 }

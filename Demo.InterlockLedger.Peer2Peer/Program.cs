@@ -11,21 +11,31 @@ namespace Demo.InterlockLedger.Peer2Peer
 {
     public static class Program
     {
-        public static bool StillListening { get; set; }
-
         public static void Main(string[] args) {
             Console.WriteLine("Demo.InterlockLedger.Peer2Peer!");
-            StillListening = true;
             if (args.Length > 0 && args[0].Equals("client", StringComparison.OrdinalIgnoreCase))
                 Client();
             else
                 Task.WaitAll(ServerAsync());
         }
 
+        public static async Task ServerAsync() {
+            Console.WriteLine("Server");
+            var factory = new LoggerFactory();
+            factory.AddConsole(LogLevel.Information);
+            var peerServices = new PeerServices(factory, new DummyExternalAccessDiscoverer(factory));
+            using (var listener = peerServices.CreateFor(new DemoNodeSink())) {
+                await listener.StartAsync();
+                while (listener.Alive)
+                    await Task.Yield();
+                await listener.StopAsync();
+            }
+        }
+
         private static void Client() {
             Console.WriteLine("Client");
             while (true) {
-                Console.Write("Command (x to exit): ");
+                Console.Write("Command (x to exit, w to get who is answering, e... to echo ...): ");
                 var command = Console.ReadLine();
                 if (command.FirstOrDefault() == 'x')
                     return;
@@ -37,20 +47,9 @@ namespace Demo.InterlockLedger.Peer2Peer
             using (var client = new TcpClient("localhost", 8080)) {
                 using (NetworkStream stream = client.GetStream()) {
                     stream.Write(Encoding.UTF8.GetBytes(command).AsSpan());
+                    stream.Flush();
                     return new StreamReader(stream, Encoding.UTF8).ReadLine();
                 }
-            }
-        }
-
-        public static async Task ServerAsync()
-        {
-            Console.WriteLine("Server");
-            var factory = new LoggerFactory();
-            factory.AddConsole(LogLevel.Information);
-            var peerServices = new PeerServices(factory);
-            using (var listener = await peerServices.StartAsync(new DemoNodeSink())) {
-                while (StillListening)
-                    await Task.Yield();
             }
         }
     }

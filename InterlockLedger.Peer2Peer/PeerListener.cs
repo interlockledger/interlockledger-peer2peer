@@ -65,6 +65,7 @@ namespace InterlockLedger.Peer2Peer
         private TcpListener _listener;
         private int _port;
 
+        // ? Use the new System.IO.Pipelines https://blogs.msdn.microsoft.com/dotnet/2018/07/09/system-io-pipelines-high-performance-io-in-net/ ?
         private async Task Background_Listen() {
             try {
                 TcpClient client = await _listener.AcceptTcpClientAsync();
@@ -91,6 +92,7 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
+        // TODO2: Implement something more like Kestrel does for scaling up multiple simultaneous requests processing
         private void DoWork() {
             do {
                 try {

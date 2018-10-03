@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
+    // ? Tweak this to use the new System.IO.Pipelines https://blogs.msdn.microsoft.com/dotnet/2018/07/09/system-io-pipelines-high-performance-io-in-net/ ?
     public interface IPipeLine
     {
         bool KeepGoing { get; }

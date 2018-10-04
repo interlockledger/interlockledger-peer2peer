@@ -17,7 +17,7 @@ namespace InterlockLedger.Peer2Peer
 
     internal class PeerListener : IListener
     {
-        public PeerListener(INodeSink nodeSink, ILogger<PeerListener> logger, IExternalAccessDiscoverer discoverer) {
+        public PeerListener(INodeSink nodeSink, ILogger logger, IExternalAccessDiscoverer discoverer) {
             _nodeSink = nodeSink ?? throw new ArgumentNullException(nameof(nodeSink));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _discoverer = discoverer ?? throw new ArgumentNullException(nameof(discoverer));
@@ -28,18 +28,33 @@ namespace InterlockLedger.Peer2Peer
 
         public void Dispose() => Dispose(true);
 
+        public void Start() => Task.WaitAll(StartAsync());
+
         public async Task StartAsync() {
-            _logger.LogInformation($"Starting listener for {_nodeSink.NetworkName} network on {_nodeSink.NetworkProtocolName} protocol!");
+            _logger.LogInformation("PeerListener");
             (_address, _port, _listener) = await _discoverer.DetermineExternalAccessAsync(_nodeSink);
             _nodeSink.PublishedAs(_address, _port);
-            _logger.LogInformation($"== Listening at {_address}:{_port}");
+            _logger.LogInformation($"-- Started listening {_nodeSink.NetworkProtocolName} protocol in {_nodeSink.NetworkName} network at {_address}:{_port}!");
             new Thread(DoWork).Start();
         }
+        /*
+         *  Mirrors
+        2018-10-04 16:28:40 [NodeListener] Information: -- Mirror of Chain 'Genesis InterlockRecord for Network 9C.7D.11.F0' from 'genesis' #CKUiSY_iS0OaZcss8-SDm1sa2uEx_xgh49xh3A6bnKk [ACTIVE]
+        2018-10-04 16:28:40 [PeerListener] Information: Starting listener for Vesta network on ilkl protocol!
+        2018-10-04 16:28:40 [PeerListener] Information: == Listening at localhost:32017
+         * */
+        public void Stop() => Task.WaitAll(StopAsync());
 
         public Task StopAsync() {
             if (!_abandon) {
+                _logger.LogInformation("PeerListener");
+                _logger.LogInformation($"-- Stopped listening {_nodeSink.NetworkProtocolName} protocol in {_nodeSink.NetworkName} network!!!");
                 _abandon = true;
-                _listener.Stop();
+                try {
+                    _listener.Stop();
+                } catch (ObjectDisposedException e) {
+                    _logger.LogTrace(e, "ObjectDisposedException");
+                }
             }
             while (Alive)
                 Task.Delay(_resolutionInMilliseconds);
@@ -49,7 +64,7 @@ namespace InterlockLedger.Peer2Peer
         protected virtual void Dispose(bool disposing) {
             if (!_disposedValue) {
                 if (disposing && Alive) {
-                    Task.WaitAll(StopAsync());
+                    Stop();
                 }
                 _disposedValue = true;
             }
@@ -57,7 +72,7 @@ namespace InterlockLedger.Peer2Peer
 
         private const int _resolutionInMilliseconds = 10;
         private readonly IExternalAccessDiscoverer _discoverer;
-        private readonly ILogger<PeerListener> _logger;
+        private readonly ILogger _logger;
         private readonly INodeSink _nodeSink;
         private bool _abandon = false;
         private string _address;

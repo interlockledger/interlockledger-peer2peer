@@ -19,7 +19,7 @@ namespace InterlockLedger.Peer2Peer
         public IListener CreateFor(INodeSink nodeSink) {
             if (nodeSink == null)
                 throw new ArgumentNullException(nameof(nodeSink));
-            return new PeerListener(nodeSink, _loggerFactory.CreateLogger<PeerListener>(), _discoverer);
+            return new PeerListener(nodeSink, _loggerFactory.CreateLogger("PeerListener"), _discoverer);
         }
 
         private readonly IExternalAccessDiscoverer _discoverer;

@@ -13,7 +13,11 @@ namespace InterlockLedger.Peer2Peer
     {
         bool Alive { get; }
 
+        void Start();
+
         Task StartAsync();
+
+        void Stop();
 
         Task StopAsync();
     }

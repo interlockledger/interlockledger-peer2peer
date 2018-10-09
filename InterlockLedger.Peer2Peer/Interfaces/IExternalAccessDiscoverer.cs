@@ -11,6 +11,6 @@ namespace InterlockLedger.Peer2Peer
 {
     public interface IExternalAccessDiscoverer
     {
-        Task<(string address, int port, TcpListener listener)> DetermineExternalAccessAsync(INodeSink nodeSink);
+        Task<(string address, int port, Socket socket)> DetermineExternalAccessAsync(INodeSink nodeSink);
     }
 }

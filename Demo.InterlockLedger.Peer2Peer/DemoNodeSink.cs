@@ -1,6 +1,15 @@
+/******************************************************************************************************************************
+ *
+ *      Copyright (c) 2017-2018 InterlockLedger Network
+ *
+ ******************************************************************************************************************************/
+
 using InterlockLedger.Peer2Peer;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -17,6 +26,7 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
         }
 
+        public ulong MessageTag => ':';
         public string NetworkName => "Demo";
         public string NetworkProtocolName => "DemoPeer2Peer";
         public string NodeId => "Local Node";
@@ -28,31 +38,18 @@ namespace Demo.InterlockLedger.Peer2Peer
             _externalPort = tcpPort;
         }
 
-        public async Task SinkAsync(IPipeLine pipe) {
-            while (!pipe.ReadNoMore) {
-                var bytesRead = await pipe.ReadBytesAsync(100);
-                if (bytesRead != null && bytesRead.Length > 0) {
-                    if (bytesRead[0] == 0x65) { // is echo message?
-                        pipe.RecognizedFeature("Echo");
-                        await pipe.WriteBytesAsync(bytesRead, 1, bytesRead.Length - 1);
-                        await SendNewLine(pipe);
-                        await pipe.CompleteAsync();
-                    } else if (bytesRead[0] == 0x77) { // is who message?
-                        pipe.RecognizedFeature("Who");
-                        await pipe.WriteBytesAsync(Encoding.UTF8.GetBytes(Url));
-                        await SendNewLine(pipe);
-                        await pipe.CompleteAsync();
-                    } else {
-                        await pipe.RejectAsync(1); // unrecognized message
-                    }
-                }
+        public async Task SinkAsync(Socket socket, IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes) {
+            var buffer = readOnlyBytes.SelectMany(b => b.ToArray()).ToArray();
+            var command = buffer[0];
+            if (command == 0x65) { // is echo message?
+                await socket.SendAsync(buffer, SocketFlags.None);
+            } else if (command == 0x77) { // is who message?
+                socket.Send(Encoding.UTF8.GetBytes(Url));
             }
         }
 
         private string _address;
 
         private int _externalPort;
-
-        private async Task SendNewLine(IPipeLine pipe) => await pipe.WriteBytesAsync(Encoding.UTF8.GetBytes(Environment.NewLine));
     }
 }

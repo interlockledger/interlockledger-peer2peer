@@ -18,11 +18,11 @@ namespace InterlockLedger.Peer2Peer
     {
         public DummyExternalAccessDiscoverer(ILoggerFactory loggerFactory) => _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<DummyExternalAccessDiscoverer>();
 
-        public Task<(string, int, TcpListener)> DetermineExternalAccessAsync(INodeSink nodeSink) {
+        public Task<(string, int, Socket)> DetermineExternalAccessAsync(INodeSink nodeSink) {
             string defaultAddress = nodeSink.DefaultAddress ?? "localhost";
             IPAddress localaddr = GetAddress(defaultAddress);
-            var listener = GetListener(localaddr, (ushort)nodeSink.DefaultPort);
-            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            var listener = GetSocket(localaddr, (ushort)nodeSink.DefaultPort);
+            var port = ((IPEndPoint)listener.LocalEndPoint).Port;
             return Task.FromResult((defaultAddress, port, listener));
         }
 
@@ -35,12 +35,13 @@ namespace InterlockLedger.Peer2Peer
             return addressList.FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork) ?? addressList.First();
         }
 
-        private TcpListener GetListener(IPAddress localaddr, ushort portNumber) {
-            TcpListener InnerGetListener(ushort port) {
+        private Socket GetSocket(IPAddress localaddr, ushort portNumber) {
+            Socket InnerGetSocket(ushort port) {
                 try {
-                    var listener = new TcpListener(localaddr, port);
-                    listener.Start(1024);
-                    return listener;
+                    var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                    listenSocket.Bind(new IPEndPoint(localaddr, port));
+                    listenSocket.Listen(120);
+                    return listenSocket;
                 } catch (Exception e) {
                     _logger.LogError(e, $"-- Error while trying to listen to clients.");
                     return null;
@@ -48,12 +49,12 @@ namespace InterlockLedger.Peer2Peer
             }
 
             for (ushort tries = 5; tries > 0; tries--) {
-                var tcpListener = InnerGetListener(portNumber);
-                if (tcpListener != null)
-                    return tcpListener;
+                var socket = InnerGetSocket(portNumber);
+                if (socket != null)
+                    return socket;
                 portNumber -= 18;
             }
-            return InnerGetListener(0);
+            return InnerGetSocket(0);
         }
     }
 }

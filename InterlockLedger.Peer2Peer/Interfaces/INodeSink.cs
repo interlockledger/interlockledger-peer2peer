@@ -4,7 +4,9 @@
  *
  ******************************************************************************************************************************/
 
+using System;
 using System.Collections.Generic;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
@@ -14,6 +16,7 @@ namespace InterlockLedger.Peer2Peer
         string DefaultAddress { get; }
         int DefaultPort { get; }
         IEnumerable<string> LocalResources { get; }
+        ulong MessageTag { get; }
         string NetworkName { get; }
         string NetworkProtocolName { get; }
         string NodeId { get; }
@@ -21,6 +24,6 @@ namespace InterlockLedger.Peer2Peer
 
         void PublishedAs(string address, int tcpPort);
 
-        Task SinkAsync(IPipeLine pipe);
+        Task SinkAsync(Socket socket, IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes);
     }
 }

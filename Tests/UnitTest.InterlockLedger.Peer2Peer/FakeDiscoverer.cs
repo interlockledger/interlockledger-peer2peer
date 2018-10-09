@@ -6,6 +6,7 @@
 
 using InterlockLedger.Peer2Peer;
 using System;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
@@ -16,11 +17,12 @@ namespace UnitTest.InterlockLedger.Peer2Peer
         public FakeDiscoverer() {
         }
 
-        public Task<(string address, int port, TcpListener listener)> DetermineExternalAccessAsync(INodeSink nodeSink) {
+        public Task<(string address, int port, Socket socket)> DetermineExternalAccessAsync(INodeSink nodeSink) {
             if (nodeSink == null)
                 throw new ArgumentNullException(nameof(nodeSink));
-            var tcpListener = new TcpListener(new System.Net.IPEndPoint(0x80000001, nodeSink.DefaultPort));
-            return Task.FromResult((address: nodeSink.DefaultAddress, port: nodeSink.DefaultPort, listener: tcpListener));
+            var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+            listenSocket.Bind(new IPEndPoint(IPAddress.Loopback, 32015));
+            return Task.FromResult((address: nodeSink.DefaultAddress, port: nodeSink.DefaultPort, socket: listenSocket));
         }
     }
 }

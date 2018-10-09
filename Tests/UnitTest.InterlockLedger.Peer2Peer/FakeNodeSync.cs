@@ -5,7 +5,9 @@
  ******************************************************************************************************************************/
 
 using InterlockLedger.Peer2Peer;
+using System;
 using System.Collections.Generic;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace UnitTest.InterlockLedger.Peer2Peer
@@ -15,6 +17,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
         public string DefaultAddress => "localhost";
         public int DefaultPort => 9090;
         public IEnumerable<string> LocalResources { get; } = new string[] { "DummyDoc1", "DummyDoc2" };
+        public ulong MessageTag => '?';
         public string NetworkName => "UnitTesting";
         public string NetworkProtocolName => "UnitTest";
         public string NodeId => "DummyNode";
@@ -24,6 +27,6 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             // Do nothing
         }
 
-        public async Task SinkAsync(IPipeLine pipe) => await pipe.CompleteAsync();
+        public async Task SinkAsync(Socket socket, IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes) => await Task.Delay(10);
     }
 }

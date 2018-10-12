@@ -6,6 +6,7 @@
 
 using Microsoft.Extensions.Logging;
 using System;
+using System.Threading;
 
 namespace InterlockLedger.Peer2Peer
 {
@@ -16,10 +17,10 @@ namespace InterlockLedger.Peer2Peer
             _discoverer = discoverer ?? throw new ArgumentNullException(nameof(discoverer));
         }
 
-        public IListener CreateFor(INodeSink nodeSink) {
+        public IListener CreateFor(INodeSink nodeSink, CancellationTokenSource source) {
             if (nodeSink == null)
                 throw new ArgumentNullException(nameof(nodeSink));
-            return new PeerListener(nodeSink, _loggerFactory.CreateLogger("PeerListener"), _discoverer);
+            return new PeerListener(nodeSink, _loggerFactory.CreateLogger("PeerListener"), _discoverer, source);
         }
 
         private readonly IExternalAccessDiscoverer _discoverer;

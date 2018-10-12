@@ -9,7 +9,6 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -38,18 +37,24 @@ namespace Demo.InterlockLedger.Peer2Peer
             _externalPort = tcpPort;
         }
 
-        public async Task SinkAsync(Socket socket, IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes) {
+        public async Task<ReadOnlyMemory<byte>> SinkAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes) {
             var buffer = readOnlyBytes.SelectMany(b => b.ToArray()).ToArray();
             var command = buffer[0];
-            if (command == 0x65) { // is echo message?
-                await socket.SendAsync(buffer, SocketFlags.None);
-            } else if (command == 0x77) { // is who message?
-                socket.Send(Encoding.UTF8.GetBytes(Url));
-            }
+            if (command == 0x65)  // is echo message?
+                return SendResponse(buffer);
+            if (command == 0x77)  // is who message?
+                return SendTextResponse(Url);
+            await Task.Delay(1);
+            return SendTextResponse("?");
         }
+
+        private static ReadOnlyMemory<byte> SendTextResponse(string text) => SendResponse(Encoding.UTF8.GetBytes(text));
+        private static readonly byte[] _newLineBytes = Encoding.UTF8.GetBytes(Environment.NewLine);
 
         private string _address;
 
         private int _externalPort;
+
+        private static ReadOnlyMemory<byte> SendResponse(byte[] buffer) => new ReadOnlyMemory<byte>(buffer.Concat(_newLineBytes).ToArray());
     }
 }

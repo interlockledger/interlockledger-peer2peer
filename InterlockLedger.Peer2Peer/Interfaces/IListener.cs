@@ -15,10 +15,6 @@ namespace InterlockLedger.Peer2Peer
 
         void Start();
 
-        Task StartAsync();
-
         void Stop();
-
-        Task StopAsync();
     }
 }

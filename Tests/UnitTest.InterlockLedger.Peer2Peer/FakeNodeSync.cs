@@ -7,7 +7,6 @@
 using InterlockLedger.Peer2Peer;
 using System;
 using System.Collections.Generic;
-using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace UnitTest.InterlockLedger.Peer2Peer
@@ -27,6 +26,9 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             // Do nothing
         }
 
-        public async Task SinkAsync(Socket socket, IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes) => await Task.Delay(10);
+        public async Task<ReadOnlyMemory<byte>> SinkAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes) {
+            await Task.Delay(10);
+            return ReadOnlyMemory<byte>.Empty;
+        }
     }
 }

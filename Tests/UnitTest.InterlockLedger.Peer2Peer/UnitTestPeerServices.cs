@@ -7,6 +7,7 @@
 using InterlockLedger.Peer2Peer;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Threading;
 
 namespace UnitTest.InterlockLedger.Peer2Peer
 {
@@ -21,7 +22,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             Assert.IsNotNull(peerServices);
             Assert.IsNull(fakeLogger.LastLog);
             INodeSink fakeNodeSink = new FakeNodeSync();
-            var peerListener = peerServices.CreateFor(fakeNodeSink);
+            var peerListener = peerServices.CreateFor(fakeNodeSink, new CancellationTokenSource());
             Assert.IsNotNull(peerListener);
             Assert.IsNull(fakeLogger.LastLog);
         }

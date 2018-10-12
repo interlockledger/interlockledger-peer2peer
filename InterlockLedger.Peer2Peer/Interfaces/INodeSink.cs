@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
@@ -24,6 +23,6 @@ namespace InterlockLedger.Peer2Peer
 
         void PublishedAs(string address, int tcpPort);
 
-        Task SinkAsync(Socket socket, IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes);
+        Task<ReadOnlyMemory<byte>> SinkAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes);
     }
 }

@@ -4,6 +4,7 @@
  *
  ******************************************************************************************************************************/
 
+using InterlockLedger.Common;
 using InterlockLedger.Peer2Peer;
 using Microsoft.Extensions.Logging;
 using System;
@@ -11,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Demo.InterlockLedger.Peer2Peer
@@ -22,21 +24,27 @@ namespace Demo.InterlockLedger.Peer2Peer
             if (args.Length > 0 && args[0].Equals("client", StringComparison.OrdinalIgnoreCase))
                 Client();
             else
-                Task.WaitAll(ServerAsync());
+                Server();
         }
 
-        public static async Task ServerAsync() {
+        public static void Server() {
             Console.WriteLine("Server");
             var factory = new LoggerFactory();
             factory.AddConsole(LogLevel.Information);
             var peerServices = new PeerServices(factory, new DummyExternalAccessDiscoverer(factory));
-            using (var listener = peerServices.CreateFor(new DemoNodeSink())) {
-                await listener.StartAsync();
-                while (listener.Alive)
-                    await Task.Yield();
-                await listener.StopAsync();
+            var source = new CancellationTokenSource();
+            Console.TreatControlCAsInput = true;
+            Console.CancelKeyPress += (object sender, ConsoleCancelEventArgs e) => { Console.WriteLine("Exiting..."); source.Cancel();  };
+            using (var listener = peerServices.CreateFor(_nodeSink, source)) {
+                listener.Start();
+                while (listener.Alive) {
+                    Thread.Yield();
+                }
             }
+            Console.WriteLine(" Done!");
         }
+
+        private static readonly DemoNodeSink _nodeSink = new DemoNodeSink();
 
         private static void Client() {
             Console.WriteLine("Client");
@@ -52,7 +60,10 @@ namespace Demo.InterlockLedger.Peer2Peer
         private static string SendCommand(string command) {
             using (var client = new TcpClient("localhost", 8080)) {
                 using (NetworkStream stream = client.GetStream()) {
-                    stream.Write(Encoding.UTF8.GetBytes(command).AsSpan());
+                    stream.ILIntEncode(_nodeSink.MessageTag);
+                    Span<byte> commandBytes = Encoding.UTF8.GetBytes(command).AsSpan();
+                    stream.ILIntEncode((ulong)commandBytes.Length);
+                    stream.Write(commandBytes);
                     stream.Flush();
                     return new StreamReader(stream, Encoding.UTF8).ReadLine();
                 }

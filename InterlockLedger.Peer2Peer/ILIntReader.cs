@@ -16,8 +16,8 @@ namespace InterlockLedger.Common
 
         public bool Done(byte nextByte) {
             if (_size < 0) {
-                _value = nextByte;
                 if (nextByte < ILIntHelpers.ILINT_BASE) {
+                    _value = nextByte;
                     _size = 0;
                     return true;
                 }
@@ -27,7 +27,7 @@ namespace InterlockLedger.Common
             _value = (_value << 8) + nextByte;
             if (_value > ILIntHelpers.ILINT_MAX)
                 throw new InvalidOperationException("Decoded ILInt value is too large");
-            if (_size-- > 0)
+            if (--_size > 0)
                 return false;
             _value += ILIntHelpers.ILINT_BASE;
             return true;

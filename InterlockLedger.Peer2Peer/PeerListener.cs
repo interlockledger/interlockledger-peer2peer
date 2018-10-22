@@ -73,6 +73,9 @@ namespace InterlockLedger.Peer2Peer
                     _logger.LogTrace(e, "ObjectDisposedException");
                 } catch (ObjectDisposedException e) {
                     _logger.LogTrace(e, "ObjectDisposedException");
+                } catch (SocketException e) {
+                    _logger.LogTrace(e, $"-- Socket was killed");
+                    break;
                 } catch (Exception e) {
                     _logger.LogError(e, $"-- Error while trying to listen to clients.");
                 }

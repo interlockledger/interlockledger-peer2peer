@@ -5,17 +5,20 @@
  ******************************************************************************************************************************/
 
 using InterlockLedger.Common;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace InterlockLedger.Peer2Peer
 {
     public class MessageParser
     {
-        public MessageParser(ulong expectedTag, IMessageProcessor messageProcessor) {
+        public MessageParser(ulong expectedTag, IMessageProcessor messageProcessor, ILogger logger) {
             _messageProcessor = messageProcessor ?? throw new ArgumentNullException(nameof(messageProcessor));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _expectedTag = expectedTag;
         }
 
@@ -49,6 +52,7 @@ namespace InterlockLedger.Peer2Peer
                             var tag = _tagReader.Value;
                             if (tag != _expectedTag)
                                 throw new InvalidDataException($"Invalid message tag {tag}");
+                            _logger.LogTrace("Receiving new message");
                             _state = State.ReadLength;
                         }
                         break;
@@ -57,12 +61,14 @@ namespace InterlockLedger.Peer2Peer
                         if (_lengthReader.Done(ReadNextByte())) {
                             _lengthToRead = _lengthReader.Value;
                             _state = _lengthToRead == 0 ? State.Init : State.ReadBytes;
+                            _logger.LogTrace($"Expecting {_lengthReader} bytes for message body");
                         }
                         break;
 
                     case State.ReadBytes:
                         _lengthToRead = ReadBytes(_lengthToRead);
                         if (_lengthToRead == 0) {
+                            _logger.LogTrace($"Message body received {_segments.Select(b => b.ToBase64())}");
                             _messageProcessor.Process(_segments);
                             _state = State.Init;
                         }
@@ -74,6 +80,7 @@ namespace InterlockLedger.Peer2Peer
 
         private readonly ulong _expectedTag;
         private readonly ILIntReader _lengthReader = new ILIntReader();
+        private readonly ILogger _logger;
         private readonly IMessageProcessor _messageProcessor;
         private readonly List<ReadOnlyMemory<byte>> _segments = new List<ReadOnlyMemory<byte>>();
         private readonly ILIntReader _tagReader = new ILIntReader();

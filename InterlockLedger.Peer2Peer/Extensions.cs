@@ -1,4 +1,4 @@
-﻿/******************************************************************************************************************************
+/******************************************************************************************************************************
  *
  *      Copyright (c) 2017-2018 InterlockLedger Network
  *
@@ -19,6 +19,8 @@ namespace InterlockLedger.Peer2Peer
             var arraySegment = GetArray(memory);
             return SocketTaskExtensions.ReceiveAsync(socket, arraySegment, socketFlags);
         }
+
+        public static string ToBase64(this ReadOnlyMemory<byte> bytes) => Convert.ToBase64String(bytes.ToArray());
 
         private static ArraySegment<byte> GetArray(Memory<byte> memory) => GetArray((ReadOnlyMemory<byte>)memory);
 

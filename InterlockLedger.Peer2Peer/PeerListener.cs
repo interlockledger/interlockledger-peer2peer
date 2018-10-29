@@ -62,12 +62,12 @@ namespace InterlockLedger.Peer2Peer
                 try {
                     while (!_token.IsCancellationRequested) {
                         var socket = await _listenSocket.AcceptAsync();
-                        _logger.LogDebug($"[{socket.RemoteEndPoint}]: connected");
+                        _logger.LogTrace($"[{socket.RemoteEndPoint}]: connected");
                         var pipe = new Pipe();
                         Task writing = PipeFillAsync(socket, pipe.Writer);
                         Task reading = PipeReadAsync(socket, pipe.Reader, _nodeSink);
                         await Task.WhenAll(reading, writing);
-                        _logger.LogDebug($"[{socket.RemoteEndPoint}]: disconnected");
+                        _logger.LogTrace($"[{socket.RemoteEndPoint}]: disconnected");
                     }
                 } catch (AggregateException e) when (e.InnerExceptions.Any(ex => ex is ObjectDisposedException)) {
                     _logger.LogTrace(e, "ObjectDisposedException");
@@ -108,7 +108,7 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private async Task PipeReadAsync(Socket socket, PipeReader reader, INodeSink nodeSink) {
-            var parser = new MessageParser(nodeSink.MessageTag, new DefaultMessageProcessor(socket, nodeSink.SinkAsync));
+            var parser = new MessageParser(nodeSink.MessageTag, new DefaultMessageProcessor(socket, nodeSink.SinkAsync), _logger);
             while (!_token.IsCancellationRequested) {
                 ReadResult result = await reader.ReadAsync(_token);
                 if (result.IsCanceled)

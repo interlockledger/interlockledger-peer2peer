@@ -14,6 +14,8 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
+#pragma warning disable S3881 // "IDisposable" should be implemented correctly
+
     internal class PeerListener : IListener
     {
         public PeerListener(INodeSink nodeSink, ILogger logger, IExternalAccessDiscoverer discoverer, CancellationTokenSource source) {
@@ -44,7 +46,6 @@ namespace InterlockLedger.Peer2Peer
                 _listenSocket = null;
             }
         }
-
 
         private readonly IExternalAccessDiscoverer _discoverer;
         private readonly ILogger _logger;

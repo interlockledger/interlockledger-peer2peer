@@ -26,9 +26,9 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             // Do nothing
         }
 
-        public async Task<ReadOnlyMemory<byte>> SinkAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes) {
+        public async Task SinkAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, Action<ReadOnlyMemory<byte>, bool> respond) {
             await Task.Delay(10);
-            return ReadOnlyMemory<byte>.Empty;
+            respond(ReadOnlyMemory<byte>.Empty, true);
         }
     }
 }

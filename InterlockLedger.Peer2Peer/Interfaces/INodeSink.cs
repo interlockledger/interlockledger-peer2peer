@@ -23,6 +23,6 @@ namespace InterlockLedger.Peer2Peer
 
         void PublishedAs(string address, int tcpPort);
 
-        Task<ReadOnlyMemory<byte>> SinkAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes);
+        Task SinkAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, Action<ReadOnlyMemory<byte>, bool> respond);
     }
 }

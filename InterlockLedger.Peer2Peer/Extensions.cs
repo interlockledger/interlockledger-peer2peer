@@ -11,8 +11,6 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-#pragma warning disable S3881 // "IDisposable" should be implemented correctly
-
     internal static class Extensions
     {
         public static Task<int> ReceiveAsync(this Socket socket, Memory<byte> memory, SocketFlags socketFlags) {

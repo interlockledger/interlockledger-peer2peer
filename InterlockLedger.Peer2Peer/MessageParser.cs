@@ -20,10 +20,25 @@ namespace InterlockLedger.Peer2Peer
             _messageProcessor = messageProcessor ?? throw new ArgumentNullException(nameof(messageProcessor));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _expectedTag = expectedTag;
+            LastResult = Success.None;
         }
+
+        public bool Continue =>
+            _messageProcessor.AwaitMultipleAnswers ? !LastResult.HasFlag(Success.Exit) : !LastResult.HasFlag(Success.Processed);
+
+        public Success LastResult { get; private set; }
 
         public SequencePosition Parse(ReadOnlySequence<byte> buffer) {
             long current = 0;
+            void Process() {
+                if (_lengthToRead == 0) {
+                    _logger.LogTrace($"Message body received {_segments.Select(b => b.ToBase64())}");
+                    LastResult = _messageProcessor.Process(_segments);
+                    _state = State.Init;
+                } else {
+                    _state = State.ReadBytes;
+                }
+            }
             ulong ReadBytes(ulong length) {
                 if (length >= int.MaxValue)
                     throw new InvalidOperationException("Too many bytes to read!");
@@ -45,6 +60,7 @@ namespace InterlockLedger.Peer2Peer
                         _lengthReader.Reset();
                         _segments.Clear();
                         _state = State.ReadTag;
+                        LastResult = Success.None;
                         break;
 
                     case State.ReadTag:
@@ -60,18 +76,14 @@ namespace InterlockLedger.Peer2Peer
                     case State.ReadLength:
                         if (_lengthReader.Done(ReadNextByte())) {
                             _lengthToRead = _lengthReader.Value;
-                            _state = _lengthToRead == 0 ? State.Init : State.ReadBytes;
                             _logger.LogTrace($"Expecting {_lengthReader} bytes for message body");
+                            Process();
                         }
                         break;
 
                     case State.ReadBytes:
                         _lengthToRead = ReadBytes(_lengthToRead);
-                        if (_lengthToRead == 0) {
-                            _logger.LogTrace($"Message body received {_segments.Select(b => b.ToBase64())}");
-                            _messageProcessor.Process(_segments);
-                            _state = State.Init;
-                        }
+                        Process();
                         break;
                     }
                 }

@@ -16,15 +16,14 @@ namespace InterlockLedger.Peer2Peer
 {
     public class MessageParser
     {
-        public MessageParser(ulong expectedTag, IMessageProcessor messageProcessor, ILogger logger) {
+        public MessageParser(ulong expectedTag, Func<IEnumerable<ReadOnlyMemory<byte>>, Success> messageProcessor, ILogger logger) {
             _messageProcessor = messageProcessor ?? throw new ArgumentNullException(nameof(messageProcessor));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _expectedTag = expectedTag;
             LastResult = Success.None;
         }
 
-        public bool Continue =>
-            _messageProcessor.AwaitMultipleAnswers ? !LastResult.HasFlag(Success.Exit) : !LastResult.HasFlag(Success.Processed);
+        public bool Continue => !LastResult.HasFlag(Success.Exit);
 
         public Success LastResult { get; private set; }
 
@@ -33,7 +32,7 @@ namespace InterlockLedger.Peer2Peer
             void Process() {
                 if (_lengthToRead == 0) {
                     _logger.LogTrace($"Message body received {_segments.Select(b => b.ToBase64())}");
-                    LastResult = _messageProcessor.Process(_segments);
+                    LastResult = _messageProcessor(_segments);
                     _state = State.Init;
                 } else {
                     _state = State.ReadBytes;
@@ -93,7 +92,7 @@ namespace InterlockLedger.Peer2Peer
         private readonly ulong _expectedTag;
         private readonly ILIntReader _lengthReader = new ILIntReader();
         private readonly ILogger _logger;
-        private readonly IMessageProcessor _messageProcessor;
+        private readonly Func<IEnumerable<ReadOnlyMemory<byte>>, Success> _messageProcessor;
         private readonly List<ReadOnlyMemory<byte>> _segments = new List<ReadOnlyMemory<byte>>();
         private readonly ILIntReader _tagReader = new ILIntReader();
         private ulong _lengthToRead;

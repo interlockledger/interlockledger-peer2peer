@@ -25,6 +25,7 @@ namespace InterlockLedger.Peer2Peer
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _token = source.Token;
             _token.Register(Stop);
+            _minimumBufferSize = Math.Max(512, _nodeSink.DefaultListeningBufferSize);
         }
 
         public bool Alive => _listenSocket != null;
@@ -49,6 +50,7 @@ namespace InterlockLedger.Peer2Peer
 
         private readonly IExternalAccessDiscoverer _discoverer;
         private readonly ILogger _logger;
+        private readonly int _minimumBufferSize;
         private readonly INodeSink _nodeSink;
         private readonly CancellationTokenSource _source;
         private readonly CancellationToken _token;
@@ -59,6 +61,7 @@ namespace InterlockLedger.Peer2Peer
 
         // TODO2: Implement something more like Kestrel does for scaling up multiple simultaneous requests processing
         private async Task Listen() {
+            _logger.LogInformation($"-- Started listening {_nodeSink.NetworkProtocolName} protocol in {_nodeSink.NetworkName} network at {_address}:{_port}!");
             do {
                 try {
                     while (!_token.IsCancellationRequested) {
@@ -84,11 +87,11 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private async Task PipeFillAsync(Socket socket, PipeWriter writer) {
-            const int minimumBufferSize = 4096;
             while (!_token.IsCancellationRequested) {
                 try {
                     // Request a minimum of 4096 bytes from the PipeWriter
-                    Memory<byte> memory = writer.GetMemory(minimumBufferSize);
+                    _logger.LogTrace($"Getting {_minimumBufferSize} bytes to receive in the socket");
+                    Memory<byte> memory = writer.GetMemory(_minimumBufferSize);
                     int bytesRead = await socket.ReceiveAsync(memory, SocketFlags.None);
                     if (bytesRead == 0) {
                         break;
@@ -108,8 +111,9 @@ namespace InterlockLedger.Peer2Peer
             writer.Complete();
         }
 
-        private async Task PipeReadAsync(Socket socket, PipeReader reader, INodeSink nodeSink) {
-            var parser = new MessageParser(nodeSink.MessageTag, new DefaultMessageProcessor(socket, nodeSink.SinkAsync), _logger);
+        private async Task PipeReadAsync(Socket socket, PipeReader reader, INodeSink messageProcessor) {
+            var responder = new SocketResponder(socket);
+            var parser = new MessageParser(messageProcessor.MessageTag, (bytes) => messageProcessor.SinkAsNodeAsync(bytes, responder.Respond).Result, _logger);
             while (!_token.IsCancellationRequested) {
                 ReadResult result = await reader.ReadAsync(_token);
                 if (result.IsCanceled)
@@ -132,7 +136,6 @@ namespace InterlockLedger.Peer2Peer
                 return;
             (_address, _port, _listenSocket) = await _discoverer.DetermineExternalAccessAsync(_nodeSink);
             _nodeSink.PublishedAs(_address, _port);
-            _logger.LogInformation($"-- Started listening {_nodeSink.NetworkProtocolName} protocol in {_nodeSink.NetworkName} network at {_address}:{_port}!");
             new Thread(async () => await Listen()).Start();
         }
     }

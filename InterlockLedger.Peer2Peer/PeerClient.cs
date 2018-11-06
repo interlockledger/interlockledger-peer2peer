@@ -7,6 +7,9 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Buffers;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 
@@ -26,48 +29,67 @@ namespace InterlockLedger.Peer2Peer
             Id = id;
         }
 
-        private const int _receiveTimeout = 30000;
-        private const int _sleepStep = 10;
+        public string Id { get; }
 
-        public void Send(Span<byte> bytes, IMessageProcessor messageProcessor) {
-            try {
-                var messageParser = new MessageParser(_tag, messageProcessor, _logger);
-                byte[] buffer = new byte[4096];
-                using (var client = new TcpClient()) {
-                    client.Connect(_networkAddress, _networkPort);
-                    client.ReceiveTimeout = _receiveTimeout;
-                    client.NoDelay = true;
-                    using (NetworkStream stream = client.GetStream()) {
-                        stream.Write(bytes.ToArray(), 0, bytes.Length);
-                        stream.Flush();
-                        do {
-                            WaitForData(stream, waitForever: messageProcessor.AwaitMultipleAnswers);
-                            int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                            if (bytesRead > 0)
-                                messageParser.Parse(new ReadOnlySequence<byte>(buffer, 0, bytesRead));
-                        } while (messageParser.Continue);
-                    }
-                }
-            } catch (SocketException se) {
-                _logger.LogError($"Client could not connect into address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
+        public void Send(IList<ArraySegment<byte>> segments, IClientSink messageProcessor) {
+            Socket sender = Connect();
+            if (sender != null) {
+                Send(segments, messageProcessor, sender, waitForever: false);
+                sender.Shutdown(SocketShutdown.Both);
+                sender.Close();
             }
         }
 
-        private static void WaitForData(NetworkStream stream, bool waitForever) {
+        public void Send(IList<ArraySegment<byte>> segments, IClientSink messageProcessor, Socket sender, bool waitForever) {
+            try {
+                var messageParser = new MessageParser(_tag, (bytes) => messageProcessor.SinkAsClientAsync(bytes).Result, _logger);
+                byte[] buffer = new byte[4096];
+                sender.Send(segments);
+                do {
+                    WaitForData(sender, waitForever);
+                    int bytesRead = sender.Receive(buffer);
+                    if (bytesRead > 0)
+                        messageParser.Parse(new ReadOnlySequence<byte>(buffer, 0, bytesRead));
+                } while (messageParser.Continue);
+            } catch (SocketException se) {
+                _logger.LogError($"Client could not connect into address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
+            } catch (Exception e) {
+                _logger.LogError("Unexpected exception : {0}", e.ToString());
+            }
+        }
+
+        private const int _receiveTimeout = 30000;
+        private const int _sleepStep = 10;
+        private readonly ILogger _logger;
+
+        private readonly string _networkAddress;
+
+        private readonly int _networkPort;
+
+        private readonly ulong _tag;
+
+        private static void WaitForData(Socket socket, bool waitForever) {
             int timeout = _receiveTimeout / _sleepStep;
-            while (!stream.DataAvailable && (timeout > 0)) {
+            while (socket.Available == 0 && (timeout > 0)) {
                 Thread.Sleep(_sleepStep);
                 if (!waitForever)
                     timeout--;
             }
         }
 
-
-        private readonly string _networkAddress;
-        private readonly int _networkPort;
-        private readonly ulong _tag;
-        private readonly ILogger _logger;
-
-        public string Id { get; }
+        private Socket Connect() {
+            try {
+                IPHostEntry ipHostInfo = Dns.GetHostEntry(_networkAddress);
+                IPAddress ipAddress = ipHostInfo.AddressList.First(ip => ip.AddressFamily == AddressFamily.InterNetwork);
+                // Create a TCP/IP  socket.
+                var sender = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                sender.Connect(new IPEndPoint(ipAddress, _networkPort));
+                sender.ReceiveTimeout = _receiveTimeout;
+                return sender;
+            } catch (SocketException se) {
+                _logger.LogError($"Client could not connect into address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
+            }
+            return null;
+        }
     }
 }

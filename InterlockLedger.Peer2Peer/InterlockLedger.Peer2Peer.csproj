@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>0.1.6</Version>
+    <Version>0.1.7</Version>
     <Authors>Rafael Teixeira</Authors>
     <Company>InterlockLedger Network</Company>
     <Product>InterlockLedger</Product>
@@ -13,7 +13,7 @@
     <RepositoryUrl>https://github.com/interlockledger/peer2peer.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageReleaseNotes>Evolving the PeerClient/PeerListener to allow multiple response messages aparted in time, to support subscription/events</PackageReleaseNotes>
+    <PackageReleaseNotes>Revamping interfaces</PackageReleaseNotes>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 

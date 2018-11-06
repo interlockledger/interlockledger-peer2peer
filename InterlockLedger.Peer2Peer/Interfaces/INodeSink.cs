@@ -10,9 +10,24 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
+    [Flags]
+    public enum Success
+    {
+        None = 0,
+        Retry = 1,
+        SwitchToListen = 4,
+        Exit = 128
+    }
+
+    public interface IClientSink
+    {
+        Task<Success> SinkAsClientAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes);
+    }
+
     public interface INodeSink
     {
         string DefaultAddress { get; }
+        int DefaultListeningBufferSize { get; }
         int DefaultPort { get; }
         IEnumerable<string> LocalResources { get; }
         ulong MessageTag { get; }
@@ -23,6 +38,6 @@ namespace InterlockLedger.Peer2Peer
 
         void PublishedAs(string address, int tcpPort);
 
-        Task SinkAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, Action<ReadOnlyMemory<byte>, bool> respond);
+        Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, Action<Response> respond);
     }
 }

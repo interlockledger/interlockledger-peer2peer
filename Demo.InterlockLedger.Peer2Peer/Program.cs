@@ -4,11 +4,9 @@
  *
  ******************************************************************************************************************************/
 
-using InterlockLedger.Common;
 using InterlockLedger.Peer2Peer;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -23,6 +21,7 @@ namespace Demo.InterlockLedger.Peer2Peer
             Console.WriteLine("Demo.InterlockLedger.Peer2Peer!");
             var factory = new LoggerFactory();
             factory.AddConsole(LogLevel.Information);
+            _nodeSink = new DemoNodeSink();
             _peerServices = new PeerServices(factory, new DummyExternalAccessDiscoverer(factory));
             if (args.Length > 0 && args[0].Equals("server", StringComparison.OrdinalIgnoreCase))
                 Server();
@@ -44,8 +43,7 @@ namespace Demo.InterlockLedger.Peer2Peer
             Console.WriteLine(" Done!");
         }
 
- 
-        private static readonly DemoNodeSink _nodeSink = new DemoNodeSink();
+        private static DemoNodeSink _nodeSink;
         private static PeerServices _peerServices;
 
         private static void Client() {
@@ -56,9 +54,8 @@ namespace Demo.InterlockLedger.Peer2Peer
                 if (command.FirstOrDefault() == 'x')
                     return;
                 var client = _peerServices.GetClient("server", _nodeSink.MessageTag, "localhost", 8080);
-                client.Send(_nodeSink.ToMessage(command.AsUTF8Bytes(), isLast: true), _nodeSink.ClientProcessor);
+                client.Send(_nodeSink.ToMessage(command.AsUTF8Bytes(), isLast: true), _nodeSink);
             }
         }
-
     }
 }

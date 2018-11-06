@@ -14,6 +14,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
     internal class FakeNodeSync : INodeSink
     {
         public string DefaultAddress => "localhost";
+        public int DefaultListeningBufferSize => 1024;
         public int DefaultPort => 9090;
         public IEnumerable<string> LocalResources { get; } = new string[] { "DummyDoc1", "DummyDoc2" };
         public ulong MessageTag => '?';
@@ -26,9 +27,10 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             // Do nothing
         }
 
-        public async Task SinkAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, Action<ReadOnlyMemory<byte>, bool> respond) {
+        public async Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, Action<Response> respond) {
             await Task.Delay(10);
-            respond(ReadOnlyMemory<byte>.Empty, true);
+            respond(Response.Done);
+            return Success.Exit;
         }
     }
 }

@@ -10,10 +10,12 @@ using System.Net.Sockets;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public interface IClient
+    public class SocketResponder : Responder
     {
-        void Send(IList<ArraySegment<byte>> segments, IClientSink messageProcessor);
+        public SocketResponder(Socket socket) => _socket = socket ?? throw new ArgumentNullException(nameof(socket));
 
-        void Send(IList<ArraySegment<byte>> segments, IClientSink messageProcessor, Socket sender, bool waitForever);
+        protected override void SendResponse(IList<ArraySegment<byte>> responseSegments) => _socket.Send(responseSegments);
+
+        private readonly Socket _socket;
     }
 }

@@ -10,7 +10,6 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    [Flags]
     public enum Success
     {
         None = 0,

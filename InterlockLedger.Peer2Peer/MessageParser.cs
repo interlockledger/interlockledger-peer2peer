@@ -23,7 +23,7 @@ namespace InterlockLedger.Peer2Peer
             LastResult = Success.None;
         }
 
-        public bool Continue => !LastResult.HasFlag(Success.Exit);
+        public bool Continue => LastResult != Success.Exit;
 
         public Success LastResult { get; private set; }
 

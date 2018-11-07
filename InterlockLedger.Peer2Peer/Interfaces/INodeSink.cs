@@ -20,6 +20,7 @@ namespace InterlockLedger.Peer2Peer
 
     public interface IClientSink
     {
+        int DefaultListeningBufferSize { get; }
         Task<Success> SinkAsClientAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes);
     }
 

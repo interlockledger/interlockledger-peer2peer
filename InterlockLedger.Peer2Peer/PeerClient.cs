@@ -31,22 +31,23 @@ namespace InterlockLedger.Peer2Peer
 
         public string Id { get; }
 
-        public void Send(IList<ArraySegment<byte>> segments, IClientSink messageProcessor) {
+        public void Send(IList<ArraySegment<byte>> segments, IClientSink clientSink) {
             Socket sender = Connect();
             if (sender != null) {
-                Send(segments, messageProcessor, sender, waitForever: false);
+                Send(segments, clientSink, sender, waitForever: false);
                 sender.Shutdown(SocketShutdown.Both);
                 sender.Close();
             }
         }
 
-        public void Send(IList<ArraySegment<byte>> segments, IClientSink messageProcessor, Socket sender, bool waitForever) {
+        public void Send(IList<ArraySegment<byte>> segments, IClientSink clientSink, Socket sender, bool waitForever) {
             try {
-                var messageParser = new MessageParser(_tag, (bytes) => messageProcessor.SinkAsClientAsync(bytes).Result, _logger);
-                byte[] buffer = new byte[4096];
+                var messageParser = new MessageParser(_tag, (bytes) => clientSink.SinkAsClientAsync(bytes).Result, _logger);
+                int minimumBufferSize = Math.Max(512, clientSink.DefaultListeningBufferSize);
                 sender.Send(segments);
                 do {
                     WaitForData(sender, waitForever);
+                    byte[] buffer = new byte[minimumBufferSize];
                     int bytesRead = sender.Receive(buffer);
                     if (bytesRead > 0)
                         messageParser.Parse(new ReadOnlySequence<byte>(buffer, 0, bytesRead));

@@ -89,7 +89,6 @@ namespace InterlockLedger.Peer2Peer
         private async Task PipeFillAsync(Socket socket, PipeWriter writer) {
             while (!_token.IsCancellationRequested) {
                 try {
-                    // Request a minimum of 4096 bytes from the PipeWriter
                     _logger.LogTrace($"Getting {_minimumBufferSize} bytes to receive in the socket");
                     Memory<byte> memory = writer.GetMemory(_minimumBufferSize);
                     int bytesRead = await socket.ReceiveAsync(memory, SocketFlags.None);

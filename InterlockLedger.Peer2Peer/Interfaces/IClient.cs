@@ -12,8 +12,8 @@ namespace InterlockLedger.Peer2Peer
 {
     public interface IClient
     {
-        void Send(IList<ArraySegment<byte>> segments, IClientSink messageProcessor);
+        void Send(IList<ArraySegment<byte>> segments, IClientSink clientSink);
 
-        void Send(IList<ArraySegment<byte>> segments, IClientSink messageProcessor, Socket sender, bool waitForever);
+        void Send(IList<ArraySegment<byte>> segments, IClientSink clientSink, Socket sender, bool waitForever);
     }
 }

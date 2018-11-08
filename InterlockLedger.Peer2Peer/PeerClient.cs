@@ -34,19 +34,20 @@ namespace InterlockLedger.Peer2Peer
         public void Send(IList<ArraySegment<byte>> segments, IClientSink clientSink) {
             Socket sender = Connect();
             if (sender != null) {
-                Send(segments, clientSink, sender, clientSink.WaitForever);
+                Send(segments, clientSink, sender);
                 sender.Shutdown(SocketShutdown.Both);
                 sender.Close();
             }
         }
 
-        public void Send(IList<ArraySegment<byte>> segments, IClientSink clientSink, Socket sender, bool waitForever) {
+        public void Send(IList<ArraySegment<byte>> segments, IClientSink clientSink, Socket sender)
+        {
             try {
                 var messageParser = new MessageParser(_tag, (bytes) => clientSink.SinkAsClientAsync(bytes).Result, _logger);
                 int minimumBufferSize = Math.Max(512, clientSink.DefaultListeningBufferSize);
                 sender.Send(segments);
                 do {
-                    WaitForData(sender, waitForever);
+                    WaitForData(sender, clientSink.WaitForever);
                     byte[] buffer = new byte[minimumBufferSize];
                     int bytesRead = sender.Receive(buffer);
                     if (bytesRead > 0)
@@ -62,7 +63,7 @@ namespace InterlockLedger.Peer2Peer
         private const int _hoursOfSilencedDuplicateErrors = 8;
         private const int _receiveTimeout = 30000;
         private const int _sleepStep = 10;
-        private readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
+        private static readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
         private readonly ILogger _logger;
         private readonly string _networkAddress;
         private readonly int _networkPort;
@@ -86,7 +87,7 @@ namespace InterlockLedger.Peer2Peer
                 sender.ReceiveTimeout = _receiveTimeout;
                 return sender;
             } catch (SocketException se) {
-                _logger.LogError($"Client could not connect into address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
+                LogError($"Client could not connect into address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
             }
             return null;
         }

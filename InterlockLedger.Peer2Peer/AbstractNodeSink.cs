@@ -26,15 +26,4 @@ namespace InterlockLedger.Peer2Peer
 
         public abstract Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, Action<Response> respond);
     }
-
-    public abstract class Responder
-    {
-        public void Respond(Response response) {
-            if (!response.Exit) {
-                SendResponse(response.DataList);
-            }
-        }
-
-        protected abstract void SendResponse(IList<ArraySegment<byte>> responseSegments);
-    }
 }

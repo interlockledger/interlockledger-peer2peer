@@ -34,7 +34,7 @@ namespace InterlockLedger.Peer2Peer
         public void Send(IList<ArraySegment<byte>> segments, IClientSink clientSink) {
             Socket sender = Connect();
             if (sender != null) {
-                Send(segments, clientSink, sender, waitForever: false);
+                Send(segments, clientSink, sender, clientSink.WaitForever);
                 sender.Shutdown(SocketShutdown.Both);
                 sender.Close();
             }
@@ -53,20 +53,19 @@ namespace InterlockLedger.Peer2Peer
                         messageParser.Parse(new ReadOnlySequence<byte>(buffer, 0, bytesRead));
                 } while (messageParser.Continue);
             } catch (SocketException se) {
-                _logger.LogError($"Client could not connect into address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
+                LogError($"Client could not connect into address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
             } catch (Exception e) {
-                _logger.LogError("Unexpected exception : {0}", e.ToString());
+                LogError($"Unexpected exception : {e}");
             }
         }
 
+        private const int _hoursOfSilencedDuplicateErrors = 8;
         private const int _receiveTimeout = 30000;
         private const int _sleepStep = 10;
+        private readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
         private readonly ILogger _logger;
-
         private readonly string _networkAddress;
-
         private readonly int _networkPort;
-
         private readonly ulong _tag;
 
         private static void WaitForData(Socket socket, bool waitForever) {
@@ -82,7 +81,6 @@ namespace InterlockLedger.Peer2Peer
             try {
                 IPHostEntry ipHostInfo = Dns.GetHostEntry(_networkAddress);
                 IPAddress ipAddress = ipHostInfo.AddressList.First(ip => ip.AddressFamily == AddressFamily.InterNetwork);
-                // Create a TCP/IP  socket.
                 var sender = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 sender.Connect(new IPEndPoint(ipAddress, _networkPort));
                 sender.ReceiveTimeout = _receiveTimeout;
@@ -91,6 +89,13 @@ namespace InterlockLedger.Peer2Peer
                 _logger.LogError($"Client could not connect into address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
             }
             return null;
+        }
+
+        private void LogError(string message) {
+            if (!(_errors.TryGetValue(message, out var dateTime) && (DateTimeOffset.Now - dateTime).Hours < _hoursOfSilencedDuplicateErrors)) {
+                _logger.LogError(message);
+                _errors[message] = DateTimeOffset.Now;
+            }
         }
     }
 }

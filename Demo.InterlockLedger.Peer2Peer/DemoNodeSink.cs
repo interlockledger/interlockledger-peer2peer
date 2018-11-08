@@ -28,6 +28,7 @@ namespace Demo.InterlockLedger.Peer2Peer
         public string Prompt => "Command (x to exit, w to get who is answering, e... to echo ..., 3... to echo ... 3 times): ";
         public override IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "Echo", "Who", "TripleEcho" };
         public string Url => $"demo://{_address}:{_externalPort}/";
+        public bool WaitForever => false;
 
         public override void PublishedAs(string address, int tcpPort) {
             _address = address;

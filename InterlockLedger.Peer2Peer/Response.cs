@@ -18,6 +18,8 @@ namespace InterlockLedger.Peer2Peer
     {
         public Response(MemoryStream ms) : this(ms.ToArray()) { }
 
+        public Response(ReadOnlyMemory<byte> readOnlyMemory) : this(readOnlyMemory.ToArray()) { }
+
         public Response(ArraySegment<byte> data) : this(new List<ArraySegment<byte>>() { data }) { }
 
         public Response(byte[] array) : this(array, 0, array.Length) { }

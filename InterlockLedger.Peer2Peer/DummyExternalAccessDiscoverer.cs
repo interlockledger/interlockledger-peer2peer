@@ -14,11 +14,15 @@ using System.Threading.Tasks;
 namespace InterlockLedger.Peer2Peer
 {
     // TODO1: to be replaced by some implementation that deals with NAT/UPnP/Whatever to really give the node a public address and port
+#pragma warning disable S3881 // "IDisposable" should be implemented correctly
+
     public class DummyExternalAccessDiscoverer : IExternalAccessDiscoverer
     {
         public DummyExternalAccessDiscoverer(ILoggerFactory loggerFactory) => _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<DummyExternalAccessDiscoverer>();
 
         public Task<(string, int, Socket)> DetermineExternalAccessAsync(INodeSink nodeSink) {
+            if (_disposedValue)
+                return Task.FromResult<(string, int, Socket)>((null, 0, null));
             string defaultAddress = nodeSink.DefaultAddress ?? "localhost";
             IPAddress localaddr = GetAddress(defaultAddress);
             var listener = GetSocket(localaddr, (ushort)nodeSink.DefaultPort);
@@ -26,7 +30,21 @@ namespace InterlockLedger.Peer2Peer
             return Task.FromResult((defaultAddress, port, listener));
         }
 
+        public void Dispose() => Dispose(true);
+
+        protected virtual void Dispose(bool disposing) {
+            if (!_disposedValue) {
+                // really nothing to do in this dumb implementation
+                if (disposing) {
+                    // dispose managed state
+                }
+                _disposedValue = true;
+            }
+        }
+
         private readonly ILogger<DummyExternalAccessDiscoverer> _logger;
+
+        private bool _disposedValue = false;
 
         private static IPAddress GetAddress(string name) {
             if (IPAddress.TryParse(name, out IPAddress address))

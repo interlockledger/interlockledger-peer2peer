@@ -4,12 +4,13 @@
  *
  ******************************************************************************************************************************/
 
+using System;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public interface IExternalAccessDiscoverer
+    public interface IExternalAccessDiscoverer : IDisposable
     {
         Task<(string address, int port, Socket socket)> DetermineExternalAccessAsync(INodeSink nodeSink);
     }

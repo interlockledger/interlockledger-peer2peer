@@ -18,7 +18,8 @@ namespace InterlockLedger.Peer2Peer
 
     internal class PeerListener : IListener
     {
-        public PeerListener(INodeSink nodeSink, ILogger logger, IExternalAccessDiscoverer discoverer, CancellationTokenSource source) {
+        public PeerListener(INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger)
+        {
             _nodeSink = nodeSink ?? throw new ArgumentNullException(nameof(nodeSink));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _discoverer = discoverer ?? throw new ArgumentNullException(nameof(discoverer));

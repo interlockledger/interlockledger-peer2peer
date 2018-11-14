@@ -10,6 +10,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -48,7 +49,11 @@ namespace Demo.InterlockLedger.Peer2Peer
         public override async Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, Action<Response> respond) {
             var result = SinkAsServer(readOnlyBytes.SelectMany(b => b.ToArray()).ToArray());
             foreach (var r in result) {
-                respond(new Response(r.ToArray()));
+                try {
+                    respond(new Response(r));
+                } catch (SocketException) {
+                    // Do Nothing
+                }
                 await Task.Delay(1000);
             }
             respond(Response.Done);

@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 
 namespace UnitTest.InterlockLedger.Peer2Peer
 {
+#pragma warning disable S3881 // "IDisposable" should be implemented correctly
     internal class FakeDiscoverer : IExternalAccessDiscoverer
     {
         public FakeDiscoverer() {
@@ -23,6 +24,10 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             listenSocket.Bind(new IPEndPoint(IPAddress.Loopback, 32015));
             return Task.FromResult((address: nodeSink.DefaultAddress, port: nodeSink.DefaultPort, socket: listenSocket));
+        }
+
+        public void Dispose() {
+            // Method intentionally left empty.
         }
     }
 }

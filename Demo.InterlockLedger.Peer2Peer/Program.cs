@@ -27,35 +27,39 @@ namespace Demo.InterlockLedger.Peer2Peer
                 Server();
             else
                 Client();
+            Console.WriteLine("-- Done!");
         }
 
         public static void Server() {
-            Console.WriteLine("Server");
-            var source = new CancellationTokenSource();
-            Console.TreatControlCAsInput = true;
-            Console.CancelKeyPress += (object sender, ConsoleCancelEventArgs e) => { Console.WriteLine("Exiting..."); source.Cancel(); };
-            using (var listener = _peerServices.CreateFor(_nodeSink, source)) {
+            PrepareConsole("Server");
+            using (var listener = _peerServices.CreateFor(_nodeSink, _cancellationSource)) {
                 listener.Start();
                 while (listener.Alive) {
                     Thread.Yield();
                 }
             }
-            Console.WriteLine(" Done!");
         }
 
         private static DemoNodeSink _nodeSink;
         private static PeerServices _peerServices;
+        private static readonly CancellationTokenSource _cancellationSource = new CancellationTokenSource();
 
         private static void Client() {
-            Console.WriteLine("Client");
-            while (true) {
+            PrepareConsole("Client");
+            while (!_cancellationSource.IsCancellationRequested) {
                 Console.Write(_nodeSink.Prompt);
                 var command = Console.ReadLine();
-                if (command.FirstOrDefault() == 'x')
-                    return;
-                var client = _peerServices.GetClient("server", _nodeSink.MessageTag, "localhost", 8080);
+                if (command == null || command.FirstOrDefault() == 'x')
+                    break;
+                var client = _peerServices.GetClient(_nodeSink.MessageTag, "server", "localhost", 8080, _cancellationSource);
                 client.Send(_nodeSink.ToMessage(command.AsUTF8Bytes(), isLast: true), _nodeSink);
             }
+        }
+
+        private static void PrepareConsole(string message) {
+            Console.WriteLine(message);
+            Console.TreatControlCAsInput = false;
+            Console.CancelKeyPress += (object sender, ConsoleCancelEventArgs e) => { Console.WriteLine("Exiting..."); _cancellationSource.Cancel(); };
         }
     }
 }

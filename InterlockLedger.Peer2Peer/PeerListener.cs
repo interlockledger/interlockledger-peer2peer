@@ -18,12 +18,11 @@ namespace InterlockLedger.Peer2Peer
 
     internal class PeerListener : IListener
     {
-        public PeerListener(INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger)
-        {
+        public PeerListener(INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger) {
             _nodeSink = nodeSink ?? throw new ArgumentNullException(nameof(nodeSink));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _discoverer = discoverer ?? throw new ArgumentNullException(nameof(discoverer));
             _source = source ?? throw new ArgumentNullException(nameof(source));
+            DetermineExternalAccess(discoverer ?? throw new ArgumentNullException(nameof(discoverer)));
             _token = source.Token;
             _token.Register(Stop);
             _minimumBufferSize = Math.Max(512, _nodeSink.DefaultListeningBufferSize);
@@ -33,7 +32,11 @@ namespace InterlockLedger.Peer2Peer
 
         public void Dispose() => Stop();
 
-        public void Start() => Task.WaitAll(StartAsync());
+        public void Start() {
+            if (_source.IsCancellationRequested)
+                return;
+            new Thread(async () => await Listen()).Start();
+        }
 
         public void Stop() {
             if (!_source.IsCancellationRequested)
@@ -49,16 +52,26 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        private readonly IExternalAccessDiscoverer _discoverer;
         private readonly ILogger _logger;
+
         private readonly int _minimumBufferSize;
+
         private readonly INodeSink _nodeSink;
+
         private readonly CancellationTokenSource _source;
+
         private readonly CancellationToken _token;
 
         private string _address;
+
         private Socket _listenSocket;
+
         private int _port;
+
+        private void DetermineExternalAccess(IExternalAccessDiscoverer _discoverer) {
+            (_address, _port, _listenSocket) = _discoverer.DetermineExternalAccessAsync(_nodeSink).Result;
+            _nodeSink.PublishedAs(_address, _port);
+        }
 
         // TODO2: Implement something more like Kestrel does for scaling up multiple simultaneous requests processing
         private async Task Listen() {
@@ -129,14 +142,6 @@ namespace InterlockLedger.Peer2Peer
                     break;
             }
             reader.Complete();
-        }
-
-        private async Task StartAsync() {
-            if (_source.IsCancellationRequested)
-                return;
-            (_address, _port, _listenSocket) = await _discoverer.DetermineExternalAccessAsync(_nodeSink);
-            _nodeSink.PublishedAs(_address, _port);
-            new Thread(async () => await Listen()).Start();
         }
     }
 }

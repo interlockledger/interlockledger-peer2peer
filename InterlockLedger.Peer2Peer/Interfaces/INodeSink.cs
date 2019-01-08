@@ -28,18 +28,21 @@ namespace InterlockLedger.Peer2Peer
 
     public interface INodeSink
     {
-        string DefaultAddress { get; }
         int DefaultListeningBufferSize { get; }
-        int DefaultPort { get; }
+        string HostAtAddress { get; }
+        int HostAtPortNumber { get; }
         IEnumerable<string> LocalResources { get; }
         ulong MessageTag { get; }
         string NetworkName { get; }
         string NetworkProtocolName { get; }
         string NodeId { get; }
+        string PublishAtAddress { get; }
+        int PublishAtPortNumber { get; }
         IEnumerable<string> SupportedNetworkProtocolFeatures { get; }
 
-        void PublishedAs(string address, int tcpPort);
+        void HostedAt(string address, int tcpPort);
 
         Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, Action<Response> respond);
+        void PublishedAt(string address, int port);
     }
 }

@@ -42,7 +42,7 @@ namespace InterlockLedger.Peer2Peer
             if (!_source.IsCancellationRequested)
                 _source.Cancel();
             if (Alive) {
-                _logger.LogInformation($"-- Stopped listening {_nodeSink.NetworkProtocolName} protocol in {_nodeSink.NetworkName} network!!!");
+                LogHeader("Stopped", _nodeSink.NetworkProtocolName, _nodeSink.NetworkName, _externalAccess.Route);
                 try {
                     _listenSocket.Close(10);
                 } catch (ObjectDisposedException e) {
@@ -53,29 +53,23 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private readonly ILogger _logger;
-
         private readonly int _minimumBufferSize;
-
         private readonly INodeSink _nodeSink;
-
         private readonly CancellationTokenSource _source;
-
         private readonly CancellationToken _token;
-
-        private string _address;
-
+        private ExternalAccess _externalAccess;
         private Socket _listenSocket;
 
-        private int _port;
-
         private void DetermineExternalAccess(IExternalAccessDiscoverer _discoverer) {
-            (_address, _port, _listenSocket) = _discoverer.DetermineExternalAccessAsync(_nodeSink).Result;
-            _nodeSink.PublishedAs(_address, _port);
+            _externalAccess = _discoverer.DetermineExternalAccessAsync(_nodeSink).Result;
+            _listenSocket = _externalAccess.Socket;
+            _nodeSink.HostedAt(_externalAccess.InternalAddress, _externalAccess.InternalPort);
+            _nodeSink.PublishedAt(_externalAccess.ExternalAddress, _externalAccess.ExternalPort);
         }
 
         // TODO2: Implement something more like Kestrel does for scaling up multiple simultaneous requests processing
         private async Task Listen() {
-            _logger.LogInformation($"-- Started listening {_nodeSink.NetworkProtocolName} protocol in {_nodeSink.NetworkName} network at {_address}:{_port}!");
+            LogHeader("Started", _nodeSink.NetworkProtocolName, _nodeSink.NetworkName, _externalAccess.Route);
             do {
                 try {
                     while (!_token.IsCancellationRequested) {
@@ -99,6 +93,9 @@ namespace InterlockLedger.Peer2Peer
                 }
             } while (!_token.IsCancellationRequested);
         }
+
+        private void LogHeader(string verb, string protocolName, string networkName, string route)
+            => _logger.LogInformation($"-- {verb} listening {protocolName} protocol in {networkName} network at {route}!");
 
         private async Task PipeFillAsync(Socket socket, PipeWriter writer) {
             while (!_token.IsCancellationRequested) {

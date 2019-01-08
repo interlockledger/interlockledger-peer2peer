@@ -12,17 +12,21 @@ namespace InterlockLedger.Peer2Peer
 {
     public abstract class AbstractNodeSink : INodeSink
     {
-        public abstract string DefaultAddress { get; }
-        public abstract int DefaultListeningBufferSize { get; }
-        public abstract int DefaultPort { get; }
+        public int DefaultListeningBufferSize { get; protected set; }
+        public string HostAtAddress { get; protected set; }
+        public int HostAtPortNumber { get; protected set; }
         public abstract IEnumerable<string> LocalResources { get; }
-        public abstract ulong MessageTag { get; }
-        public abstract string NetworkName { get; }
-        public abstract string NetworkProtocolName { get; }
-        public abstract string NodeId { get; }
+        public ulong MessageTag { get; protected set; }
+        public string NetworkName { get; protected set; }
+        public string NetworkProtocolName { get; protected set; }
+        public string NodeId { get; protected set; }
+        public string PublishAtAddress { get; protected set; }
+        public int PublishAtPortNumber { get; protected set; }
         public abstract IEnumerable<string> SupportedNetworkProtocolFeatures { get; }
 
-        public abstract void PublishedAs(string address, int tcpPort);
+        public abstract void HostedAt(string address, int tcpPort);
+
+        public abstract void PublishedAt(string address, int port);
 
         public abstract Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, Action<Response> respond);
     }

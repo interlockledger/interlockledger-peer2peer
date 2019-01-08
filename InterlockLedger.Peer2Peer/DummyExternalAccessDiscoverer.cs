@@ -18,16 +18,17 @@ namespace InterlockLedger.Peer2Peer
 
     public class DummyExternalAccessDiscoverer : IExternalAccessDiscoverer
     {
-        public DummyExternalAccessDiscoverer(ILoggerFactory loggerFactory) => _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<DummyExternalAccessDiscoverer>();
+        public DummyExternalAccessDiscoverer(ILoggerFactory loggerFactory)
+            => _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<DummyExternalAccessDiscoverer>();
 
-        public Task<(string, int, Socket)> DetermineExternalAccessAsync(INodeSink nodeSink) {
+        public Task<ExternalAccess> DetermineExternalAccessAsync(INodeSink nodeSink) {
             if (_disposedValue)
-                return Task.FromResult<(string, int, Socket)>((null, 0, null));
-            string defaultAddress = nodeSink.DefaultAddress ?? "localhost";
-            IPAddress localaddr = GetAddress(defaultAddress);
-            var listener = GetSocket(localaddr, (ushort)nodeSink.DefaultPort);
+                return Task.FromResult<ExternalAccess>(null);
+            string hostingAddress = nodeSink.HostAtAddress ?? "localhost";
+            IPAddress localaddr = GetAddress(hostingAddress);
+            var listener = GetSocket(localaddr, (ushort)nodeSink.HostAtPortNumber);
             var port = ((IPEndPoint)listener.LocalEndPoint).Port;
-            return Task.FromResult((defaultAddress, port, listener));
+            return Task.FromResult(new ExternalAccess (hostingAddress, port, hostingAddress, port, listener));
         }
 
         public void Dispose() => Dispose(true);
@@ -43,7 +44,6 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private readonly ILogger<DummyExternalAccessDiscoverer> _logger;
-
         private bool _disposedValue = false;
 
         private static IPAddress GetAddress(string name) {

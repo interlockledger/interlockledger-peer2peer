@@ -18,22 +18,30 @@ namespace Demo.InterlockLedger.Peer2Peer
 {
     internal class DemoNodeSink : AbstractNodeSink, IClientSink
     {
-        public override string DefaultAddress => "localhost";
-        public override int DefaultListeningBufferSize => 512;
-        public override int DefaultPort => 8080;
+        public DemoNodeSink() {
+            PublishAtAddress= HostAtAddress = "localhost";
+            PublishAtPortNumber = HostAtPortNumber = 8080;
+            DefaultListeningBufferSize = 512;
+            MessageTag = _messageTagCode;
+            NetworkName = "Demo";
+            NetworkProtocolName = "DemoPeer2Peer";
+            NodeId = "Local Node";
+        }
+
         public override IEnumerable<string> LocalResources { get; } = new string[] { "Document" };
-        public override ulong MessageTag => _messageTagCode;
-        public override string NetworkName => "Demo";
-        public override string NetworkProtocolName => "DemoPeer2Peer";
-        public override string NodeId => "Local Node";
         public string Prompt => "Command (x to exit, w to get who is answering, e... to echo ..., 3... to echo ... 3 times): ";
         public override IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "Echo", "Who", "TripleEcho" };
-        public string Url => $"demo://{_address}:{_externalPort}/";
+        public string Url => $"demo://{PublishAtAddress}:{PublishAtPortNumber}/";
         public bool WaitForever => false;
 
-        public override void PublishedAs(string address, int tcpPort) {
-            _address = address;
-            _externalPort = tcpPort;
+        public override void HostedAt(string address, int tcpPort) {
+            HostAtAddress = address;
+            HostAtPortNumber = tcpPort;
+        }
+
+        public override void PublishedAt(string address, int port) {
+            PublishAtAddress = address;
+            PublishAtPortNumber = port;
         }
 
         public async Task<Success> SinkAsClientAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes) {
@@ -60,17 +68,16 @@ namespace Demo.InterlockLedger.Peer2Peer
             return Success.Exit;
         }
 
-        public IList<ArraySegment<byte>> ToMessage(IEnumerable<byte> bytes, bool isLast) => new List<ArraySegment<byte>> { new ArraySegment<byte>(ToMessageBytes(bytes, isLast)) };
+        public IList<ArraySegment<byte>> ToMessage(IEnumerable<byte> bytes, bool isLast)
+            => new List<ArraySegment<byte>> { new ArraySegment<byte>(ToMessageBytes(bytes, isLast)) };
 
         private const ulong _messageTagCode = ':';
         private static readonly IEnumerable<byte> _haveMoreMarker = new byte[] { 1 };
         private static readonly IEnumerable<byte> _isLastMarker = new byte[] { 0 };
         private readonly byte[] _encodedMessageTag = _messageTagCode.ILIntEncode();
-        private string _address;
-        private int _externalPort;
 
         private ReadOnlyMemory<byte> SendResponse(IEnumerable<byte> buffer, bool isLast)
-            => new ReadOnlyMemory<byte>(ToMessageBytes(buffer.ToArray(), isLast));
+                => new ReadOnlyMemory<byte>(ToMessageBytes(buffer.ToArray(), isLast));
 
         private ReadOnlyMemory<byte> SendTextResponse(string text, bool isLast) => SendResponse(text.AsUTF8Bytes(), isLast);
 

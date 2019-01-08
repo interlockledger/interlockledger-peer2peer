@@ -34,12 +34,12 @@ namespace Demo.InterlockLedger.Peer2Peer
         public string Url => $"demo://{PublishAtAddress}:{PublishAtPortNumber}/";
         public bool WaitForever => false;
 
-        public override void HostedAt(string address, int tcpPort) {
+        public override void HostedAt(string address, ushort port) {
             HostAtAddress = address;
-            HostAtPortNumber = tcpPort;
+            HostAtPortNumber = port;
         }
 
-        public override void PublishedAt(string address, int port) {
+        public override void PublishedAt(string address, ushort port) {
             PublishAtAddress = address;
             PublishAtPortNumber = port;
         }

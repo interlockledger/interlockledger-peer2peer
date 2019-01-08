@@ -15,21 +15,21 @@ namespace UnitTest.InterlockLedger.Peer2Peer
     {
         public int DefaultListeningBufferSize => 1024;
         public string HostAtAddress => "localhost";
-        public int HostAtPortNumber => 9090;
+        public ushort HostAtPortNumber => 9090;
         public IEnumerable<string> LocalResources { get; } = new string[] { "DummyDoc1", "DummyDoc2" };
         public ulong MessageTag => '?';
         public string NetworkName => "UnitTesting";
         public string NetworkProtocolName => "UnitTest";
         public string NodeId => "DummyNode";
         public string PublishAtAddress => HostAtAddress;
-        public int PublishAtPortNumber => HostAtPortNumber;
+        public ushort? PublishAtPortNumber => HostAtPortNumber;
         public IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "None" };
 
-        public void HostedAt(string address, int tcpPort) {
+        public void HostedAt(string address, ushort port) {
             // Do nothing
         }
 
-        public void PublishedAt(string address, int port) {
+        public void PublishedAt(string address, ushort port) {
             // Do nothing
         }
 

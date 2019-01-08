@@ -26,9 +26,9 @@ namespace InterlockLedger.Peer2Peer
                 return Task.FromResult<ExternalAccess>(null);
             string hostingAddress = nodeSink.HostAtAddress ?? "localhost";
             IPAddress localaddr = GetAddress(hostingAddress);
-            var listener = GetSocket(localaddr, (ushort)nodeSink.HostAtPortNumber);
-            var port = ((IPEndPoint)listener.LocalEndPoint).Port;
-            return Task.FromResult(new ExternalAccess (hostingAddress, port, hostingAddress, port, listener));
+            var listener = GetSocket(localaddr, nodeSink.HostAtPortNumber);
+            var port = (ushort)((IPEndPoint)listener.LocalEndPoint).Port;
+            return Task.FromResult(new ExternalAccess(listener, hostingAddress, port, nodeSink.PublishAtAddress, nodeSink.PublishAtPortNumber));
         }
 
         public void Dispose() => Dispose(true);

@@ -24,7 +24,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
                 throw new ArgumentNullException(nameof(nodeSink));
             var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             listenSocket.Bind(new IPEndPoint(IPAddress.Loopback, 32015));
-            return Task.FromResult(new ExternalAccess(nodeSink.HostAtAddress, nodeSink.HostAtPortNumber, nodeSink.PublishAtAddress, nodeSink.PublishAtPortNumber, listenSocket));
+            return Task.FromResult(new ExternalAccess(listenSocket, nodeSink.HostAtAddress, nodeSink.HostAtPortNumber, nodeSink.PublishAtAddress, nodeSink.PublishAtPortNumber));
         }
 
         public void Dispose() {

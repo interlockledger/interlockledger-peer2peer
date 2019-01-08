@@ -30,19 +30,20 @@ namespace InterlockLedger.Peer2Peer
     {
         int DefaultListeningBufferSize { get; }
         string HostAtAddress { get; }
-        int HostAtPortNumber { get; }
+        ushort HostAtPortNumber { get; }
         IEnumerable<string> LocalResources { get; }
         ulong MessageTag { get; }
         string NetworkName { get; }
         string NetworkProtocolName { get; }
         string NodeId { get; }
         string PublishAtAddress { get; }
-        int PublishAtPortNumber { get; }
+        ushort? PublishAtPortNumber { get; }
         IEnumerable<string> SupportedNetworkProtocolFeatures { get; }
 
-        void HostedAt(string address, int tcpPort);
+        void HostedAt(string address, ushort port);
+
+        void PublishedAt(string address, ushort port);
 
         Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, Action<Response> respond);
-        void PublishedAt(string address, int port);
     }
 }

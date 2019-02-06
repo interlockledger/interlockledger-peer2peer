@@ -7,7 +7,7 @@
     <Company>InterlockLedger Network</Company>
     <Product>InterlockLedger</Product>
     <Description>This library implements the backbone of a P2P network in .NET, with peer discoverability and routing. Plug your network protocol and defaults into it to have a working node.</Description>
-    <Copyright>Copyright (c) 2017-2018 InterlockLedger Network</Copyright>
+    <Copyright>Copyright (c) 2017-2019 InterlockLedger Network</Copyright>
     <PackageLicenseUrl>https://raw.githubusercontent.com/interlockledger/peer2peer/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://interlockledger.network/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/interlockledger/peer2peer.git</RepositoryUrl>

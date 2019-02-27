@@ -30,7 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using InterlockLedger.Common;
+using InterlockLedger.Peer2Peer;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 

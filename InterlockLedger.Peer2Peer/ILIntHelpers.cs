@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using System;
 using System.IO;
 
-namespace InterlockLedger.Common
+namespace InterlockLedger.Peer2Peer
 {
     public static class ILIntHelpers
     {

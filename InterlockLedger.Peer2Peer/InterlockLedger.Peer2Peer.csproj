@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>0.5.2</Version>
+    <Version>0.5.3</Version>
     <Authors>Rafael Teixeira</Authors>
     <Company>InterlockLedger Network</Company>
     <Product>InterlockLedger</Product>
@@ -13,7 +13,8 @@
     <RepositoryUrl>https://github.com/interlockledger/peer2peer.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageReleaseNotes>BREAKING CHANGE: PeerClient now caches socket and implements IDisposable, also PeerServices caches PeerClients</PackageReleaseNotes>
+    <PackageReleaseNotes>BREAKING CHANGES: IPeerServices refactored profoundly
+Locking cache dictionary to avoid run condition</PackageReleaseNotes>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 

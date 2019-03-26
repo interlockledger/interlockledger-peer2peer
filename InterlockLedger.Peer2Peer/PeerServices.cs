@@ -39,64 +39,81 @@ namespace InterlockLedger.Peer2Peer
 {
 #pragma warning disable S3881 // "IDisposable" should be implemented correctly
 
-    public sealed class PeerServices : IPeerServices
+    public sealed class PeerServices : IPeerServices, IKnownNodesServices
     {
         public PeerServices(ILoggerFactory loggerFactory, IExternalAccessDiscoverer discoverer) {
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _discoverer = discoverer ?? throw new ArgumentNullException(nameof(discoverer));
-            _cache = new Dictionary<string, (string address, int port)>();
+            _cache = new Dictionary<string, (string address, int port, ulong messageTag)>();
             _clients = new Dictionary<string, IClient>();
         }
 
-        public void AddKnownNode(string nodeId, string address, int port, bool retain = false) {
-            if (!_disposedValue) {
-                if (string.IsNullOrWhiteSpace(nodeId))
-                    throw new ArgumentNullException(nameof(nodeId));
-                if (string.IsNullOrWhiteSpace(address))
-                    throw new ArgumentNullException(nameof(address));
-                _cache[nodeId] = (address, port);
-            }
-        }
+        public IKnownNodesServices KnownNodes => this;
+        public CancellationTokenSource Source => _source ?? throw new InvalidOperationException("CancellationTokenSource was not set yet!");
 
-        public IListener CreateFor(INodeSink nodeSink, CancellationTokenSource source)
-            => Do(() => new PeerListener(nodeSink, _discoverer, source, CreateLogger(nameof(PeerListener))));
+        public IListener CreateListenerFor(INodeSink nodeSink)
+            => Do(() => new PeerListener(nodeSink, _discoverer, Source, CreateLogger(nameof(PeerListener))));
 
         public void Dispose() {
             if (!_disposedValue) {
                 _loggerFactory.Dispose();
                 _discoverer.Dispose();
                 _cache.Clear();
-                foreach (var client in _clients)
-                    client.Value?.Dispose();
+                foreach (var client in _clients.Values)
+                    client?.Dispose();
+                _clients.Clear();
                 _disposedValue = true;
             }
         }
 
-        public IClient GetClient(ulong messageTag, string nodeId, CancellationTokenSource source)
-            => Do(() => _cache.TryGetValue(nodeId, out (string address, int port) n) ? GetClient(messageTag, n.address, n.port, source) : null);
-
-        public IClient GetClient(ulong messageTag, string address, int port, CancellationTokenSource source)
+        public IClient GetClient(ulong messageTag, string address, int port)
             => Do(() => {
-                var id = $"{address}:{port}";
-                if (!_clients.ContainsKey(id)) {
-                    _clients.Add(id, new PeerClient(id, address, port, messageTag, source, CreateLogger(nameof(PeerClient))));
+                lock (_clients) {
+                    var id = $"{address}:{port}";
+                    if (!_clients.ContainsKey(id)) {
+                        _clients.Add(id, new PeerClient(id, address, port, messageTag, Source, CreateLogger(nameof(PeerClient))));
+                    }
+                    return _clients[id];
                 }
-                return _clients[id];
             });
 
-        public bool IsNodeKnown(string nodeId) => _cache.ContainsKey(nodeId);
+        public IPeerServices WithCancellationTokenSource(CancellationTokenSource source) {
+            _source = source ?? throw new ArgumentNullException(nameof(source));
+            return this;
+        }
 
-        private readonly IDictionary<string, (string address, int port)> _cache;
+        void IKnownNodesServices.Add(string nodeId, ulong messageTag, string address, int port, bool retain) {
+            if (!_disposedValue) {
+                if (string.IsNullOrWhiteSpace(nodeId))
+                    throw new ArgumentNullException(nameof(nodeId));
+                if (string.IsNullOrWhiteSpace(address))
+                    throw new ArgumentNullException(nameof(address));
+                _cache[nodeId] = (address, port, messageTag);
+            }
+        }
+
+        void IKnownNodesServices.Forget(string nodeId) {
+            if ((!_disposedValue) && _cache.ContainsKey(nodeId)) _cache.Remove(nodeId);
+        }
+
+        IClient IKnownNodesServices.GetClient(string nodeId)
+            => Do(() => _cache.TryGetValue(nodeId, out (string address, int port, ulong messageTag) n) ? GetClient(n.messageTag, n.address, n.port) : null);
+
+        bool IKnownNodesServices.IsKnown(string nodeId) => (!_disposedValue) && _cache.ContainsKey(nodeId);
+
+        private readonly IDictionary<string, (string address, int port, ulong messageTag)> _cache;
         private readonly IDictionary<string, IClient> _clients;
-
         private readonly IExternalAccessDiscoverer _discoverer;
-
         private readonly ILoggerFactory _loggerFactory;
-
         private bool _disposedValue = false;
 
-        private ILogger CreateLogger(string categoryName)
-            => Do(() => { try { return _loggerFactory.CreateLogger(categoryName); } catch (ObjectDisposedException) { return null; } });
+        private CancellationTokenSource _source;
+
+        private ILogger CreateLogger(string categoryName) {
+            try {
+                return _loggerFactory.CreateLogger(categoryName);
+            } catch (ObjectDisposedException) { return null; }
+        }
 
         private T Do<T>(Func<T> func) => _disposedValue ? default : func();
     }

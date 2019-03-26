@@ -58,7 +58,7 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         public static void Server() {
             PrepareConsole("Server");
-            using (var listener = _peerServices.CreateFor(_nodeSink, _cancellationSource)) {
+            using (var listener = _peerServices.CreateListenerFor(_nodeSink)) {
                 listener.Start();
                 while (listener.Alive) {
                     Thread.Yield();
@@ -77,7 +77,7 @@ namespace Demo.InterlockLedger.Peer2Peer
                 var command = Console.ReadLine();
                 if (command == null || command.FirstOrDefault() == 'x')
                     break;
-                var client = _peerServices.GetClient(_nodeSink.MessageTag, "localhost", 8080, _cancellationSource);
+                var client = _peerServices.GetClient(_nodeSink.MessageTag, "localhost", 8080);
                 if (command.FirstOrDefault() == 'r')
                     client.Reconnect();
                 client.Send(_nodeSink.ToMessage(command.AsUTF8Bytes(), isLast: true), _nodeSink);

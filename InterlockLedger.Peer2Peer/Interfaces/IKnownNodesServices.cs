@@ -1,4 +1,4 @@
-/******************************************************************************************************************************
+﻿/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -30,21 +30,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using System;
-using System.Threading;
 
 namespace InterlockLedger.Peer2Peer
 {
-
-    public interface IPeerServices : IDisposable
+    public interface IKnownNodesServices
     {
-        IKnownNodesServices KnownNodes { get; }
-        CancellationTokenSource Source { get; }
+        void Add(string nodeId, ulong messageTag, string address, int port, bool retain = false);
 
-        IListener CreateListenerFor(INodeSink nodeSink);
+        void Forget(string nodeId);
 
-        IClient GetClient(ulong messageTag, string address, int port);
+        IClient GetClient(string nodeId);
 
-        IPeerServices WithCancellationTokenSource(CancellationTokenSource source);
+        bool IsKnown(string nodeId);
     }
 }

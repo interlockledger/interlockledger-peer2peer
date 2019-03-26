@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -32,19 +32,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Collections.Generic;
-using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public interface IClient
+    public interface IClient : IDisposable
     {
-        Task SendAsync(IList<ArraySegment<byte>> segments, IClientSink clientSink);
+        int SocketHashCode { get; }
 
-        Task SendAsync(IList<ArraySegment<byte>> segments, IClientSink clientSink, Socket sender);
+        void Reconnect();
 
-        void Send(IList<ArraySegment<byte>> segments, IClientSink clientSink);
+        bool Send(IList<ArraySegment<byte>> segments, IClientSink clientSink);
 
-        void Send(IList<ArraySegment<byte>> segments, IClientSink clientSink, Socket sender);
+        Task<bool> SendAsync(IList<ArraySegment<byte>> segments, IClientSink clientSink);
     }
 }

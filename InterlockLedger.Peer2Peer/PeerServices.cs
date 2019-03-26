@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -45,6 +45,7 @@ namespace InterlockLedger.Peer2Peer
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _discoverer = discoverer ?? throw new ArgumentNullException(nameof(discoverer));
             _cache = new Dictionary<string, (string address, int port)>();
+            _clients = new Dictionary<string, IClient>();
         }
 
         public void AddKnownNode(string nodeId, string address, int port, bool retain = false) {
@@ -65,19 +66,28 @@ namespace InterlockLedger.Peer2Peer
                 _loggerFactory.Dispose();
                 _discoverer.Dispose();
                 _cache.Clear();
+                foreach (var client in _clients)
+                    client.Value?.Dispose();
                 _disposedValue = true;
             }
         }
 
         public IClient GetClient(ulong messageTag, string nodeId, CancellationTokenSource source)
-            => Do(() => _cache.TryGetValue(nodeId, out (string address, int port) n) ? GetClient(messageTag, nodeId, n.address, n.port, source) : null);
+            => Do(() => _cache.TryGetValue(nodeId, out (string address, int port) n) ? GetClient(messageTag, n.address, n.port, source) : null);
 
-        public IClient GetClient(ulong messageTag, string id, string address, int port, CancellationTokenSource source)
-            => Do(() => new PeerClient(id, address, port, messageTag, source, CreateLogger(nameof(PeerClient))));
+        public IClient GetClient(ulong messageTag, string address, int port, CancellationTokenSource source)
+            => Do(() => {
+                var id = $"{address}:{port}";
+                if (!_clients.ContainsKey(id)) {
+                    _clients.Add(id, new PeerClient(id, address, port, messageTag, source, CreateLogger(nameof(PeerClient))));
+                }
+                return _clients[id];
+            });
 
         public bool IsNodeKnown(string nodeId) => _cache.ContainsKey(nodeId);
 
         private readonly IDictionary<string, (string address, int port)> _cache;
+        private readonly IDictionary<string, IClient> _clients;
 
         private readonly IExternalAccessDiscoverer _discoverer;
 

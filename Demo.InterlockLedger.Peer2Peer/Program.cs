@@ -77,7 +77,9 @@ namespace Demo.InterlockLedger.Peer2Peer
                 var command = Console.ReadLine();
                 if (command == null || command.FirstOrDefault() == 'x')
                     break;
-                var client = _peerServices.GetClient(_nodeSink.MessageTag, "server", "localhost", 8080, _cancellationSource);
+                var client = _peerServices.GetClient(_nodeSink.MessageTag, "localhost", 8080, _cancellationSource);
+                if (command.FirstOrDefault() == 'r')
+                    client.Reconnect();
                 client.Send(_nodeSink.ToMessage(command.AsUTF8Bytes(), isLast: true), _nodeSink);
             }
         }

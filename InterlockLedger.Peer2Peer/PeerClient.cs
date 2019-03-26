@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -42,7 +42,7 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal class PeerClient : IClient
+    internal sealed class PeerClient : IClient
     {
         public PeerClient(string id, string networkAddress, int port, ulong tag, CancellationTokenSource source, ILogger logger) {
             if (string.IsNullOrWhiteSpace(id))
@@ -55,49 +55,38 @@ namespace InterlockLedger.Peer2Peer
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             Id = id;
+            _socket = null; // connect lazily,
         }
 
         public string Id { get; }
+        public bool IsDisposed { get; private set; } = false;
 
-        public void Send(IList<ArraySegment<byte>> segments, IClientSink clientSink) => SendAsync(segments, clientSink).Wait();
+        public int SocketHashCode => _socket?.GetHashCode() ?? 0;
 
-        public void Send(IList<ArraySegment<byte>> segments, IClientSink clientSink, Socket sender) => SendAsync(segments, clientSink, sender).Wait();
-
-        public async Task SendAsync(IList<ArraySegment<byte>> segments, IClientSink clientSink) {
-            if (!_source.IsCancellationRequested) {
-                Socket sender = Connect();
-                if (sender != null) {
-                    await SendAsync(segments, clientSink, sender);
-                    sender.Shutdown(SocketShutdown.Both);
-                    sender.Close();
-                }
+        public void Dispose() {
+            if (!IsDisposed) {
+                WithLock(() => {
+                    _socket?.Dispose();
+                    _socket = null;
+                    IsDisposed = true;
+                }).Wait();
             }
         }
 
-        public async Task SendAsync(IList<ArraySegment<byte>> segments, IClientSink clientSink, Socket sender) {
-            if (_source.IsCancellationRequested)
-                return;
-            try {
-                var messageParser = new MessageParser(_tag, (bytes) => clientSink.SinkAsClientAsync(bytes).Result, _logger);
-                int minimumBufferSize = Math.Max(512, clientSink.DefaultListeningBufferSize);
-                await sender.SendAsync(segments);
-                do {
-                    if (_source.IsCancellationRequested)
-                        return;
-                    await WaitForData(sender, clientSink.WaitForever);
-                    var buffer = new byte[minimumBufferSize];
-                    int bytesRead = await sender.ReceiveAsync(buffer, SocketFlags.None);
-                    if (bytesRead > 0)
-                        messageParser.Parse(new ReadOnlySequence<byte>(buffer, 0, bytesRead));
-                } while (messageParser.Continue);
-            } catch (SocketException se) {
-                LogError($"Client could not connect into address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
-            } catch (TaskCanceledException) {
-                // just ignore
-            } catch (Exception e) {
-                LogError($"Unexpected exception : {e}");
+        public void Reconnect() {
+            if (!IsDisposed) {
+                WithLock(() => {
+                    _socket?.Dispose();
+                    _socket = Connect();
+                }).Wait();
             }
         }
+
+        public bool Send(IList<ArraySegment<byte>> segments, IClientSink clientSink)
+            => SendAsync(segments, clientSink).Result;
+
+        public async Task<bool> SendAsync(IList<ArraySegment<byte>> segments, IClientSink clientSink)
+            => await WithLock(() => SendAsyncCore(segments, clientSink));
 
         private const int _hoursOfSilencedDuplicateErrors = 8;
         private const int _receiveTimeout = 30000;
@@ -108,19 +97,22 @@ namespace InterlockLedger.Peer2Peer
         private readonly int _networkPort;
         private readonly CancellationTokenSource _source;
         private readonly ulong _tag;
+        private int _locked = 0;
+        private Socket _socket;
 
         private Socket Connect() {
             try {
                 IPHostEntry ipHostInfo = Dns.GetHostEntry(_networkAddress);
                 IPAddress ipAddress = ipHostInfo.AddressList.First(ip => ip.AddressFamily == AddressFamily.InterNetwork);
-                var sender = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                sender.Connect(new IPEndPoint(ipAddress, _networkPort));
-                sender.ReceiveTimeout = _receiveTimeout;
-                return sender;
-            } catch (SocketException se) {
+                var socket = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                socket.Connect(new IPEndPoint(ipAddress, _networkPort));
+                socket.ReceiveTimeout = _receiveTimeout;
+                socket.LingerState = new LingerOption(false, 1);
+                return socket;
+            } catch (Exception se) {
                 LogError($"Client could not connect into address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
+                throw;
             }
-            return null;
         }
 
         private void LogError(string message) {
@@ -130,12 +122,61 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
+        private async Task<bool> SendAsyncCore(IList<ArraySegment<byte>> segments, IClientSink clientSink) {
+            if (_source.IsCancellationRequested || IsDisposed)
+                return false;
+            try {
+                if (_socket is null)
+                    _socket = Connect();
+                var messageParser = new MessageParser(_tag, (bytes) => clientSink.SinkAsClientAsync(bytes).Result, _logger);
+                int minimumBufferSize = Math.Max(512, clientSink.DefaultListeningBufferSize);
+                await _socket.SendAsync(segments);
+                do {
+                    if (_source.IsCancellationRequested)
+                        return false;
+                    await WaitForData(_socket, clientSink.WaitForever);
+                    var buffer = new byte[minimumBufferSize];
+                    int bytesRead = await _socket.ReceiveAsync(buffer, SocketFlags.None);
+                    if (bytesRead > 0)
+                        messageParser.Parse(new ReadOnlySequence<byte>(buffer, 0, bytesRead));
+                } while (messageParser.Continue);
+                return true;
+            } catch (SocketException se) {
+                LogError($"Client could not communicate with address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
+            } catch (TaskCanceledException) {
+                // just ignore
+            } catch (Exception e) {
+                LogError($"Unexpected exception : {e}");
+            }
+            return false;
+        }
+
         private async Task WaitForData(Socket socket, bool waitForever) {
             int timeout = _receiveTimeout / _sleepStep;
             while (socket.Available == 0 && (timeout > 0) && !_source.IsCancellationRequested) {
                 await Task.Delay(_sleepStep, _source.Token);
                 if (!waitForever)
                     timeout--;
+            }
+        }
+
+        private async Task<T> WithLock<T>(Func<Task<T>> action) {
+            if (1 == Interlocked.Exchange(ref _locked, 1))
+                await Task.Delay(1000, _source.Token);
+            try {
+                return await action();
+            } finally {
+                Interlocked.Exchange(ref _locked, 0);
+            }
+        }
+
+        private async Task WithLock(Action action) {
+            if (1 == Interlocked.Exchange(ref _locked, 1))
+                await Task.Delay(1000, _source.Token);
+            try {
+                action();
+            } finally {
+                Interlocked.Exchange(ref _locked, 0);
             }
         }
     }

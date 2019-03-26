@@ -49,9 +49,10 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             Assert.IsNull(fakeLogger.LastLog);
             INodeSink fakeNodeSink = new FakeNodeSink();
             var source = new CancellationTokenSource();
-            var peerClient = peerServices.GetClient(fakeNodeSink.MessageTag, "test", "localhost", 80, source);
+            var peerClient = peerServices.GetClient(fakeNodeSink.MessageTag, "localhost", 80, source);
             Assert.IsNotNull(peerClient);
             Assert.IsNull(fakeLogger.LastLog);
+            Assert.AreEqual(0, peerClient.SocketHashCode);
             var peerClient2 = peerServices.GetClient(fakeNodeSink.MessageTag, "test2", source);
             Assert.IsNull(peerClient2);
             Assert.IsNull(fakeLogger.LastLog);
@@ -59,6 +60,8 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             var peerClient3 = peerServices.GetClient(fakeNodeSink.MessageTag, "test3", source);
             Assert.IsNotNull(peerClient3);
             Assert.IsNull(fakeLogger.LastLog);
+            Assert.AreEqual(0, peerClient3.SocketHashCode);
+            Assert.ThrowsException<AggregateException>(() => peerClient3.Reconnect());
         }
 
         [TestMethod]
@@ -103,7 +106,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             var peerListener = peerServices.CreateFor(fakeNodeSink, source);
             Assert.IsNull(peerListener);
             Assert.IsNull(fakeLogger.LastLog);
-            var peerClient = peerServices.GetClient(fakeNodeSink.MessageTag, "test", "localhost", 80, source);
+            var peerClient = peerServices.GetClient(fakeNodeSink.MessageTag, "localhost", 80, source);
             Assert.IsNull(peerClient);
             Assert.IsNull(fakeLogger.LastLog);
             peerServices.AddKnownNode("test2", "localhost", 80);

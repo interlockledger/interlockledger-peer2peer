@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -44,7 +44,7 @@ namespace Demo.InterlockLedger.Peer2Peer
     internal class DemoNodeSink : AbstractNodeSink, IClientSink
     {
         public DemoNodeSink() {
-            PublishAtAddress= HostAtAddress = "localhost";
+            PublishAtAddress = HostAtAddress = "localhost";
             PublishAtPortNumber = HostAtPortNumber = 8080;
             DefaultListeningBufferSize = 512;
             MessageTag = _messageTagCode;
@@ -54,8 +54,8 @@ namespace Demo.InterlockLedger.Peer2Peer
         }
 
         public override IEnumerable<string> LocalResources { get; } = new string[] { "Document" };
-        public string Prompt => "Command (x to exit, w to get who is answering, e... to echo ..., 3... to echo ... 3 times): ";
-        public override IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "Echo", "Who", "TripleEcho" };
+        public string Prompt => "Command (x to exit, w to get who is answering, e... to echo ..., 3... to echo ... 3 times, r to reconnect): ";
+        public override IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "Echo", "Who", "TripleEcho", "Reconnect" };
         public string Url => $"demo://{PublishAtAddress}:{PublishAtPortNumber}/";
         public bool WaitForever => false;
 
@@ -73,7 +73,8 @@ namespace Demo.InterlockLedger.Peer2Peer
             await Task.Delay(1);
             var bytes = readOnlyBytes.SelectMany(m => m.ToArray()).ToArray();
             if (bytes.Length > 1) {
-                Console.WriteLine(Encoding.UTF8.GetString(bytes, 1, bytes.Length - 1));
+                var message = Encoding.UTF8.GetString(bytes, 1, bytes.Length - 1);
+                Console.WriteLine(message);
                 return bytes[0] == 0 ? Success.Exit : Success.None;
             }
             return Success.Exit;
@@ -97,6 +98,7 @@ namespace Demo.InterlockLedger.Peer2Peer
             => new List<ArraySegment<byte>> { new ArraySegment<byte>(ToMessageBytes(bytes, isLast)) };
 
         private const ulong _messageTagCode = ':';
+        private const string _reconnectMessage = "greetings from server through reconnected client connection";
         private static readonly IEnumerable<byte> _haveMoreMarker = new byte[] { 1 };
         private static readonly IEnumerable<byte> _isLastMarker = new byte[] { 0 };
         private readonly byte[] _encodedMessageTag = _messageTagCode.ILIntEncode();
@@ -121,6 +123,10 @@ namespace Demo.InterlockLedger.Peer2Peer
 
             case 'w':  // is who message?
                 yield return SendTextResponse(Url, isLast: true);
+                break;
+
+            case 'r': // queue to reconnect client
+                yield return SendTextResponse(_reconnectMessage, isLast: true);
                 break;
 
             default:

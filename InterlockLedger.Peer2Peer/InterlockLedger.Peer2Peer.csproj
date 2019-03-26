@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>0.4.3</Version>
+    <Version>0.5.2</Version>
     <Authors>Rafael Teixeira</Authors>
     <Company>InterlockLedger Network</Company>
     <Product>InterlockLedger</Product>
@@ -13,7 +13,7 @@
     <RepositoryUrl>https://github.com/interlockledger/peer2peer.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageReleaseNotes>Fix namespace collision with originating project</PackageReleaseNotes>
+    <PackageReleaseNotes>BREAKING CHANGE: PeerClient now caches socket and implements IDisposable, also PeerServices caches PeerClients</PackageReleaseNotes>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 

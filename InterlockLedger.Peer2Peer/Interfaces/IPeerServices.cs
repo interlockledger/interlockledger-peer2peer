@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -41,7 +41,7 @@ namespace InterlockLedger.Peer2Peer
 
         IListener CreateFor(INodeSink nodeSink, CancellationTokenSource source);
 
-        IClient GetClient(ulong messageTag, string id, string address, int port, CancellationTokenSource source);
+        IClient GetClient(ulong messageTag, string address, int port, CancellationTokenSource source);
 
         IClient GetClient(ulong messageTag, string nodeId, CancellationTokenSource source);
 

@@ -149,7 +149,8 @@ namespace InterlockLedger.Peer2Peer
 
         private async Task PipeReadAsync(Socket socket, PipeReader reader, INodeSink messageProcessor) {
             var responder = new SocketResponder(socket);
-            var parser = new MessageParser(messageProcessor.MessageTag, (bytes) => messageProcessor.SinkAsNodeAsync(bytes, responder.Respond).Result, _logger);
+            var parser = new MessageParser(messageProcessor.MessageTag, _logger)
+                .SwitchMessageProcessor((bytes) => messageProcessor.SinkAsNodeAsync(bytes, responder.Respond).Result);
             while (!_token.IsCancellationRequested) {
                 ReadResult result = await reader.ReadAsync(_token);
                 if (result.IsCanceled)

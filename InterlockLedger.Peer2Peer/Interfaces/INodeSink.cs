@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -38,7 +38,7 @@ namespace InterlockLedger.Peer2Peer
 {
     public enum Success
     {
-        None = 0,
+        Next = 0,
         Retry = 1,
         SwitchToListen = 4,
         Exit = 128

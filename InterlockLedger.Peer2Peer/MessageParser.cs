@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -41,14 +41,14 @@ namespace InterlockLedger.Peer2Peer
 {
     public class MessageParser
     {
-        public MessageParser(ulong expectedTag, Func<IEnumerable<ReadOnlyMemory<byte>>, Success> messageProcessor, ILogger logger) {
-            _messageProcessor = messageProcessor ?? throw new ArgumentNullException(nameof(messageProcessor));
+        public MessageParser(ulong expectedTag, ILogger logger) {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _expectedTag = expectedTag;
-            LastResult = Success.None;
+            LastResult = Success.Next;
+            Continue = true;
         }
 
-        public bool Continue => LastResult != Success.Exit;
+        public bool Continue { get; private set; }
 
         public Success LastResult { get; private set; }
 
@@ -58,6 +58,8 @@ namespace InterlockLedger.Peer2Peer
                 if (_lengthToRead == 0) {
                     _logger.LogTrace($"Message body received {_segments.Select(b => b.ToBase64())}");
                     LastResult = _messageProcessor(_segments);
+                    if (LastResult == Success.Exit)
+                        Continue = false;
                     _state = State.Init;
                 } else {
                     _state = State.ReadBytes;
@@ -84,7 +86,7 @@ namespace InterlockLedger.Peer2Peer
                         _lengthReader.Reset();
                         _segments.Clear();
                         _state = State.ReadTag;
-                        LastResult = Success.None;
+                        LastResult = Success.Next;
                         break;
 
                     case State.ReadTag:
@@ -114,13 +116,20 @@ namespace InterlockLedger.Peer2Peer
             return buffer.End;
         }
 
+        public MessageParser SwitchMessageProcessor(Func<IEnumerable<ReadOnlyMemory<byte>>, Success> messageProcessor) {
+            _messageProcessor = messageProcessor ?? throw new ArgumentNullException(nameof(messageProcessor));
+            LastResult = Success.Next;
+            Continue = true;
+            return this;
+        }
+
         private readonly ulong _expectedTag;
         private readonly ILIntReader _lengthReader = new ILIntReader();
         private readonly ILogger _logger;
-        private readonly Func<IEnumerable<ReadOnlyMemory<byte>>, Success> _messageProcessor;
         private readonly List<ReadOnlyMemory<byte>> _segments = new List<ReadOnlyMemory<byte>>();
         private readonly ILIntReader _tagReader = new ILIntReader();
         private ulong _lengthToRead;
+        private Func<IEnumerable<ReadOnlyMemory<byte>>, Success> _messageProcessor;
         private State _state = State.Init;
 
         private enum State

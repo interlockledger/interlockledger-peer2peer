@@ -75,7 +75,7 @@ namespace Demo.InterlockLedger.Peer2Peer
             if (bytes.Length > 1) {
                 var message = Encoding.UTF8.GetString(bytes, 1, bytes.Length - 1);
                 Console.WriteLine(message);
-                return bytes[0] == 0 ? Success.Exit : Success.None;
+                return bytes[0] == 0 ? Success.Exit : Success.Next;
             }
             return Success.Exit;
         }

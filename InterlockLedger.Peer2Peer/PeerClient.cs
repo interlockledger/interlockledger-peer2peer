@@ -49,13 +49,14 @@ namespace InterlockLedger.Peer2Peer
                 throw new ArgumentNullException(nameof(id));
             if (string.IsNullOrWhiteSpace(networkAddress))
                 throw new ArgumentNullException(nameof(networkAddress));
+            Id = id;
+            _locked = 0;
             _networkAddress = networkAddress;
             _networkPort = port;
-            _tag = tag;
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            Id = id;
             _socket = null; // connect lazily,
+            _messageParser = new MessageParser(tag, _logger);
         }
 
         public string Id { get; }
@@ -93,12 +94,14 @@ namespace InterlockLedger.Peer2Peer
         private const int _sleepStep = 10;
         private static readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
         private readonly ILogger _logger;
+        private readonly MessageParser _messageParser;
         private readonly string _networkAddress;
         private readonly int _networkPort;
         private readonly CancellationTokenSource _source;
-        private readonly ulong _tag;
         private int _locked = 0;
         private Socket _socket;
+
+        private bool Abandon => _source.IsCancellationRequested || IsDisposed;
 
         private Socket Connect() {
             try {
@@ -123,23 +126,23 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private async Task<bool> SendAsyncCore(IList<ArraySegment<byte>> segments, IClientSink clientSink) {
-            if (_source.IsCancellationRequested || IsDisposed)
+            if (Abandon)
                 return false;
             try {
                 if (_socket is null)
                     _socket = Connect();
-                var messageParser = new MessageParser(_tag, (bytes) => clientSink.SinkAsClientAsync(bytes).Result, _logger);
+                _messageParser.SwitchMessageProcessor((bytes) => clientSink.SinkAsClientAsync(bytes).Result);
                 int minimumBufferSize = Math.Max(512, clientSink.DefaultListeningBufferSize);
                 await _socket.SendAsync(segments);
                 do {
-                    if (_source.IsCancellationRequested)
+                    if (Abandon)
                         return false;
                     await WaitForData(_socket, clientSink.WaitForever);
                     var buffer = new byte[minimumBufferSize];
                     int bytesRead = await _socket.ReceiveAsync(buffer, SocketFlags.None);
                     if (bytesRead > 0)
-                        messageParser.Parse(new ReadOnlySequence<byte>(buffer, 0, bytesRead));
-                } while (messageParser.Continue);
+                        _messageParser.Parse(new ReadOnlySequence<byte>(buffer, 0, bytesRead));
+                } while (_messageParser.Continue);
                 return true;
             } catch (SocketException se) {
                 LogError($"Client could not communicate with address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");

@@ -48,7 +48,8 @@ namespace Demo.InterlockLedger.Peer2Peer
             var factory = new LoggerFactory();
             factory.AddConsole(LogLevel.Information);
             _nodeSink = new DemoNodeSink();
-            _peerServices = new PeerServices(factory, new DummyExternalAccessDiscoverer(factory));
+            _peerServices = new PeerServices(factory, new DummyExternalAccessDiscoverer(factory))
+                .WithCancellationTokenSource(_cancellationSource);
             if (args.Length > 0 && args[0].Equals("server", StringComparison.OrdinalIgnoreCase))
                 Server();
             else
@@ -67,7 +68,7 @@ namespace Demo.InterlockLedger.Peer2Peer
         }
 
         private static DemoNodeSink _nodeSink;
-        private static PeerServices _peerServices;
+        private static IPeerServices _peerServices;
         private static readonly CancellationTokenSource _cancellationSource = new CancellationTokenSource();
 
         private static void Client() {

@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -40,7 +40,11 @@ namespace InterlockLedger.Peer2Peer
     {
         public SocketResponder(Socket socket) => _socket = socket ?? throw new ArgumentNullException(nameof(socket));
 
-        protected override void SendResponse(IList<ArraySegment<byte>> responseSegments) => _socket.Send(responseSegments);
+        protected override void SendResponse(IList<ArraySegment<byte>> responseSegments, ulong? channel) {
+            _socket.Send(responseSegments);
+            if (channel.HasValue)
+                _socket.Send(channel.Value.ILIntEncode());
+        }
 
         private readonly Socket _socket;
     }

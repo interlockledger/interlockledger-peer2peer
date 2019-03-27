@@ -47,17 +47,18 @@ namespace Demo.InterlockLedger.Peer2Peer
             PublishAtAddress = HostAtAddress = "localhost";
             PublishAtPortNumber = HostAtPortNumber = 8080;
             DefaultListeningBufferSize = 512;
+            DefaultTimeoutInMilliseconds = 30_000;
             MessageTag = _messageTagCode;
             NetworkName = "Demo";
             NetworkProtocolName = "DemoPeer2Peer";
             NodeId = "Local Node";
+            UseChannel = false;
         }
 
         public override IEnumerable<string> LocalResources { get; } = new string[] { "Document" };
         public string Prompt => "Command (x to exit, w to get who is answering, e... to echo ..., 3... to echo ... 3 times, r to reconnect): ";
         public override IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "Echo", "Who", "TripleEcho", "Reconnect" };
         public string Url => $"demo://{PublishAtAddress}:{PublishAtPortNumber}/";
-        public bool WaitForever => false;
 
         public override void HostedAt(string address, ushort port) {
             HostAtAddress = address;
@@ -69,7 +70,7 @@ namespace Demo.InterlockLedger.Peer2Peer
             PublishAtPortNumber = port;
         }
 
-        public async Task<Success> SinkAsClientAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes) {
+        public async Task<Success> SinkAsClientAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel) {
             await Task.Delay(1);
             var bytes = readOnlyBytes.SelectMany(m => m.ToArray()).ToArray();
             if (bytes.Length > 1) {
@@ -80,18 +81,18 @@ namespace Demo.InterlockLedger.Peer2Peer
             return Success.Exit;
         }
 
-        public override async Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, Action<Response> respond) {
+        public override async Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, Action<Response, ulong?> respond) {
             var result = SinkAsServer(readOnlyBytes.SelectMany(b => b.ToArray()).ToArray());
             foreach (var r in result) {
                 try {
-                    respond(new Response(r));
+                    respond(new Response(r), null);
                 } catch (SocketException) {
                     // Do Nothing
                 }
                 await Task.Delay(1000);
             }
-            respond(Response.Done);
-            return Success.Exit;
+            respond(Response.Done, null);
+            return Success.Next;
         }
 
         public IList<ArraySegment<byte>> ToMessage(IEnumerable<byte> bytes, bool isLast)

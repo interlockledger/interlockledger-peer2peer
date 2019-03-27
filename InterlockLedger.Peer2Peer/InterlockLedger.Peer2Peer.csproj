@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>0.5.4</Version>
+    <Version>0.6.0</Version>
     <Authors>Rafael Teixeira</Authors>
     <Company>InterlockLedger Network</Company>
     <Product>InterlockLedger</Product>
@@ -13,8 +13,7 @@
     <RepositoryUrl>https://github.com/interlockledger/peer2peer.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageReleaseNotes>BREAKING CHANGES: IPeerServices refactored profoundly
-Locking cache dictionary to avoid run condition</PackageReleaseNotes>
+    <PackageReleaseNotes>BREAKING CHANGES: Supporting channels</PackageReleaseNotes>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 

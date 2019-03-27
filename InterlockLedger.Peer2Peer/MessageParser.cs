@@ -34,16 +34,17 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 
 namespace InterlockLedger.Peer2Peer
 {
     public class MessageParser
     {
-        public MessageParser(ulong expectedTag, ILogger logger) {
+        public MessageParser(ulong expectedTag, bool useChannel, ILogger logger, Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, Success> messageProcessor) {
+            _messageProcessor = messageProcessor ?? throw new ArgumentNullException(nameof(messageProcessor));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _expectedTag = expectedTag;
+            _useChannel = useChannel;
             LastResult = Success.Next;
             Continue = true;
         }
@@ -54,17 +55,6 @@ namespace InterlockLedger.Peer2Peer
 
         public SequencePosition Parse(ReadOnlySequence<byte> buffer) {
             long current = 0;
-            void Process() {
-                if (_lengthToRead == 0) {
-                    _logger.LogTrace($"Message body received {_segments.Select(b => b.ToBase64())}");
-                    LastResult = _messageProcessor(_segments);
-                    if (LastResult == Success.Exit)
-                        Continue = false;
-                    _state = State.Init;
-                } else {
-                    _state = State.ReadBytes;
-                }
-            }
             ulong ReadBytes(ulong length) {
                 if (length >= int.MaxValue)
                     throw new InvalidOperationException("Too many bytes to read!");
@@ -75,15 +65,15 @@ namespace InterlockLedger.Peer2Peer
                 current += bytesToRead;
                 return length - (ulong)bytesToRead;
             }
-
             byte ReadNextByte() => buffer.Slice(current++, 1).First.Span[0];
             if (!buffer.IsEmpty)
-                while (current < buffer.Length) {
+                while (current < buffer.Length && Continue) {
                     switch (_state) {
                     case State.Init:
                         _lengthToRead = 0;
                         _tagReader.Reset();
                         _lengthReader.Reset();
+                        _channelReader.Reset();
                         _segments.Clear();
                         _state = State.ReadTag;
                         LastResult = Success.Next;
@@ -92,8 +82,11 @@ namespace InterlockLedger.Peer2Peer
                     case State.ReadTag:
                         if (_tagReader.Done(ReadNextByte())) {
                             var tag = _tagReader.Value;
-                            if (tag != _expectedTag)
-                                throw new InvalidDataException($"Invalid message tag {tag}");
+                            if (tag != _expectedTag) {
+                                _logger.LogWarning($"Ignoring bad tag {tag}");
+                                _state = State.Init;
+                                break;
+                            }
                             _logger.LogTrace("Receiving new message");
                             _state = State.ReadLength;
                         }
@@ -102,42 +95,66 @@ namespace InterlockLedger.Peer2Peer
                     case State.ReadLength:
                         if (_lengthReader.Done(ReadNextByte())) {
                             _lengthToRead = _lengthReader.Value;
-                            _logger.LogTrace($"Expecting {_lengthReader} bytes for message body");
-                            Process();
+                            _logger.LogTrace($"Expecting {_lengthToRead} bytes for message body");
+                            _state = _lengthToRead == 0 ? State.ReadChannel : State.ReadBytes;
                         }
                         break;
 
                     case State.ReadBytes:
                         _lengthToRead = ReadBytes(_lengthToRead);
-                        Process();
+                        _state = _lengthToRead != 0 ? State.ReadBytes : StateAfterReadBytes;
+                        break;
+
+                    case State.ReadChannel:
+                        if (_useChannel) {
+                            if (_channelReader.Done(ReadNextByte())) {
+                                _channel = _channelReader.Value;
+                            } else
+                                break;
+                        } else {
+                            _channel = 0;
+                        }
+                        SendToMessageProcessor();
                         break;
                     }
+                    if (_state == State.SendToMessageProcessor)
+                        SendToMessageProcessor();
                 }
             return buffer.End;
         }
 
-        public MessageParser SwitchMessageProcessor(Func<IEnumerable<ReadOnlyMemory<byte>>, Success> messageProcessor) {
-            _messageProcessor = messageProcessor ?? throw new ArgumentNullException(nameof(messageProcessor));
-            LastResult = Success.Next;
-            Continue = true;
-            return this;
-        }
-
+        private readonly ILIntReader _channelReader = new ILIntReader();
         private readonly ulong _expectedTag;
         private readonly ILIntReader _lengthReader = new ILIntReader();
         private readonly ILogger _logger;
+        private readonly Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, Success> _messageProcessor;
         private readonly List<ReadOnlyMemory<byte>> _segments = new List<ReadOnlyMemory<byte>>();
         private readonly ILIntReader _tagReader = new ILIntReader();
+        private readonly bool _useChannel;
+        private ulong _channel;
         private ulong _lengthToRead;
-        private Func<IEnumerable<ReadOnlyMemory<byte>>, Success> _messageProcessor;
         private State _state = State.Init;
+        private State StateAfterReadBytes => _useChannel ? State.ReadChannel : State.SendToMessageProcessor;
+
+        private void SendToMessageProcessor() {
+            try {
+                _logger.LogTrace($"Message body received {_segments.Select(b => b.ToBase64())}");
+                LastResult = _messageProcessor(_segments.ToArray(), _channel);
+                if (LastResult == Success.Exit)
+                    Continue = false;
+            } finally {
+                _state = State.Init;
+            }
+        }
 
         private enum State
         {
             Init,
             ReadTag,
             ReadLength,
-            ReadBytes
+            ReadBytes,
+            ReadChannel,
+            SendToMessageProcessor
         }
     }
 }

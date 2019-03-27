@@ -51,12 +51,12 @@ namespace InterlockLedger.Peer2Peer
                 throw new ArgumentNullException(nameof(networkAddress));
             Id = id;
             _locked = 0;
+            _tag = tag;
             _networkAddress = networkAddress;
             _networkPort = port;
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _socket = null; // connect lazily,
-            _messageParser = new MessageParser(tag, _logger);
+            _socket = null; // connect lazily
         }
 
         public string Id { get; }
@@ -90,14 +90,14 @@ namespace InterlockLedger.Peer2Peer
             => await WithLock(() => SendAsyncCore(segments, clientSink));
 
         private const int _hoursOfSilencedDuplicateErrors = 8;
-        private const int _receiveTimeout = 30000;
+        private const int _maxReceiveTimeout = 300_000;
         private const int _sleepStep = 10;
         private static readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
         private readonly ILogger _logger;
-        private readonly MessageParser _messageParser;
         private readonly string _networkAddress;
         private readonly int _networkPort;
         private readonly CancellationTokenSource _source;
+        private readonly ulong _tag;
         private int _locked = 0;
         private Socket _socket;
 
@@ -109,7 +109,7 @@ namespace InterlockLedger.Peer2Peer
                 IPAddress ipAddress = ipHostInfo.AddressList.First(ip => ip.AddressFamily == AddressFamily.InterNetwork);
                 var socket = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 socket.Connect(new IPEndPoint(ipAddress, _networkPort));
-                socket.ReceiveTimeout = _receiveTimeout;
+                socket.ReceiveTimeout = _maxReceiveTimeout;
                 socket.LingerState = new LingerOption(false, 1);
                 return socket;
             } catch (Exception se) {
@@ -131,18 +131,18 @@ namespace InterlockLedger.Peer2Peer
             try {
                 if (_socket is null)
                     _socket = Connect();
-                _messageParser.SwitchMessageProcessor((bytes) => clientSink.SinkAsClientAsync(bytes).Result);
+                var messageParser = new MessageParser(_tag, clientSink.UseChannel, _logger, (bytes, channel) => clientSink.SinkAsClientAsync(bytes, channel).Result);
                 int minimumBufferSize = Math.Max(512, clientSink.DefaultListeningBufferSize);
                 await _socket.SendAsync(segments);
                 do {
                     if (Abandon)
                         return false;
-                    await WaitForData(_socket, clientSink.WaitForever);
+                    await WaitForData(_socket, clientSink.DefaultTimeoutInMilliseconds);
                     var buffer = new byte[minimumBufferSize];
                     int bytesRead = await _socket.ReceiveAsync(buffer, SocketFlags.None);
                     if (bytesRead > 0)
-                        _messageParser.Parse(new ReadOnlySequence<byte>(buffer, 0, bytesRead));
-                } while (_messageParser.Continue);
+                        messageParser.Parse(new ReadOnlySequence<byte>(buffer, 0, bytesRead));
+                } while (messageParser.Continue);
                 return true;
             } catch (SocketException se) {
                 LogError($"Client could not communicate with address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
@@ -154,11 +154,11 @@ namespace InterlockLedger.Peer2Peer
             return false;
         }
 
-        private async Task WaitForData(Socket socket, bool waitForever) {
-            int timeout = _receiveTimeout / _sleepStep;
+        private async Task WaitForData(Socket socket, int defaultTimeoutInMilliseconds) {
+            int timeout = defaultTimeoutInMilliseconds <= 0 ? _maxReceiveTimeout : defaultTimeoutInMilliseconds / _sleepStep;
             while (socket.Available == 0 && (timeout > 0) && !_source.IsCancellationRequested) {
                 await Task.Delay(_sleepStep, _source.Token);
-                if (!waitForever)
+                if (defaultTimeoutInMilliseconds > 0)
                     timeout--;
             }
         }

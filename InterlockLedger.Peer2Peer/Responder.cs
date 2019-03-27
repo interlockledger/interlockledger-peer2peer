@@ -37,12 +37,12 @@ namespace InterlockLedger.Peer2Peer
 {
     public abstract class Responder
     {
-        public void Respond(Response response) {
+        public void Respond(Response response, ulong? channel) {
             if (!response.Exit) {
-                SendResponse(response.DataList);
+                SendResponse(response.DataList, channel);
             }
         }
 
-        protected abstract void SendResponse(IList<ArraySegment<byte>> responseSegments);
+        protected abstract void SendResponse(IList<ArraySegment<byte>> responseSegments, ulong? channel);
     }
 }

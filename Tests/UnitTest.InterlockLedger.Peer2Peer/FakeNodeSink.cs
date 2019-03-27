@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -40,6 +40,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
     internal class FakeNodeSink : INodeSink
     {
         public int DefaultListeningBufferSize => 1024;
+        public int DefaultTimeoutInMilliseconds => 30_000;
         public string HostAtAddress => "localhost";
         public ushort HostAtPortNumber => 9090;
         public IEnumerable<string> LocalResources { get; } = new string[] { "DummyDoc1", "DummyDoc2" };
@@ -50,6 +51,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
         public string PublishAtAddress => HostAtAddress;
         public ushort? PublishAtPortNumber => HostAtPortNumber;
         public IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "None" };
+        public bool UseChannel => false;
 
         public void HostedAt(string address, ushort port) {
             // Do nothing
@@ -59,9 +61,9 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             // Do nothing
         }
 
-        public async Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, Action<Response> respond) {
+        public async Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, Action<Response, ulong?> respond) {
             await Task.Delay(10);
-            respond(Response.Done);
+            respond(Response.Done, null);
             return Success.Exit;
         }
     }

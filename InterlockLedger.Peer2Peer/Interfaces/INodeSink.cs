@@ -44,8 +44,10 @@ namespace InterlockLedger.Peer2Peer
         Exit = 128
     }
 
-    public interface IClientSink : ISink
+    public interface IClientSink
     {
+        bool DoneReceiving { get; set; }
+
         Task<Success> SinkAsClientAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel);
     }
 
@@ -65,7 +67,7 @@ namespace InterlockLedger.Peer2Peer
 
         void PublishedAt(string address, ushort port);
 
-        Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, Action<Response, ulong?> respond);
+        Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, Action<Response, ulong> respond);
     }
 
     public interface ISink
@@ -73,6 +75,5 @@ namespace InterlockLedger.Peer2Peer
         int DefaultListeningBufferSize { get; }
         int DefaultTimeoutInMilliseconds { get; }
         ulong MessageTag { get; }
-        bool UseChannel { get; }
     }
 }

@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -67,13 +67,14 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
         }
 
+        private static readonly CancellationTokenSource _cancellationSource = new CancellationTokenSource();
         private static DemoNodeSink _nodeSink;
         private static IPeerServices _peerServices;
-        private static readonly CancellationTokenSource _cancellationSource = new CancellationTokenSource();
 
         private static void Client() {
             PrepareConsole("Client");
             while (!_cancellationSource.IsCancellationRequested) {
+                Console.WriteLine();
                 Console.Write(_nodeSink.Prompt);
                 var command = Console.ReadLine();
                 if (command == null || command.FirstOrDefault() == 'x')
@@ -81,7 +82,7 @@ namespace Demo.InterlockLedger.Peer2Peer
                 var client = _peerServices.GetClient(_nodeSink.MessageTag, "localhost", 8080);
                 if (command.FirstOrDefault() == 'r')
                     client.Reconnect();
-                client.Send(_nodeSink.ToMessage(command.AsUTF8Bytes(), isLast: true), _nodeSink);
+                _nodeSink.SendCommand(client, command);
             }
         }
 

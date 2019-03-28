@@ -50,12 +50,11 @@ namespace InterlockLedger.Peer2Peer
         public string PublishAtAddress { get; protected set; }
         public ushort? PublishAtPortNumber { get; protected set; }
         public abstract IEnumerable<string> SupportedNetworkProtocolFeatures { get; }
-        public bool UseChannel { get; protected set; }
 
         public abstract void HostedAt(string address, ushort port);
 
         public abstract void PublishedAt(string address, ushort port);
 
-        public abstract Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, Action<Response, ulong?> respond);
+        public abstract Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, Action<Response, ulong> respond);
     }
 }

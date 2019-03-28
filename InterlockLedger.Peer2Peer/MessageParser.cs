@@ -103,8 +103,6 @@ namespace InterlockLedger.Peer2Peer
                         }
                         break;
                     }
-                    if (_state == State.SendToMessageProcessor)
-                        SendToMessageProcessor();
                 }
             return buffer.End;
         }
@@ -145,8 +143,7 @@ namespace InterlockLedger.Peer2Peer
             ReadTag,
             ReadLength,
             ReadBytes,
-            ReadChannel,
-            SendToMessageProcessor
+            ReadChannel
         }
     }
 }

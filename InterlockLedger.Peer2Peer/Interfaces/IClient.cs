@@ -44,6 +44,10 @@ namespace InterlockLedger.Peer2Peer
 
         bool Send(IList<ArraySegment<byte>> segments, IClientSink clientSink);
 
+        void SendAndReceiveAll(IList<ArraySegment<byte>> segments, IClientSink clientSink);
+
+        Task SendAndReceiveAllAsync(IList<ArraySegment<byte>> segments, IClientSink clientSink);
+
         Task<bool> SendAsync(IList<ArraySegment<byte>> segments, IClientSink clientSink);
     }
 }

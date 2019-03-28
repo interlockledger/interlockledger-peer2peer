@@ -52,9 +52,9 @@ namespace Demo.InterlockLedger.Peer2Peer
             NetworkName = "Demo";
             NetworkProtocolName = "DemoPeer2Peer";
             NodeId = "Local Node";
-            UseChannel = false;
         }
 
+        public bool DoneReceiving { get; set; } = false;
         public override IEnumerable<string> LocalResources { get; } = new string[] { "Document" };
         public string Prompt => "Command (x to exit, w to get who is answering, e... to echo ..., 3... to echo ... 3 times, r to reconnect): ";
         public override IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "Echo", "Who", "TripleEcho", "Reconnect" };
@@ -70,28 +70,25 @@ namespace Demo.InterlockLedger.Peer2Peer
             PublishAtPortNumber = port;
         }
 
+        public void SendCommand(IClient client, string command)
+            => client.SendAndReceiveAll(ToMessage(command.AsUTF8Bytes(), isLast: true), this);
+
         public async Task<Success> SinkAsClientAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel) {
             await Task.Delay(1);
-            var bytes = readOnlyBytes.SelectMany(m => m.ToArray()).ToArray();
-            if (bytes.Length > 1) {
-                var message = Encoding.UTF8.GetString(bytes, 1, bytes.Length - 1);
-                Console.WriteLine(message);
-                return bytes[0] == 0 ? Success.Exit : Success.Next;
-            }
-            return Success.Exit;
+            return Received(Sink(readOnlyBytes, channel));
         }
 
-        public override async Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, Action<Response, ulong?> respond) {
+        public override async Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, Action<Response, ulong> respond) {
             var result = SinkAsServer(readOnlyBytes.SelectMany(b => b.ToArray()).ToArray());
             foreach (var r in result) {
                 try {
-                    respond(new Response(r), null);
+                    respond(new Response(r), channel);
                 } catch (SocketException) {
                     // Do Nothing
                 }
                 await Task.Delay(1000);
             }
-            respond(Response.Done, null);
+            respond(Response.Done, channel);
             return Success.Next;
         }
 
@@ -99,10 +96,29 @@ namespace Demo.InterlockLedger.Peer2Peer
             => new List<ArraySegment<byte>> { new ArraySegment<byte>(ToMessageBytes(bytes, isLast)) };
 
         private const ulong _messageTagCode = ':';
+
         private const string _reconnectMessage = "greetings from server through reconnected client connection";
+
         private static readonly IEnumerable<byte> _haveMoreMarker = new byte[] { 1 };
+
         private static readonly IEnumerable<byte> _isLastMarker = new byte[] { 0 };
+
         private readonly byte[] _encodedMessageTag = _messageTagCode.ILIntEncode();
+
+        private static Success Sink(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel) {
+            var bytes = readOnlyBytes.SelectMany(m => m.ToArray()).ToArray();
+            if (bytes.Length > 1) {
+                var message = Encoding.UTF8.GetString(bytes, 1, bytes.Length - 1);
+                Console.WriteLine($@"[{channel}] {message}");
+                return bytes[0] == 0 ? Success.Exit : Success.Next;
+            }
+            return Success.Exit;
+        }
+
+        private Success Received(Success success) {
+            DoneReceiving = success == Success.Exit;
+            return success;
+        }
 
         private ReadOnlyMemory<byte> SendResponse(IEnumerable<byte> buffer, bool isLast)
                 => new ReadOnlyMemory<byte>(ToMessageBytes(buffer.ToArray(), isLast));
@@ -111,15 +127,16 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         private IEnumerable<ReadOnlyMemory<byte>> SinkAsServer(byte[] buffer) {
             var command = (buffer.Length > 1) ? (char)buffer[1] : '\0';
+            IEnumerable<byte> text = buffer.Skip(2);
             switch (command) {
             case 'e':  // is echo message?
-                yield return SendResponse(buffer.Skip(2), isLast: true);
+                yield return SendResponse(text, isLast: true);
                 break;
 
             case '3': // is triple echo message?
-                yield return SendResponse(buffer.Skip(2), isLast: false);
-                yield return SendResponse(buffer.Skip(2), isLast: false);
-                yield return SendResponse(buffer.Skip(2), isLast: true);
+                yield return SendResponse(text, isLast: false);
+                yield return SendResponse(text, isLast: false);
+                yield return SendResponse(text, isLast: true);
                 break;
 
             case 'w':  // is who message?

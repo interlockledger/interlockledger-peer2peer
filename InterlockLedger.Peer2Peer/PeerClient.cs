@@ -72,7 +72,6 @@ namespace InterlockLedger.Peer2Peer
 
         public string Id { get; }
         public bool IsDisposed { get; private set; } = false;
-
         public ulong LastChannelUsed => (ulong)_lastChannelUsed;
         public int SocketHashCode => _socket?.GetHashCode() ?? 0;
 
@@ -89,15 +88,33 @@ namespace InterlockLedger.Peer2Peer
         public void Reconnect() {
             if (!IsDisposed) {
                 WithLock(() => {
-                    _socket?.Dispose();
-                    _socket = Connect();
-                    _messageParser.Reset();
+                    lock (_sinks) {
+                        _socket?.Dispose();
+                        _socket = Connect();
+                        _sinks.Clear();
+                        _messageParser.Reset();
+                    }
                 }).Wait();
             }
         }
 
         public bool Send(IList<ArraySegment<byte>> segments, IClientSink clientSink)
             => SendAsync(segments, clientSink).Result;
+
+        public void SendAndReceiveAll(IList<ArraySegment<byte>> segments, IClientSink clientSink)
+            => SendAndReceiveAllAsync(segments, clientSink).Wait();
+
+        public async Task SendAndReceiveAllAsync(IList<ArraySegment<byte>> segments, IClientSink clientSink) {
+            clientSink.DoneReceiving = false;
+            try {
+                if (await SendAsync(segments, clientSink)) {
+                    while (!clientSink.DoneReceiving)
+                        await Task.Yield();
+                }
+            } finally {
+                clientSink.DoneReceiving = true;
+            }
+        }
 
         public async Task<bool> SendAsync(IList<ArraySegment<byte>> segments, IClientSink clientSink)
             => await WithLock(() => SendAsyncCore(segments, clientSink));
@@ -106,7 +123,10 @@ namespace InterlockLedger.Peer2Peer
         private const int _maxReceiveTimeout = 300_000;
         private const int _sleepStep = 10;
         private static readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
+        private readonly int _defaultTimeoutInMilliseconds;
         private readonly ILogger _logger;
+        private readonly MessageParser _messageParser;
+        private readonly int _minimumBufferSize;
         private readonly string _networkAddress;
         private readonly int _networkPort;
         private readonly Dictionary<ulong, (ulong channel, IClientSink sink)> _sinks = new Dictionary<ulong, (ulong channel, IClientSink sink)>();
@@ -114,10 +134,6 @@ namespace InterlockLedger.Peer2Peer
         private long _lastChannelUsed = 0;
         private int _locked = 0;
         private Socket _socket;
-        private readonly MessageParser _messageParser;
-        private readonly int _minimumBufferSize;
-        private readonly int _defaultTimeoutInMilliseconds;
-
         private bool Abandon => _source.IsCancellationRequested || IsDisposed;
 
         private Socket Connect() {

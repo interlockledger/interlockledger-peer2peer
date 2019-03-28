@@ -66,12 +66,17 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        public IClient GetClient(ulong messageTag, string address, int port)
+        public IClient GetClient(ulong messageTag, string address, int port,
+            int defaultListeningBufferSize = 4096,
+            int defaultTimeoutInMilliseconds = 30_000)
             => Do(() => {
                 lock (_clients) {
                     var id = $"{address}:{port}";
                     if (!_clients.ContainsKey(id)) {
-                        _clients.Add(id, new PeerClient(id, address, port, messageTag, Source, CreateLogger(nameof(PeerClient))));
+                        _clients.Add(id, new PeerClient(id, address, port, messageTag, Source,
+                            CreateLogger(nameof(PeerClient)),
+                            defaultListeningBufferSize,
+                            defaultTimeoutInMilliseconds));
                     }
                     return _clients[id];
                 }

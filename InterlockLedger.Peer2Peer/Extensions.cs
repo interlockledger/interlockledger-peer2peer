@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -51,6 +51,9 @@ namespace InterlockLedger.Peer2Peer
 
         public static Task<int> SendAsync(this Socket socket, IList<ArraySegment<byte>> buffers)
             => SocketTaskExtensions.SendAsync(socket, buffers, SocketFlags.None);
+
+        public static Task<int> SendILint(this Socket socket, ulong ilint)
+            => socket.SendAsync(new ArraySegment<byte>(ilint.ILIntEncode()));
 
         public static string ToBase64(this ReadOnlyMemory<byte> bytes) => Convert.ToBase64String(bytes.ToArray());
 

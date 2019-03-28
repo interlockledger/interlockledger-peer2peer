@@ -46,27 +46,29 @@ namespace UnitTest.InterlockLedger.Peer2Peer
         [TestMethod]
         public void Creation() {
             Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, Success> messageProcessor = (bytes, channel) => Success.Exit;
-            var mp = new MessageParser(15, false, this, messageProcessor);
+            var mp = new MessageParser(15, this, messageProcessor);
             Assert.IsNotNull(mp);
-            Assert.ThrowsException<ArgumentNullException>(() => new MessageParser(15, false, null, messageProcessor));
-            Assert.ThrowsException<ArgumentNullException>(() => new MessageParser(15, false, this, null));
+            Assert.ThrowsException<ArgumentNullException>(() => new MessageParser(15, null, messageProcessor));
+            Assert.ThrowsException<ArgumentNullException>(() => new MessageParser(15, this, null));
         }
 
         [TestMethod]
-        public void ParsingWithChannel() => DoNiceParsing(7, 15, 3, 1, 2, 3, 7);
+        public void Parsing() => DoNiceParsing(7, 15, 3, 1, 2, 3, 7);
 
         [TestMethod]
-        public void ParsingWithChannelOffsetBy3Bytes()
-            => DoRawParsing(new ulong?[] { 7 }, ToSequences(new byte[] { 1, 2, 3, 15, 3, 1, 2, 3, 7 }), true, 15, new byte[] { 1, 2, 3 });
-        [TestMethod]
-        public void ParsingWithChannelOffsetBy1ByteAndBegginingOfSecondMessage()
-            => DoRawParsing(new ulong?[] { 7 }, ToSequences(new byte[] { 1, 15, 3, 1, 2, 3, 7, 15, 1 }), true, 15, new byte[] { 1, 2, 3 });
-        [TestMethod]
-        public void ParsingWithChannelTwoMessagesInDifferentChannels()
-            => DoRawParsing(new ulong?[] { 7, 13 }, ToSequences(new byte[] { 15, 3, 1, 2, 3, 7, 15, 1, 10, 13 }), true, 15, new byte[] { 1, 2, 3 }, new byte[] { 10 });
+        public void ParsingOffsetBy1ByteAndBegginingOfSecondMessage()
+            => DoRawParsing(new ulong[] { 7 }, ToSequences(new byte[] { 1, 15, 3, 1, 2, 3, 7, 15, 1 }), 15, new byte[] { 1, 2, 3 });
 
         [TestMethod]
-        public void ParsingWithoutChannel() => DoNiceParsing(null, 15, 3, 1, 2, 3);
+        public void ParsingOffsetBy3Bytes()
+            => DoRawParsing(new ulong[] { 7 }, ToSequences(new byte[] { 1, 2, 3, 15, 3, 1, 2, 3, 7 }), 15, new byte[] { 1, 2, 3 });
+
+        [TestMethod]
+        public void ParsingTwoMessagesInDifferentChannels()
+            => DoRawParsing(new ulong[] { 7, 13 }, ToSequences(new byte[] { 15, 3, 1, 2, 3, 7, 15, 1, 10, 13 }), 15, new byte[] { 1, 2, 3 }, new byte[] { 10 });
+        [TestMethod]
+        public void ParsingTwoMessagesInDifferentChannelsMultipleSequences()
+            => DoRawParsing(new ulong[] { 7, 13 }, ToSequences(new byte[] { 15, 3, 1, 2 }, new byte[] { 3, 7, 15, 1, 10, 13 }), 15, new byte[] { 1, 2, 3 }, new byte[] { 10 });
 
         IDisposable ILogger.BeginScope<TState>(TState state) => this;
 
@@ -81,29 +83,27 @@ namespace UnitTest.InterlockLedger.Peer2Peer
         }
 
         private static IEnumerable<ReadOnlySequence<byte>> ToSequences(params byte[][] arraysToParse) => arraysToParse.Select(a => new ReadOnlySequence<byte>(a));
-        private void DoNiceParsing(ulong? expectedChannel, params byte[] arrayToParse)
-            => DoRawParsing(new ulong?[] { expectedChannel }, ToSequences(arrayToParse), expectedChannel.HasValue, arrayToParse[0], arrayToParse.Skip(2).SkipLast(expectedChannel.HasValue ? 1 : 0).ToArray());
 
-        private void DoRawParsing(ulong?[] expectedChannels, IEnumerable<ReadOnlySequence<byte>> sequencesToParse, bool useChannel, ulong expectedTag, params byte[][] expectedPayloads) {
+        private void DoNiceParsing(ulong expectedChannel, params byte[] arrayToParse)
+            => DoRawParsing(new ulong[] { expectedChannel }, ToSequences(arrayToParse), arrayToParse[0], arrayToParse.Skip(2).SkipLast(1).ToArray());
+
+        private void DoRawParsing(ulong[] expectedChannels, IEnumerable<ReadOnlySequence<byte>> sequencesToParse, ulong expectedTag, params byte[][] expectedPayloads) {
             var results = new List<(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel)>();
             Success messageProcessor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel) {
                 results.Add((bytes, channel));
                 return results.Count < expectedPayloads.Length ? Success.Next : Success.Exit;
             }
-            var mp = new MessageParser(expectedTag, useChannel, this, messageProcessor);
+            var mp = new MessageParser(expectedTag, this, messageProcessor);
             foreach (var sequence in sequencesToParse) {
                 mp.Parse(sequence);
-                if (!mp.Continue)
-                    break;
             }
-            Assert.AreEqual(Success.Exit, mp.LastResult);
             int payloadIndex = 0;
             foreach (var result in results) {
-                ReadOnlyMemory<byte> readOnlyMemory = result.bytes.Single();
-                Assert.AreEqual(expectedChannels[payloadIndex].GetValueOrDefault(0), result.channel);
+                var inputBytes = result.bytes.SelectMany(b => b.ToArray());
+                Assert.AreEqual(expectedChannels[payloadIndex], result.channel);
                 byte[] expectedPayload = expectedPayloads[payloadIndex++];
-                Assert.AreEqual(expectedPayload.Length, readOnlyMemory.Length);
-                Assert.IsTrue(expectedPayload.SequenceEqual(readOnlyMemory.ToArray()));
+                Assert.AreEqual(expectedPayload.Length, inputBytes.Count());
+                Assert.IsTrue(expectedPayload.SequenceEqual(inputBytes.ToArray()));
             }
         }
     }

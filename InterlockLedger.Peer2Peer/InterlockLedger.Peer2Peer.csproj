@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>0.6.0</Version>
+    <Version>0.6.1</Version>
     <Authors>Rafael Teixeira</Authors>
     <Company>InterlockLedger Network</Company>
     <Product>InterlockLedger</Product>
@@ -13,7 +13,7 @@
     <RepositoryUrl>https://github.com/interlockledger/peer2peer.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageReleaseNotes>BREAKING CHANGES: Supporting channels</PackageReleaseNotes>
+    <PackageReleaseNotes>BREAKING CHANGES: Supporting channels a little bit more</PackageReleaseNotes>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 

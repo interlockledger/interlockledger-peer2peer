@@ -44,24 +44,36 @@ namespace InterlockLedger.Peer2Peer
 {
     internal sealed class PeerClient : IClient
     {
-        public PeerClient(string id, string networkAddress, int port, ulong tag, CancellationTokenSource source, ILogger logger) {
+        public PeerClient(string id,
+            string networkAddress,
+            int port,
+            ulong tag,
+            CancellationTokenSource source,
+            ILogger logger,
+            int defaultListeningBufferSize,
+            int defaultTimeoutInMilliseconds
+            ) {
             if (string.IsNullOrWhiteSpace(id))
                 throw new ArgumentNullException(nameof(id));
             if (string.IsNullOrWhiteSpace(networkAddress))
                 throw new ArgumentNullException(nameof(networkAddress));
             Id = id;
             _locked = 0;
-            _tag = tag;
             _networkAddress = networkAddress;
             _networkPort = port;
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _socket = null; // connect lazily
+            _messageParser = new MessageParser(tag, _logger, MessageProcessor);
+            _minimumBufferSize = Math.Max(512, defaultListeningBufferSize);
+            _defaultTimeoutInMilliseconds = defaultTimeoutInMilliseconds;
+            new Thread(async () => await ListenForMessagesInChannels()).Start();
         }
 
         public string Id { get; }
         public bool IsDisposed { get; private set; } = false;
 
+        public ulong LastChannelUsed => (ulong)_lastChannelUsed;
         public int SocketHashCode => _socket?.GetHashCode() ?? 0;
 
         public void Dispose() {
@@ -79,6 +91,7 @@ namespace InterlockLedger.Peer2Peer
                 WithLock(() => {
                     _socket?.Dispose();
                     _socket = Connect();
+                    _messageParser.Reset();
                 }).Wait();
             }
         }
@@ -96,10 +109,14 @@ namespace InterlockLedger.Peer2Peer
         private readonly ILogger _logger;
         private readonly string _networkAddress;
         private readonly int _networkPort;
+        private readonly Dictionary<ulong, (ulong channel, IClientSink sink)> _sinks = new Dictionary<ulong, (ulong channel, IClientSink sink)>();
         private readonly CancellationTokenSource _source;
-        private readonly ulong _tag;
+        private long _lastChannelUsed = 0;
         private int _locked = 0;
         private Socket _socket;
+        private readonly MessageParser _messageParser;
+        private readonly int _minimumBufferSize;
+        private readonly int _defaultTimeoutInMilliseconds;
 
         private bool Abandon => _source.IsCancellationRequested || IsDisposed;
 
@@ -118,10 +135,38 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
+        private async Task ListenForMessagesInChannels() {
+            while (!Abandon) {
+                while (_socket == null)
+                    await Task.Delay(100);
+                await WaitForData(_defaultTimeoutInMilliseconds);
+                if (_socket.Available > 0) {
+                    var buffer = new byte[_minimumBufferSize];
+                    int bytesRead = await _socket.ReceiveAsync(buffer, SocketFlags.None);
+                    if (bytesRead > 0)
+                        _messageParser.Parse(new ReadOnlySequence<byte>(buffer, 0, bytesRead));
+                }
+            }
+        }
+
         private void LogError(string message) {
             if (!(_errors.TryGetValue(message, out var dateTime) && (DateTimeOffset.Now - dateTime).Hours < _hoursOfSilencedDuplicateErrors)) {
                 _logger.LogError(message);
                 _errors[message] = DateTimeOffset.Now;
+            }
+        }
+
+        private Success MessageProcessor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel) {
+            lock (_sinks) {
+                if (_sinks.ContainsKey(channel)) {
+                    var result = _sinks[channel].sink.SinkAsClientAsync(bytes, channel).Result;
+                    if (result == Success.Exit) {
+                        _sinks.Remove(channel);
+                        return Success.Next;
+                    }
+                    return result;
+                }
+                return Success.Next;
             }
         }
 
@@ -131,18 +176,10 @@ namespace InterlockLedger.Peer2Peer
             try {
                 if (_socket is null)
                     _socket = Connect();
-                var messageParser = new MessageParser(_tag, clientSink.UseChannel, _logger, (bytes, channel) => clientSink.SinkAsClientAsync(bytes, channel).Result);
-                int minimumBufferSize = Math.Max(512, clientSink.DefaultListeningBufferSize);
+                Interlocked.Increment(ref _lastChannelUsed);
+                _sinks[LastChannelUsed] = (LastChannelUsed, clientSink);
                 await _socket.SendAsync(segments);
-                do {
-                    if (Abandon)
-                        return false;
-                    await WaitForData(_socket, clientSink.DefaultTimeoutInMilliseconds);
-                    var buffer = new byte[minimumBufferSize];
-                    int bytesRead = await _socket.ReceiveAsync(buffer, SocketFlags.None);
-                    if (bytesRead > 0)
-                        messageParser.Parse(new ReadOnlySequence<byte>(buffer, 0, bytesRead));
-                } while (messageParser.Continue);
+                await _socket.SendILint(LastChannelUsed);
                 return true;
             } catch (SocketException se) {
                 LogError($"Client could not communicate with address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
@@ -154,9 +191,9 @@ namespace InterlockLedger.Peer2Peer
             return false;
         }
 
-        private async Task WaitForData(Socket socket, int defaultTimeoutInMilliseconds) {
+        private async Task WaitForData(int defaultTimeoutInMilliseconds) {
             int timeout = defaultTimeoutInMilliseconds <= 0 ? _maxReceiveTimeout : defaultTimeoutInMilliseconds / _sleepStep;
-            while (socket.Available == 0 && (timeout > 0) && !_source.IsCancellationRequested) {
+            while (_socket.Available == 0 && (timeout > 0) && !Abandon) {
                 await Task.Delay(_sleepStep, _source.Token);
                 if (defaultTimeoutInMilliseconds > 0)
                     timeout--;

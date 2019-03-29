@@ -52,7 +52,7 @@ namespace InterlockLedger.Peer2Peer
 
         public async Task ListenOn(Socket socket) {
             var remoteEndPoint = socket.RemoteEndPoint;
-            var responder = new SocketResponder(socket);
+            SocketResponder responder = BuildResponder(socket);
             var parser = new MessageParser(MessageTag, _logger, (bytes, channel) => Processor(bytes, channel, responder));
             _logger.LogTrace($"[{remoteEndPoint}]: connected");
             var pipe = new Pipe();
@@ -65,8 +65,12 @@ namespace InterlockLedger.Peer2Peer
         public abstract void Stop();
 
         protected readonly ILogger _logger;
+
         protected readonly CancellationTokenSource _source;
+
         protected abstract ulong MessageTag { get; }
+
+        protected virtual SocketResponder BuildResponder(Socket socket) => new SocketResponder(socket, _source);
 
         protected abstract Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, Responder responder);
 

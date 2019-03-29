@@ -31,29 +31,49 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
-using System.Collections.Generic;
-using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class SocketResponder : Responder
+    public class Locker
     {
-        public SocketResponder(Socket socket, CancellationTokenSource source) : this(socket, new Locker(source)) {
+        public Locker(CancellationTokenSource source) => _source = source ?? throw new ArgumentNullException(nameof(source));
+
+        public void WithLock(Action action) => WithLockAsync(action).Wait();
+        public T WithLock<T>(Func<T> action) => WithLockAsync(() => Task.FromResult( action())).Result;
+
+        public async Task<T> WithLockAsync<T>(Func<Task<T>> action) {
+            if (1 == Interlocked.Exchange(ref _locked, 1))
+                await Task.Delay(1000, _source.Token);
+            try {
+                return await action();
+            } finally {
+                Interlocked.Exchange(ref _locked, 0);
+            }
         }
 
-        public SocketResponder(Socket socket, Locker locker) {
-            _socket = socket ?? throw new ArgumentNullException(nameof(socket));
-            _locker = locker ?? throw new ArgumentNullException(nameof(locker));
+        public async Task WithLockAsync(Func<Task> action) {
+            if (1 == Interlocked.Exchange(ref _locked, 1))
+                await Task.Delay(1000, _source.Token);
+            try {
+                await action();
+            } finally {
+                Interlocked.Exchange(ref _locked, 0);
+            }
         }
 
-        protected override void SendResponse(IList<ArraySegment<byte>> responseSegments, ulong channel)
-            => _locker.WithLock(() => {
-                _socket.Send(responseSegments);
-                _socket.Send(channel.ILIntEncode());
-            });
+        public async Task WithLockAsync(Action action) {
+            if (1 == Interlocked.Exchange(ref _locked, 1))
+                await Task.Delay(1000, _source.Token);
+            try {
+                action();
+            } finally {
+                Interlocked.Exchange(ref _locked, 0);
+            }
+        }
 
-        private readonly Locker _locker;
-        private readonly Socket _socket;
+        private readonly CancellationTokenSource _source;
+        private int _locked = 0;
     }
 }

@@ -55,7 +55,8 @@ namespace InterlockLedger.Peer2Peer
             if (string.IsNullOrWhiteSpace(networkAddress))
                 throw new ArgumentNullException(nameof(networkAddress));
             Id = id;
-            _locked = 0;
+            _socketLocker = new Locker(_source);
+            _sinksLocker = new Locker(_source);
             MessageTag = tag;
             _networkAddress = networkAddress;
             _networkPort = port;
@@ -71,13 +72,13 @@ namespace InterlockLedger.Peer2Peer
 
         public void Reconnect() {
             if (!IsDisposed) {
-                WithLock(() => {
-                    lock (_sinks) {
+                _socketLocker.WithLock(() => {
+                    _sinksLocker.WithLock(() => {
                         _socket?.Dispose();
                         _socket = Connect();
                         _sinks.Clear();
-                    }
-                }).Wait();
+                    });
+                });
             }
         }
 
@@ -100,24 +101,26 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public async Task<bool> SendAsync(IList<ArraySegment<byte>> segments, IClientSink clientSink)
-            => await WithLock(() => SendAsyncCore(segments, clientSink));
+            => await _socketLocker.WithLockAsync(() => SendAsyncCore(segments, clientSink));
 
         public override void Stop() {
             if (!IsDisposed) {
-                WithLock(() => {
+                _socketLocker.WithLock(() => {
                     _socket?.Dispose();
                     _socket = null;
                     IsDisposed = true;
-                }).Wait();
+                });
             }
         }
 
         protected override ulong MessageTag { get; }
 
-        protected override Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, Responder responder) {
-            lock (_sinks) {
+        protected override SocketResponder BuildResponder(Socket socket) => new SocketResponder(socket, _socketLocker);
+
+        protected override Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, Responder responder)
+            => _sinksLocker.WithLockAsync(async () => {
                 if (_sinks.ContainsKey(channel)) {
-                    var result = _sinks[channel].sink.SinkAsClientAsync(bytes, channel).Result;
+                    var result = await _sinks[channel].sink.SinkAsClientAsync(bytes, channel);
                     if (result == Success.Exit) {
                         _sinks.Remove(channel);
                         return Success.Next;
@@ -125,19 +128,18 @@ namespace InterlockLedger.Peer2Peer
                     return result;
                 }
                 return Success.Next;
-            }
-        }
+            }).Result;
 
         private const int _hoursOfSilencedDuplicateErrors = 8;
         private const int _maxReceiveTimeout = 300_000;
         private const int _sleepStep = 10;
         private static readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
-        private readonly int _defaultTimeoutInMilliseconds;
         private readonly string _networkAddress;
         private readonly int _networkPort;
         private readonly Dictionary<ulong, (ulong channel, IClientSink sink)> _sinks = new Dictionary<ulong, (ulong channel, IClientSink sink)>();
+        private readonly Locker _sinksLocker;
+        private readonly Locker _socketLocker;
         private long _lastChannelUsed = 0;
-        private int _locked = 0;
         private Socket _socket;
         private bool Abandon => _source.IsCancellationRequested || IsDisposed;
 
@@ -171,11 +173,14 @@ namespace InterlockLedger.Peer2Peer
                 if (_socket is null) {
                     _socket = Connect();
                 }
-                Interlocked.Increment(ref _lastChannelUsed);
-                lock (_sinks)
+                _sinksLocker.WithLock(() => {
+                    Interlocked.Increment(ref _lastChannelUsed);
                     _sinks[LastChannelUsed] = (LastChannelUsed, clientSink);
-                await _socket.SendAsync(segments);
-                await _socket.SendILint(LastChannelUsed);
+                });
+                await _socketLocker.WithLockAsync(async () => {
+                    await _socket.SendAsync(segments);
+                    await _socket.SendILint(LastChannelUsed);
+                });
                 return true;
             } catch (SocketException se) {
                 LogError($"Client could not communicate with address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
@@ -185,26 +190,6 @@ namespace InterlockLedger.Peer2Peer
                 LogError($"Unexpected exception : {e}");
             }
             return false;
-        }
-
-        private async Task<T> WithLock<T>(Func<Task<T>> action) {
-            if (1 == Interlocked.Exchange(ref _locked, 1))
-                await Task.Delay(1000, _source.Token);
-            try {
-                return await action();
-            } finally {
-                Interlocked.Exchange(ref _locked, 0);
-            }
-        }
-
-        private async Task WithLock(Action action) {
-            if (1 == Interlocked.Exchange(ref _locked, 1))
-                await Task.Delay(1000, _source.Token);
-            try {
-                action();
-            } finally {
-                Interlocked.Exchange(ref _locked, 0);
-            }
         }
     }
 }

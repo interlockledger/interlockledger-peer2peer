@@ -45,7 +45,7 @@ namespace InterlockLedger.Peer2Peer
 
         public async Task<T> WithLockAsync<T>(Func<Task<T>> action) {
             if (1 == Interlocked.Exchange(ref _locked, 1))
-                await Task.Delay(1000, _source.Token);
+                await Task.Delay(10, _source.Token);
             try {
                 return await action();
             } finally {
@@ -55,7 +55,7 @@ namespace InterlockLedger.Peer2Peer
 
         public async Task WithLockAsync(Func<Task> action) {
             if (1 == Interlocked.Exchange(ref _locked, 1))
-                await Task.Delay(1000, _source.Token);
+                await Task.Delay(10, _source.Token);
             try {
                 await action();
             } finally {
@@ -65,7 +65,7 @@ namespace InterlockLedger.Peer2Peer
 
         public async Task WithLockAsync(Action action) {
             if (1 == Interlocked.Exchange(ref _locked, 1))
-                await Task.Delay(1000, _source.Token);
+                await Task.Delay(10, _source.Token);
             try {
                 action();
             } finally {

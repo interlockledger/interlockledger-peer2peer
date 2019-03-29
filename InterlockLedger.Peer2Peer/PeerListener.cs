@@ -51,6 +51,8 @@ namespace InterlockLedger.Peer2Peer
         public bool Alive => _listenSocket != null;
         protected override ulong MessageTag => _nodeSink.MessageTag;
 
+        public void Dispose() => Stop();
+
         public void Start() {
             if (_source.IsCancellationRequested)
                 return;
@@ -71,12 +73,16 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        protected override void LogHeader(string verb) => LogHeader(verb, _nodeSink.NetworkProtocolName, _nodeSink.NetworkName, _externalAccess.Route);
+        protected void LogHeader(string verb)
+            => _logger.LogInformation($"-- {verb} listening {_nodeSink.NetworkProtocolName} protocol in {_nodeSink.NetworkName} network at {_externalAccess.Route}!");
 
-        protected override Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, Responder responder) => _nodeSink.SinkAsNodeAsync(bytes, channel, responder.Respond).Result;
+        protected override Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, Responder responder)
+            => _nodeSink.SinkAsNodeAsync(bytes, channel, responder.Respond).Result;
 
         private readonly INodeSink _nodeSink;
+
         private ExternalAccess _externalAccess;
+
         private Socket _listenSocket;
 
         private Socket DetermineExternalAccess(IExternalAccessDiscoverer _discoverer) {
@@ -106,5 +112,8 @@ namespace InterlockLedger.Peer2Peer
                 }
             } while (!_source.IsCancellationRequested);
         }
+
+        private void LogHeader(string verb, string protocolName, string networkName, string route)
+                                                            => _logger.LogInformation($"-- {verb} listening {protocolName} protocol in {networkName} network at {route}!");
     }
 }

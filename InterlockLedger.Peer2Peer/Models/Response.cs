@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -36,34 +36,40 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 
-#pragma warning disable S3887 // Mutable, non-private fields should not be "readonly"
+//#pragma warning disable S3887 // Mutable, non-private fields should not be "readonly"
 
 namespace InterlockLedger.Peer2Peer
 {
     public struct Response
     {
-        public Response(MemoryStream ms) : this(ms.ToArray()) { }
+        public Response(ulong channel, MemoryStream ms) : this(channel, ms.ToArray()) {
+        }
 
-        public Response(ReadOnlyMemory<byte> readOnlyMemory) : this(readOnlyMemory.ToArray()) { }
+        public Response(ulong channel, ReadOnlyMemory<byte> readOnlyMemory) : this(channel, readOnlyMemory.ToArray()) {
+        }
 
-        public Response(ArraySegment<byte> data) : this(new List<ArraySegment<byte>>() { data }) { }
+        public Response(ulong channel, ArraySegment<byte> data) : this(channel, new List<ArraySegment<byte>>() { data }) {
+        }
 
-        public Response(byte[] array) : this(array, 0, array.Length) { }
+        public Response(ulong channel, byte[] array) : this(channel, array, 0, array.Length) {
+        }
 
-        public Response(byte[] array, int start, int length) : this(new ArraySegment<byte>(array, start, length)) { }
+        public Response(ulong channel, byte[] array, int start, int length) : this(channel, new ArraySegment<byte>(array, start, length)) {
+        }
 
-        public Response(IEnumerable<ArraySegment<byte>> dataList) {
+        public Response(ulong channel, IEnumerable<ArraySegment<byte>> dataList) {
             if (dataList == null)
                 throw new ArgumentNullException(nameof(dataList));
             _segmentList = new List<ArraySegment<byte>>(dataList);
             _dataList = null;
+            Channel = channel;
         }
 
-        public static Response Done { get; } = new Response(Enumerable.Empty<ArraySegment<byte>>(), true);
-
+        public ulong Channel { get; }
         public IList<ArraySegment<byte>> DataList => _dataList ?? (_dataList = _segmentList.AsReadOnly());
-
         public bool Exit => !DataList.Any(s => s.Count > 0);
+
+        public static Response DoneFor(ulong channel) => new Response(channel, Enumerable.Empty<ArraySegment<byte>>(), true);
 
         public Response Add(byte[] array) => Add(new ArraySegment<byte>(array));
 
@@ -78,9 +84,10 @@ namespace InterlockLedger.Peer2Peer
         private readonly List<ArraySegment<byte>> _segmentList;
         private ReadOnlyCollection<ArraySegment<byte>> _dataList;
 
-        private Response(IEnumerable<ArraySegment<byte>> dataList, bool readOnly) : this() {
+        private Response(ulong channel, IEnumerable<ArraySegment<byte>> dataList, bool readOnly) : this() {
             _segmentList = new List<ArraySegment<byte>>(dataList);
             _dataList = readOnly ? _segmentList.AsReadOnly() : null;
+            Channel = channel;
         }
     }
 }

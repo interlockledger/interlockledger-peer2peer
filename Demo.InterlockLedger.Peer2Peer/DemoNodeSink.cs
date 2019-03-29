@@ -78,17 +78,17 @@ namespace Demo.InterlockLedger.Peer2Peer
             return Received(Sink(readOnlyBytes, channel));
         }
 
-        public override async Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, Action<Response, ulong> respond) {
+        public override async Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, Action<Response> respond) {
             var result = SinkAsServer(readOnlyBytes.SelectMany(b => b.ToArray()).ToArray());
             foreach (var r in result) {
                 try {
-                    respond(new Response(r), channel);
+                    respond(new Response(channel,r));
                 } catch (SocketException) {
                     // Do Nothing
                 }
                 await Task.Delay(1000);
             }
-            respond(Response.Done, channel);
+            respond(Response.DoneFor(channel));
             return Success.Next;
         }
 

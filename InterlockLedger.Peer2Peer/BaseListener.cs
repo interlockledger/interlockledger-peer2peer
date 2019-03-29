@@ -1,4 +1,4 @@
-﻿/******************************************************************************************************************************
+/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -40,11 +40,8 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-#pragma warning disable S3881 // "IDisposable" should be implemented correctly
-
-    internal abstract class BaseListener : IDisposable
+    internal abstract class BaseListener
     {
-        // TODO: Implement something more like Kestrel does for scaling up multiple simultaneous requests processing
         public BaseListener(CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize) {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _source = source ?? throw new ArgumentNullException(nameof(source));
@@ -53,15 +50,16 @@ namespace InterlockLedger.Peer2Peer
             _minimumBufferSize = Math.Max(512, defaultListeningBufferSize);
         }
 
-        public void Dispose() => Stop();
-
         public async Task ListenOn(Socket socket) {
-            _logger.LogTrace($"[{socket.RemoteEndPoint}]: connected");
+            var remoteEndPoint = socket.RemoteEndPoint;
+            var responder = new SocketResponder(socket);
+            var parser = new MessageParser(MessageTag, _logger, (bytes, channel) => Processor(bytes, channel, responder));
+            _logger.LogTrace($"[{remoteEndPoint}]: connected");
             var pipe = new Pipe();
             Task writing = PipeFillAsync(socket, pipe.Writer);
-            Task reading = PipeReadAsync(socket, pipe.Reader);
+            Task reading = PipeReadAsync(socket, pipe.Reader, parser);
             await Task.WhenAll(reading, writing);
-            _logger.LogTrace($"[{socket.RemoteEndPoint}]: disconnected");
+            _logger.LogTrace($"[{remoteEndPoint}]: disconnected");
         }
 
         public abstract void Stop();
@@ -69,11 +67,6 @@ namespace InterlockLedger.Peer2Peer
         protected readonly ILogger _logger;
         protected readonly CancellationTokenSource _source;
         protected abstract ulong MessageTag { get; }
-
-        protected abstract void LogHeader(string verb);
-
-        protected void LogHeader(string verb, string protocolName, string networkName, string route)
-            => _logger.LogInformation($"-- {verb} listening {protocolName} protocol in {networkName} network at {route}!");
 
         protected abstract Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, Responder responder);
 
@@ -104,9 +97,7 @@ namespace InterlockLedger.Peer2Peer
             writer.Complete();
         }
 
-        private async Task PipeReadAsync(Socket socket, PipeReader reader) {
-            var responder = new SocketResponder(socket);
-            var parser = new MessageParser(MessageTag, _logger, (bytes, channel) => Processor(bytes, channel, responder));
+        private async Task PipeReadAsync(Socket socket, PipeReader reader, MessageParser parser) {
             while (!_token.IsCancellationRequested) {
                 ReadResult result = await reader.ReadAsync(_token);
                 if (result.IsCanceled)

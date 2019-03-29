@@ -75,8 +75,7 @@ namespace InterlockLedger.Peer2Peer
                     if (!_clients.ContainsKey(id)) {
                         _clients.Add(id, new PeerClient(id, address, port, messageTag, Source,
                             CreateLogger(nameof(PeerClient)),
-                            defaultListeningBufferSize,
-                            defaultTimeoutInMilliseconds));
+                            defaultListeningBufferSize));
                     }
                     return _clients[id];
                 }

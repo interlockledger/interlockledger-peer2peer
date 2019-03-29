@@ -38,13 +38,15 @@ namespace InterlockLedger.Peer2Peer
 {
     public class SocketResponder : Responder
     {
-        public SocketResponder(Socket socket) => _socket = socket ?? throw new ArgumentNullException(nameof(socket));
+        public SocketResponder(Socket socket) => Socket = socket ?? throw new ArgumentNullException(nameof(socket));
+
+        public Socket Socket { get; }
 
         protected override void SendResponse(IList<ArraySegment<byte>> responseSegments, ulong channel) {
-            _socket.Send(responseSegments);
-            _socket.Send(channel.ILIntEncode());
+            lock (Socket) {
+                Socket.Send(responseSegments);
+                Socket.Send(channel.ILIntEncode());
+            }
         }
-
-        private readonly Socket _socket;
     }
 }

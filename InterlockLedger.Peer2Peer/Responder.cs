@@ -37,9 +37,9 @@ namespace InterlockLedger.Peer2Peer
 {
     public abstract class Responder
     {
-        public void Respond(Response response, ulong channel) {
+        public void Respond(Response response) {
             if (!response.Exit) {
-                SendResponse(response.DataList, channel);
+                SendResponse(response.DataList, response.Channel);
             }
         }
 

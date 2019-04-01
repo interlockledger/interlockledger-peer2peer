@@ -1,4 +1,4 @@
-/******************************************************************************************************************************
+﻿/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -31,40 +31,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
-using System.Collections.Generic;
-using System.Net.Sockets;
-using System.Runtime.InteropServices;
+using System.IO.Pipelines;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal static class Extensions
+    internal static class PipeWriterExtensions
     {
-        public static Task<int> ReceiveAsync(this Socket socket, Memory<byte> memory)
-            => SocketTaskExtensions.ReceiveAsync(socket, GetArray(memory), SocketFlags.None);
+        public static ValueTask<FlushResult> WriteAsync(this PipeWriter writer, ArraySegment<byte> segment, CancellationToken cancellationToken = default)
+            => writer.WriteAsync(new ReadOnlyMemory<byte>(segment.Array, segment.Offset, segment.Count), cancellationToken);
 
-        public static Task<int> ReceiveAsync(this Socket socket, Memory<byte> memory, SocketFlags socketFlags)
-            => SocketTaskExtensions.ReceiveAsync(socket, GetArray(memory), socketFlags);
-
-        public static Task<int> SendAsync(this Socket socket, ArraySegment<byte> buffer)
-            => SocketTaskExtensions.SendAsync(socket, buffer, SocketFlags.None);
-
-        public static Task<int> SendAsync(this Socket socket, IList<ArraySegment<byte>> buffers)
-            => SocketTaskExtensions.SendAsync(socket, buffers, SocketFlags.None);
-
-        public static Task<int> SendILint(this Socket socket, ulong ilint)
-            => socket.SendAsync(new ArraySegment<byte>(ilint.ILIntEncode()));
-
-        public static string ToBase64(this ReadOnlyMemory<byte> bytes) => Convert.ToBase64String(bytes.ToArray());
-
-        private static ArraySegment<byte> GetArray(Memory<byte> memory) => GetArray((ReadOnlyMemory<byte>)memory);
-
-        private static ArraySegment<byte> GetArray(ReadOnlyMemory<byte> memory) {
-            if (!MemoryMarshal.TryGetArray(memory, out var result)) {
-                throw new InvalidOperationException("Buffer backed by array was expected");
-            }
-
-            return result;
-        }
+        public static ValueTask<FlushResult> WriteILintAsync(this PipeWriter writer, ulong ilint, CancellationToken cancellationToken = default)
+            => writer.WriteAsync(new ReadOnlyMemory<byte>(ilint.ILIntEncode()), cancellationToken);
     }
 }

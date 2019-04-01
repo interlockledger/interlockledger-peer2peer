@@ -1,5 +1,5 @@
-/******************************************************************************************************************************
- 
+﻿/******************************************************************************************************************************
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -32,17 +32,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public abstract class Responder
+    internal static class MemorySegmentsExtensions
     {
-        public void Respond(Response response) {
-            if (!response.Exit) {
-                SendResponse(response.DataList, response.Channel);
-            }
-        }
-
-        protected abstract void SendResponse(IList<ArraySegment<byte>> responseSegments, ulong channel);
+        public static bool IsEmpty(this IList<ArraySegment<byte>> segments)
+            => !segments.Any(segment => segment.Count > 0);
     }
 }

@@ -80,8 +80,6 @@ namespace Demo.InterlockLedger.Peer2Peer
                 if (command == null || command.FirstOrDefault() == 'x')
                     break;
                 var client = _peerServices.GetClient(_nodeSink.MessageTag, "localhost", 8080);
-                if (command.FirstOrDefault() == 'r')
-                    client.Reconnect();
                 _nodeSink.SendCommand(client, command);
             }
         }

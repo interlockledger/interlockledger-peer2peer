@@ -46,8 +46,6 @@ namespace InterlockLedger.Peer2Peer
 
     public interface IClientSink
     {
-        bool DoneReceiving { get; set; }
-
         Task<Success> SinkAsClientAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel);
     }
 

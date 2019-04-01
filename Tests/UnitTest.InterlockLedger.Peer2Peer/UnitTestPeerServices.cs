@@ -52,7 +52,6 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             var peerClient = peerServices.GetClient(fakeNodeSink.MessageTag, "localhost", 80);
             Assert.IsNotNull(peerClient);
             Assert.IsNull(fakeLogger.LastLog);
-            Assert.AreEqual(0, peerClient.SocketHashCode);
             IKnownNodesServices knownNodes = peerServices.KnownNodes;
             var peerClient2 = knownNodes.GetClient("test2");
             Assert.IsNull(peerClient2);
@@ -63,8 +62,6 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             Assert.AreEqual(true, knownNodes.IsKnown("test3"));
             Assert.IsNotNull(peerClient3);
             Assert.IsNull(fakeLogger.LastLog);
-            Assert.AreEqual(0, peerClient3.SocketHashCode);
-            Assert.ThrowsException<AggregateException>(() => peerClient3.Reconnect());
         }
 
         [TestMethod]

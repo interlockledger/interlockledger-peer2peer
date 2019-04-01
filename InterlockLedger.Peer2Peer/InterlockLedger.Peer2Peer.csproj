@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>0.7.2</Version>
+    <Version>0.8.0</Version>
     <Authors>Rafael Teixeira</Authors>
     <Company>InterlockLedger Network</Company>
     <Product>InterlockLedger</Product>
@@ -13,7 +13,7 @@
     <RepositoryUrl>https://github.com/interlockledger/peer2peer.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageReleaseNotes>Faster lock waits in Locker</PackageReleaseNotes>
+    <PackageReleaseNotes>Use Pipelines bidirectionally in PeerClient to use less locking, which seems to be playing bad with multitasking</PackageReleaseNotes>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 

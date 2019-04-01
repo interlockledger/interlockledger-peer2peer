@@ -56,8 +56,8 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         public bool DoneReceiving { get; set; } = false;
         public override IEnumerable<string> LocalResources { get; } = new string[] { "Document" };
-        public string Prompt => "Command (x to exit, w to get who is answering, e... to echo ..., 3... to echo ... 3 times, r to reconnect): ";
-        public override IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "Echo", "Who", "TripleEcho", "Reconnect" };
+        public string Prompt => "Command (x to exit, w to get who is answering, e... to echo ..., 3... to echo ... 3 times): ";
+        public override IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "Echo", "Who", "TripleEcho" };
         public string Url => $"demo://{PublishAtAddress}:{PublishAtPortNumber}/";
 
         public override void HostedAt(string address, ushort port) {
@@ -71,7 +71,7 @@ namespace Demo.InterlockLedger.Peer2Peer
         }
 
         public void SendCommand(IClient client, string command)
-            => client.SendAndReceiveAll(ToMessage(command.AsUTF8Bytes(), isLast: true), this);
+            => client.Send(ToMessage(command.AsUTF8Bytes(), isLast: true), this);
 
         public async Task<Success> SinkAsClientAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel) {
             await Task.Delay(1);
@@ -128,6 +128,7 @@ namespace Demo.InterlockLedger.Peer2Peer
         private IEnumerable<ReadOnlyMemory<byte>> SinkAsServer(byte[] buffer) {
             var command = (buffer.Length > 1) ? (char)buffer[1] : '\0';
             IEnumerable<byte> text = buffer.Skip(2);
+            Console.WriteLine($"Received command '{command}'");
             switch (command) {
             case 'e':  // is echo message?
                 yield return SendResponse(text, isLast: true);

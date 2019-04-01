@@ -40,7 +40,10 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
+#pragma warning disable S3881 // "IDisposable" should be implemented correctly
+
     internal class PeerListener : BaseListener, IListener
+#pragma warning restore S3881 // "IDisposable" should be implemented correctly
     {
         public PeerListener(INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger)
             : base(source, logger, nodeSink?.DefaultListeningBufferSize ?? 0) {
@@ -76,8 +79,8 @@ namespace InterlockLedger.Peer2Peer
         protected void LogHeader(string verb)
             => _logger.LogInformation($"-- {verb} listening {_nodeSink.NetworkProtocolName} protocol in {_nodeSink.NetworkName} network at {_externalAccess.Route}!");
 
-        protected override Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, Responder responder)
-            => _nodeSink.SinkAsNodeAsync(bytes, channel, responder.Respond).Result;
+        protected override Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, Sender responder)
+            => _nodeSink.SinkAsNodeAsync(bytes, channel, responder.Send).Result;
 
         private readonly INodeSink _nodeSink;
 
@@ -98,7 +101,8 @@ namespace InterlockLedger.Peer2Peer
                 try {
                     while (!_source.IsCancellationRequested) {
                         var socket = await _listenSocket.AcceptAsync();
-                        await ListenOn(socket);
+                        Pipeline pipeline = CreatePipeline(socket, new Sender());
+                        await pipeline.Listen();
                     }
                 } catch (AggregateException e) when (e.InnerExceptions.Any(ex => ex is ObjectDisposedException)) {
                     _logger.LogTrace(e, "ObjectDisposedException");
@@ -113,7 +117,8 @@ namespace InterlockLedger.Peer2Peer
             } while (!_source.IsCancellationRequested);
         }
 
-        private void LogHeader(string verb, string protocolName, string networkName, string route)
-                                                            => _logger.LogInformation($"-- {verb} listening {protocolName} protocol in {networkName} network at {route}!");
+        protected override void PipelineStopped() {
+            // Do Nothing
+        }
     }
 }

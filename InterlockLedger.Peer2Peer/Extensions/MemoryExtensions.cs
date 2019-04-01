@@ -31,29 +31,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
-using System.Collections.Generic;
-using System.Net.Sockets;
-using System.Threading;
+using System.Runtime.InteropServices;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class SocketResponder : Responder
+    internal static class MemoryExtensions
     {
-        public SocketResponder(Socket socket, CancellationTokenSource source) : this(socket, new Locker(source)) {
+        public static ArraySegment<byte> GetArraySegment(this ReadOnlyMemory<byte> memory) {
+            if (!MemoryMarshal.TryGetArray(memory, out var result)) {
+                throw new InvalidOperationException("Buffer backed by array was expected");
+            }
+            return result;
         }
 
-        public SocketResponder(Socket socket, Locker locker) {
-            _socket = socket ?? throw new ArgumentNullException(nameof(socket));
-            _locker = locker ?? throw new ArgumentNullException(nameof(locker));
-        }
+        public static ArraySegment<byte> GetArraySegment(this Memory<byte> memory) => GetArraySegment((ReadOnlyMemory<byte>)memory);
 
-        protected override void SendResponse(IList<ArraySegment<byte>> responseSegments, ulong channel)
-            => _locker.WithLock(() => {
-                _socket.Send(responseSegments);
-                _socket.Send(channel.ILIntEncode());
-            });
-
-        private readonly Locker _locker;
-        private readonly Socket _socket;
+        public static string ToBase64(this ReadOnlyMemory<byte> bytes) => Convert.ToBase64String(bytes.ToArray());
     }
 }

@@ -66,8 +66,8 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public ulong Channel { get; }
-        public IList<ArraySegment<byte>> DataList => _dataList ?? (_dataList = _segmentList.AsReadOnly());
-        public bool Empty => !DataList.Any(s => s.Count > 0);
+        public IList<ArraySegment<byte>> DataList => _dataList ?? (_dataList = (_segmentList ?? new List<ArraySegment<byte>>()).AsReadOnly());
+        public bool IsEmpty => !DataList.Any(s => s.Count > 0);
 
         public static Response DoneFor(ulong channel) => new Response(channel, Enumerable.Empty<ArraySegment<byte>>(), true);
 

@@ -102,7 +102,7 @@ namespace InterlockLedger.Peer2Peer
                     while (!_source.IsCancellationRequested) {
                         var socket = await _listenSocket.AcceptAsync();
                         Pipeline pipeline = CreatePipeline(socket, new Sender());
-                        await pipeline.Listen();
+                        new Thread(async () => await pipeline.Listen()).Start();
                     }
                 } catch (AggregateException e) when (e.InnerExceptions.Any(ex => ex is ObjectDisposedException)) {
                     _logger.LogTrace(e, "ObjectDisposedException");

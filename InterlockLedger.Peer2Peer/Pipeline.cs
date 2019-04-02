@@ -51,8 +51,8 @@ namespace InterlockLedger.Peer2Peer
                 var respondingPipe = new Pipe();
                 Task writing = PipeFillAsync(listeningPipe.Writer);
                 Task reading = PipeReadAsync(listeningPipe.Reader, parser);
-                Task responseWriting = RespondingPipeDequeueAsync(respondingPipe.Writer);
-                Task responseSending = RespondingPipeSendAsync(respondingPipe.Reader);
+                Task responseWriting = SendingPipeDequeueAsync(respondingPipe.Writer);
+                Task responseSending = SendingPipeSendAsync(respondingPipe.Reader);
                 await Task.WhenAll(reading, writing, responseWriting, responseSending);
             } catch (OperationCanceledException) {
                 // just ignore
@@ -133,13 +133,13 @@ namespace InterlockLedger.Peer2Peer
             reader.Complete();
         }
 
-        private async Task RespondingPipeDequeueAsync(PipeWriter writer) {
+        private async Task SendingPipeDequeueAsync(PipeWriter writer) {
             while (NotCanceled) {
                 try {
                     if (_sender.Exit)
                         break;
                     Response response = await _sender.DequeueAsync(_token);
-                    if (!response.Empty) {
+                    if (!response.IsEmpty) {
                         foreach (var segment in response.DataList) {
                             var flushResult = await writer.WriteAsync(segment, _token);
                             if (flushResult.IsCanceled)
@@ -156,7 +156,7 @@ namespace InterlockLedger.Peer2Peer
             writer.Complete();
         }
 
-        private async Task RespondingPipeSendAsync(PipeReader reader) {
+        private async Task SendingPipeSendAsync(PipeReader reader) {
             while (NotCanceled) {
                 ReadResult result = await reader.ReadAsync(_token);
                 if (result.IsCanceled)
@@ -169,7 +169,6 @@ namespace InterlockLedger.Peer2Peer
                         reader.AdvanceTo(buffer.End);
                     }
                 } catch (Exception e) {
-                    _logger.LogError(e, "While sending buffers from pipe");
                     reader.Complete(e);
                     _stopProcessor();
                     return;

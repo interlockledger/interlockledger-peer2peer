@@ -89,6 +89,8 @@ namespace InterlockLedger.Peer2Peer
                     });
                 }
                 return true;
+            } catch (PeerException pe) {
+                LogError(pe.Message);
             } catch (SocketException se) {
                 LogError($"Client could not communicate with address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
             } catch (TaskCanceledException) {
@@ -99,13 +101,17 @@ namespace InterlockLedger.Peer2Peer
             return false;
         }
 
-
         public override void Stop() {
             _pipeline?.Stop();
             _pipeline = null;
         }
 
         protected override ulong MessageTag { get; }
+
+        protected override void PipelineStopped() {
+            _logger.LogTrace($"Stopping pipeline on client to address {_networkAddress}:{_networkPort}");
+            Stop();
+        }
 
         protected override Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, Sender responder)
             => _sinksLocker.WithLockAsync(async () => {
@@ -141,11 +147,11 @@ namespace InterlockLedger.Peer2Peer
                 socket.ReceiveTimeout = _maxReceiveTimeout;
                 socket.LingerState = new LingerOption(false, 1);
                 var pipeline = CreatePipeline(socket, responder);
+                _logger.LogTrace($"Client connecting into address {_networkAddress}:{_networkPort}");
                 new Thread(async () => await pipeline.Listen()).Start();
                 return pipeline;
             } catch (Exception se) {
-                LogError($"Client could not connect into address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}");
-                throw;
+                throw new PeerException($"Client could not connect into address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}", se);
             }
         }
 
@@ -155,7 +161,5 @@ namespace InterlockLedger.Peer2Peer
                 _errors[message] = DateTimeOffset.Now;
             }
         }
-
-        protected override void PipelineStopped() => Stop();
     }
 }

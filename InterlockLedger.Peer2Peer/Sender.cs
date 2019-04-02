@@ -61,7 +61,7 @@ namespace InterlockLedger.Peer2Peer
         internal async Task<Response> DequeueAsync(CancellationToken token) {
             Response response;
             while (!_responses.TryDequeue(out response)) {
-                await Task.Yield();
+                await Task.Delay(1);
                 if (token.IsCancellationRequested)
                     return default;
             }

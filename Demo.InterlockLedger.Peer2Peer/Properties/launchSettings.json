@@ -1,8 +1,12 @@
 {
   "profiles": {
-    "Demo.InterlockLedger.Peer2Peer": {
+    "Client": {
       "commandName": "Project",
       "commandLineArgs": "client"
+    },
+    "Server": {
+      "commandName": "Project",
+      "commandLineArgs": "server"
     }
   }
 }

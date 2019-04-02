@@ -62,7 +62,7 @@ namespace Demo.InterlockLedger.Peer2Peer
             using (var listener = _peerServices.CreateListenerFor(_nodeSink)) {
                 listener.Start();
                 while (listener.Alive) {
-                    Thread.Yield();
+                    Thread.Sleep(1);
                 }
             }
         }

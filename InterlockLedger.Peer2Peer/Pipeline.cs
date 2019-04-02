@@ -120,7 +120,10 @@ namespace InterlockLedger.Peer2Peer
                 if (result.IsCanceled)
                     break;
                 try {
-                    reader.AdvanceTo(parser.Parse(result.Buffer));
+                    var buffer = result.Buffer;
+                    if (!buffer.IsEmpty) {
+                        reader.AdvanceTo(parser.Parse(result.Buffer));
+                    }
                 } catch (Exception e) {
                     _logger.LogError(e, "While parsing message");
                     reader.Complete(e);

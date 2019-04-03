@@ -53,8 +53,8 @@ namespace InterlockLedger.Peer2Peer
         }
 
         internal void Clear() {
-            while (_responses.TryDequeue(out var r)) {
-                // Just ignore r
+            while (_responses.TryDequeue(out _)) {
+                // Just ignore
             }
         }
 

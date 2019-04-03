@@ -1,13 +1,23 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28010.2036
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28729.10
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InterlockLedger.Peer2Peer", "InterlockLedger.Peer2Peer\InterlockLedger.Peer2Peer.csproj", "{A658D7AA-3DEB-4C0A-B093-B8F530A082B2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InterlockLedger.Peer2Peer", "InterlockLedger.Peer2Peer\InterlockLedger.Peer2Peer.csproj", "{A658D7AA-3DEB-4C0A-B093-B8F530A082B2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTest.InterlockLedger.Peer2Peer", "Tests\UnitTest.InterlockLedger.Peer2Peer\UnitTest.InterlockLedger.Peer2Peer.csproj", "{F30C1EF7-0321-4ABD-9292-DF6CBF81F407}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTest.InterlockLedger.Peer2Peer", "Tests\UnitTest.InterlockLedger.Peer2Peer\UnitTest.InterlockLedger.Peer2Peer.csproj", "{F30C1EF7-0321-4ABD-9292-DF6CBF81F407}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Demo.InterlockLedger.Peer2Peer", "Demo.InterlockLedger.Peer2Peer\Demo.InterlockLedger.Peer2Peer.csproj", "{10FB314B-84D8-42CB-9B38-F2ECB0DBE017}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Demo.InterlockLedger.Peer2Peer", "Demo.InterlockLedger.Peer2Peer\Demo.InterlockLedger.Peer2Peer.csproj", "{10FB314B-84D8-42CB-9B38-F2ECB0DBE017}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "General", "General", "{54853861-C597-44CD-B55C-FDA9B6B0ABB9}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		.gitattributes = .gitattributes
+		.gitignore = .gitignore
+		copyright.template = copyright.template
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -34,6 +34,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO.Pipelines;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,59 +44,44 @@ namespace InterlockLedger.Peer2Peer
     public class Pipeline
     {
         public async Task Listen() {
-            var remoteEndPoint = Socket.RemoteEndPoint;
-            _logger.LogTrace($"[{remoteEndPoint}]: connected");
-            try {
-                var parser = new MessageParser(_messageTag, _logger, (bytes, channel) => _processor(bytes, channel, _sender));
-                var listeningPipe = new Pipe();
-                var respondingPipe = new Pipe();
-                Task writing = PipeFillAsync(listeningPipe.Writer);
-                Task reading = PipeReadAsync(listeningPipe.Reader, parser);
-                Task responseWriting = SendingPipeDequeueAsync(respondingPipe.Writer);
-                Task responseSending = SendingPipeSendAsync(respondingPipe.Reader);
-                await Task.WhenAll(reading, writing, responseWriting, responseSending);
-            } catch (OperationCanceledException) {
-                // just ignore
-            } catch (Exception e) {
-                _logger.LogError(e, $"[{remoteEndPoint}]: Exception while processing on the pipeline");
-            }
-            Socket = null;
-            _logger.LogTrace($"[{remoteEndPoint}]: disconnected");
+            await UsePipes(_socket.RemoteEndPoint);
+            _socket = null;
         }
 
         public void Stop() => _source.Cancel();
 
         internal Pipeline(Socket socket, Sender sender, ILogger logger, CancellationTokenSource source, ulong messageTag, int minimumBufferSize, Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, Sender, Success> processor, Action stopProcessor) {
-            Socket = socket ?? throw new ArgumentNullException(nameof(socket));
+            _socket = socket ?? throw new ArgumentNullException(nameof(socket));
             _sender = sender ?? throw new ArgumentNullException(nameof(sender));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             var parentSource = source ?? throw new ArgumentNullException(nameof(source));
             _source = new CancellationTokenSource();
             _token = CancellationTokenSource.CreateLinkedTokenSource(parentSource.Token, _source.Token).Token;
+            _dequeueLocker = new Locker(_token);
             _messageTag = messageTag;
             _minimumBufferSize = minimumBufferSize;
             _processor = processor ?? throw new ArgumentNullException(nameof(processor));
             _stopProcessor = stopProcessor ?? throw new ArgumentNullException(nameof(stopProcessor));
         }
 
+        private readonly Locker _dequeueLocker;
         private readonly ILogger _logger;
         private readonly ulong _messageTag;
         private readonly int _minimumBufferSize;
         private readonly Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, Sender, Success> _processor;
-        private readonly Action _stopProcessor;
         private readonly Sender _sender;
         private readonly CancellationTokenSource _source;
+        private readonly Action _stopProcessor;
         private readonly CancellationToken _token;
-        private bool NotCanceled => !_token.IsCancellationRequested;
-
-        public Socket Socket { get; private set; }
+        private Socket _socket;
+        private bool Active => !_token.IsCancellationRequested;
 
         private async Task PipeFillAsync(PipeWriter writer) {
-            while (NotCanceled) {
+            while (Active) {
                 try {
                     _logger.LogTrace($"Getting {_minimumBufferSize} bytes to receive in the socket");
                     Memory<byte> memory = writer.GetMemory(_minimumBufferSize);
-                    int bytesRead = await Socket.ReceiveAsync(memory, SocketFlags.None);
+                    int bytesRead = await _socket.ReceiveAsync(memory, SocketFlags.None);
                     if (bytesRead == 0) {
                         break;
                     }
@@ -115,7 +101,7 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private async Task PipeReadAsync(PipeReader reader, MessageParser parser) {
-            while (NotCanceled) {
+            while (Active) {
                 ReadResult result = await reader.ReadAsync(_token);
                 if (result.IsCanceled)
                     break;
@@ -125,7 +111,7 @@ namespace InterlockLedger.Peer2Peer
                         reader.AdvanceTo(parser.Parse(result.Buffer));
                     }
                 } catch (Exception e) {
-                    _logger.LogError(e, "While parsing message");
+                    _logger.LogError(e, "While reading/parsing message");
                     reader.Complete(e);
                     _stopProcessor();
                     return;
@@ -137,21 +123,13 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private async Task SendingPipeDequeueAsync(PipeWriter writer) {
-            while (NotCanceled) {
+            while (Active) {
                 try {
                     if (_sender.Exit)
                         break;
                     Response response = await _sender.DequeueAsync(_token);
-                    if (!response.IsEmpty) {
-                        foreach (var segment in response.DataList) {
-                            var flushResult = await writer.WriteAsync(segment, _token);
-                            if (flushResult.IsCanceled)
-                                break;
-                        }
-                        var flushILintResult = await writer.WriteILintAsync(response.Channel, _token);
-                        if (flushILintResult.IsCanceled)
-                            break;
-                    }
+                    if (!await WriteResponse(writer, response))
+                        break;
                 } catch {
                     break;
                 }
@@ -160,7 +138,7 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private async Task SendingPipeSendAsync(PipeReader reader) {
-            while (NotCanceled) {
+            while (Active) {
                 ReadResult result = await reader.ReadAsync(_token);
                 if (result.IsCanceled)
                     break;
@@ -168,7 +146,7 @@ namespace InterlockLedger.Peer2Peer
                     var buffer = result.Buffer;
                     if (!buffer.IsEmpty) {
                         foreach (var b in buffer)
-                            await Socket.SendAsync(MemoryExtensions.GetArraySegment(b));
+                            await _socket.SendAsync(MemoryExtensions.GetArraySegment(b));
                         reader.AdvanceTo(buffer.End);
                     }
                 } catch (Exception e) {
@@ -181,5 +159,34 @@ namespace InterlockLedger.Peer2Peer
             }
             reader.Complete();
         }
+
+        private async Task UsePipes(EndPoint remoteEndPoint) {
+            _logger.LogTrace($"[{remoteEndPoint}]: connected");
+            try {
+                var parser = new MessageParser(_messageTag, _logger, (bytes, channel) => _processor(bytes, channel, _sender));
+                var listeningPipe = new Pipe();
+                var respondingPipe = new Pipe();
+                Task writing = PipeFillAsync(listeningPipe.Writer);
+                Task reading = PipeReadAsync(listeningPipe.Reader, parser);
+                Task responseWriting = SendingPipeDequeueAsync(respondingPipe.Writer);
+                Task responseSending = SendingPipeSendAsync(respondingPipe.Reader);
+                await Task.WhenAll(reading, writing, responseWriting, responseSending);
+            } catch (OperationCanceledException) {
+                // just ignore
+            } catch (Exception e) {
+                _logger.LogError(e, $"[{remoteEndPoint}]: Exception while processing on the pipeline");
+            }
+            _logger.LogTrace($"[{remoteEndPoint}]: disconnected");
+        }
+
+        private async Task<bool> WriteResponse(PipeWriter writer, Response response)
+            => await _dequeueLocker.WithLockAsync(async () => {
+                if (response.IsEmpty)
+                    return true;
+                foreach (var segment in response.DataList)
+                    if ((await writer.WriteAsync(segment, _token)).IsCanceled)
+                        return false;
+                return !(await writer.WriteILintAsync(response.Channel, _token)).IsCanceled;
+            });
     }
 }

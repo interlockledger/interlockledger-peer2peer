@@ -38,14 +38,15 @@ namespace InterlockLedger.Peer2Peer
 {
     public class Locker
     {
-        public Locker(CancellationTokenSource source) => _source = source ?? throw new ArgumentNullException(nameof(source));
+        public Locker(CancellationToken token) => _token = token;
 
         public void WithLock(Action action) => WithLockAsync(action).Wait();
-        public T WithLock<T>(Func<T> action) => WithLockAsync(() => Task.FromResult( action())).Result;
+
+        public T WithLock<T>(Func<T> action) => WithLockAsync(() => Task.FromResult(action())).Result;
 
         public async Task<T> WithLockAsync<T>(Func<Task<T>> action) {
             if (1 == Interlocked.Exchange(ref _locked, 1))
-                await Task.Delay(10, _source.Token);
+                await Task.Delay(1, _token);
             try {
                 return await action();
             } finally {
@@ -55,7 +56,7 @@ namespace InterlockLedger.Peer2Peer
 
         public async Task WithLockAsync(Func<Task> action) {
             if (1 == Interlocked.Exchange(ref _locked, 1))
-                await Task.Delay(10, _source.Token);
+                await Task.Delay(1, _token);
             try {
                 await action();
             } finally {
@@ -65,7 +66,7 @@ namespace InterlockLedger.Peer2Peer
 
         public async Task WithLockAsync(Action action) {
             if (1 == Interlocked.Exchange(ref _locked, 1))
-                await Task.Delay(10, _source.Token);
+                await Task.Delay(1, _token);
             try {
                 action();
             } finally {
@@ -73,7 +74,7 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        private readonly CancellationTokenSource _source;
+        private readonly CancellationToken _token;
         private int _locked = 0;
     }
 }

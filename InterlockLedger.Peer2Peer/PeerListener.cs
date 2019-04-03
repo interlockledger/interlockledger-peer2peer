@@ -41,7 +41,6 @@ using System.Threading.Tasks;
 namespace InterlockLedger.Peer2Peer
 {
 #pragma warning disable S3881 // "IDisposable" should be implemented correctly
-
     internal class PeerListener : BaseListener, IListener
 #pragma warning restore S3881 // "IDisposable" should be implemented correctly
     {
@@ -79,8 +78,12 @@ namespace InterlockLedger.Peer2Peer
         protected void LogHeader(string verb)
             => _logger.LogInformation($"-- {verb} listening {_nodeSink.NetworkProtocolName} protocol in {_nodeSink.NetworkName} network at {_externalAccess.Route}!");
 
+        protected override void PipelineStopped() {
+            // Do Nothing
+        }
+
         protected override Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, Sender responder)
-            => _nodeSink.SinkAsNodeAsync(bytes, channel, responder.Send).Result;
+                    => _nodeSink.SinkAsNodeAsync(bytes, channel, responder.Send).Result;
 
         private readonly INodeSink _nodeSink;
 
@@ -115,10 +118,6 @@ namespace InterlockLedger.Peer2Peer
                     _logger.LogError(e, $"-- Error while trying to listen.");
                 }
             } while (!_source.IsCancellationRequested);
-        }
-
-        protected override void PipelineStopped() {
-            // Do Nothing
         }
     }
 }

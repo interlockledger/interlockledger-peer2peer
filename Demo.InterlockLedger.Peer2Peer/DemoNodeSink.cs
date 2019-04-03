@@ -97,8 +97,6 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         private const ulong _messageTagCode = ':';
 
-        private const string _reconnectMessage = "greetings from server through reconnected client connection";
-
         private static readonly IEnumerable<byte> _haveMoreMarker = new byte[] { 1 };
 
         private static readonly IEnumerable<byte> _isLastMarker = new byte[] { 0 };
@@ -142,10 +140,6 @@ namespace Demo.InterlockLedger.Peer2Peer
 
             case 'w':  // is who message?
                 yield return SendTextResponse(Url, isLast: true);
-                break;
-
-            case 'r': // queue to reconnect client
-                yield return SendTextResponse(_reconnectMessage, isLast: true);
                 break;
 
             default:

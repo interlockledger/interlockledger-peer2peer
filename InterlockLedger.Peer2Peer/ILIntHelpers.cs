@@ -82,7 +82,7 @@ namespace InterlockLedger.Peer2Peer
                 writeByte((byte)(value & 0xFF));
             } else {
                 writeByte((byte)(ILINT_BASE + (size - 2)));
-                value = value - ILINT_BASE;
+                value -= ILINT_BASE;
                 for (var i = ((size - 2) * 8); i >= 0; i -= 8) {
                     writeByte((byte)((value >> i) & 0xFF));
                 }

@@ -43,19 +43,14 @@ namespace InterlockLedger.Peer2Peer
 {
     internal sealed class PeerClient : BaseListener, IClient
     {
-        public PeerClient(string id,
-            string networkAddress,
-            int port,
-            ulong tag,
-            CancellationTokenSource source,
-            ILogger logger,
-            int defaultListeningBufferSize) : base(source, logger, defaultListeningBufferSize) {
+        public PeerClient(string id, string networkAddress, int port, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
+            : base(source, logger, defaultListeningBufferSize) {
             if (string.IsNullOrWhiteSpace(id))
                 throw new ArgumentNullException(nameof(id));
             if (string.IsNullOrWhiteSpace(networkAddress))
                 throw new ArgumentNullException(nameof(networkAddress));
             Id = id;
-            _sinksLocker = new Locker(_source);
+            _sinksLocker = new Locker(_source.Token);
             MessageTag = tag;
             _networkAddress = networkAddress;
             _networkPort = port;
@@ -83,7 +78,7 @@ namespace InterlockLedger.Peer2Peer
                         _pipeline = Connect(_sender);
                     }
                     _sinksLocker.WithLock(() => {
-                        Interlocked.Increment(ref _lastChannelUsed);
+                        _ = Interlocked.Increment(ref _lastChannelUsed);
                         _sinks[LastChannelUsed] = (LastChannelUsed, clientSink);
                         _sender.Send(new Response(LastChannelUsed, segments));
                     });
@@ -127,7 +122,6 @@ namespace InterlockLedger.Peer2Peer
             }).Result;
 
         private const int _hoursOfSilencedDuplicateErrors = 8;
-        private const int _maxReceiveTimeout = 300_000;
         private static readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
         private readonly string _networkAddress;
         private readonly int _networkPort;
@@ -144,7 +138,6 @@ namespace InterlockLedger.Peer2Peer
                 IPAddress ipAddress = ipHostInfo.AddressList.First(ip => ip.AddressFamily == AddressFamily.InterNetwork);
                 var socket = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 socket.Connect(new IPEndPoint(ipAddress, _networkPort));
-                socket.ReceiveTimeout = _maxReceiveTimeout;
                 socket.LingerState = new LingerOption(false, 1);
                 var pipeline = CreatePipeline(socket, responder);
                 _logger.LogTrace($"Client connecting into address {_networkAddress}:{_networkPort}");

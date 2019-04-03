@@ -67,7 +67,13 @@ namespace InterlockLedger.Peer2Peer
                 while (current < buffer.Length) {
                     switch (_state) {
                     case State.Init:
-                        Reset();
+                        _lengthToRead = 0;
+                        _tagReader.Reset();
+                        _lengthReader.Reset();
+                        _channelReader.Reset();
+                        _segments.Clear();
+                        _state = State.ReadTag;
+                        LastResult = Success.Next;
                         break;
 
                     case State.ReadTag:
@@ -102,19 +108,12 @@ namespace InterlockLedger.Peer2Peer
                             SendToMessageProcessor();
                         }
                         break;
+
+                    default:
+                        break;
                     }
                 }
             return buffer.End;
-        }
-
-        public void Reset() {
-            _lengthToRead = 0;
-            _tagReader.Reset();
-            _lengthReader.Reset();
-            _channelReader.Reset();
-            _segments.Clear();
-            _state = State.ReadTag;
-            LastResult = Success.Next;
         }
 
         private readonly ILIntReader _channelReader = new ILIntReader();
@@ -132,6 +131,8 @@ namespace InterlockLedger.Peer2Peer
             try {
                 _logger.LogTrace($"Message body received {_segments.Select(b => b.ToBase64())}");
                 LastResult = _messageProcessor(_segments.ToArray(), _channel);
+            } catch (Exception e) {
+                _logger.LogError(e, "Failed to process last message!");
             } finally {
                 _state = State.Init;
             }

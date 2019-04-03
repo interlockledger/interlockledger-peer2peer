@@ -45,7 +45,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
     {
         [TestMethod]
         public void Creation() {
-            Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, Success> messageProcessor = (bytes, channel) => Success.Exit;
+            Success messageProcessor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel) => Success.Exit;
             var mp = new MessageParser(15, this, messageProcessor);
             Assert.IsNotNull(mp);
             Assert.ThrowsException<ArgumentNullException>(() => new MessageParser(15, null, messageProcessor));
@@ -98,9 +98,9 @@ namespace UnitTest.InterlockLedger.Peer2Peer
                 mp.Parse(sequence);
             }
             int payloadIndex = 0;
-            foreach (var result in results) {
-                var inputBytes = result.bytes.SelectMany(b => b.ToArray());
-                Assert.AreEqual(expectedChannels[payloadIndex], result.channel);
+            foreach (var (bytes, channel) in results) {
+                var inputBytes = bytes.SelectMany(b => b.ToArray());
+                Assert.AreEqual(expectedChannels[payloadIndex], channel);
                 byte[] expectedPayload = expectedPayloads[payloadIndex++];
                 Assert.AreEqual(expectedPayload.Length, inputBytes.Count());
                 Assert.IsTrue(expectedPayload.SequenceEqual(inputBytes.ToArray()));

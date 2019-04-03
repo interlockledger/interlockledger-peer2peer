@@ -2,24 +2,32 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>0.9.1</Version>
+    <Version>0.10.0</Version>
     <Authors>Rafael Teixeira</Authors>
     <Company>InterlockLedger Network</Company>
     <Product>InterlockLedger</Product>
     <Description>This library implements the backbone of a P2P network in .NET, with peer discoverability and routing. Plug your network protocol and defaults into it to have a working node.</Description>
     <Copyright>Copyright (c) 2017-2019 InterlockLedger Network</Copyright>
-    <PackageLicenseUrl>https://raw.githubusercontent.com/interlockledger/peer2peer/master/LICENSE</PackageLicenseUrl>
+    <PackageLicenseUrl></PackageLicenseUrl>
     <PackageProjectUrl>https://interlockledger.network/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/interlockledger/peer2peer.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageReleaseNotes>Trying not gobble all CPU for doing nothing</PackageReleaseNotes>
+    <PackageReleaseNotes>Avoiding to send intermixed responses</PackageReleaseNotes>
     <LangVersion>latest</LangVersion>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.1.1" />
     <PackageReference Include="System.IO.Pipelines" Version="4.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

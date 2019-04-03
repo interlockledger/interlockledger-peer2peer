@@ -80,7 +80,7 @@ namespace InterlockLedger.Peer2Peer
                     _sinksLocker.WithLock(() => {
                         _ = Interlocked.Increment(ref _lastChannelUsed);
                         _sinks[LastChannelUsed] = (LastChannelUsed, clientSink);
-                        _sender.Send(new Response(LastChannelUsed, segments));
+                        _sender?.Send(new Response(LastChannelUsed, segments));
                     });
                 }
                 return true;
@@ -97,7 +97,7 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public override void Stop() {
-            _pipeline?.Stop();
+            _pipeline?.ForceStop();
             _pipeline = null;
         }
 
@@ -105,7 +105,9 @@ namespace InterlockLedger.Peer2Peer
 
         protected override void PipelineStopped() {
             _logger.LogTrace($"Stopping pipeline on client to address {_networkAddress}:{_networkPort}");
-            Stop();
+            _sender = null;
+            _pipeline = null;
+            _sinksLocker.WithLock(_sinks.Clear);
         }
 
         protected override Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, Sender responder)
@@ -139,7 +141,7 @@ namespace InterlockLedger.Peer2Peer
                 var socket = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 socket.Connect(new IPEndPoint(ipAddress, _networkPort));
                 socket.LingerState = new LingerOption(false, 1);
-                var pipeline = CreatePipeline(socket, responder);
+                var pipeline = CreatePipeline(socket, responder, shutdownSocketOnExit: true);
                 _logger.LogTrace($"Client connecting into address {_networkAddress}:{_networkPort}");
                 new Thread(async () => await pipeline.Listen()).Start();
                 return pipeline;

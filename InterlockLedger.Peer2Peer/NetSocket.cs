@@ -1,4 +1,4 @@
-/******************************************************************************************************************************
+﻿/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -30,38 +30,27 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
+using System.Net;
 using System.Net.Sockets;
-using System.Threading;
+using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal abstract class BaseListener
+    public class NetSocket : ISocket
     {
-        public Pipeline CreatePipeline(Socket socket, Sender responder, bool shutdownSocketOnExit = false)
-            => new Pipeline(new NetSocket(socket), responder, _logger, _source, MessageTag, _minimumBufferSize, Processor, PipelineStopped, shutdownSocketOnExit);
+        public NetSocket(Socket socket) => _socket = socket ?? throw new ArgumentNullException(nameof(socket));
 
-        public abstract void Stop();
+        public EndPoint RemoteEndPoint => _socket.RemoteEndPoint;
 
-        protected readonly ILogger _logger;
+        public void Dispose() => _socket.Dispose();
 
-        protected readonly CancellationTokenSource _source;
+        public Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags) => _socket.ReceiveAsync(memory, socketFlags);
 
-        protected BaseListener(CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize) {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _source = source ?? throw new ArgumentNullException(nameof(source));
-            _source.Token.Register(Stop);
-            _minimumBufferSize = Math.Max(512, defaultListeningBufferSize);
-        }
+        public Task SendAsync(ArraySegment<byte> segment) => _socket.SendAsync(segment);
 
-        protected abstract ulong MessageTag { get; }
+        public void Shutdown(SocketShutdown how) => _socket.Shutdown(how);
 
-        protected abstract void PipelineStopped();
-
-        protected abstract Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, Sender responder);
-
-        private readonly int _minimumBufferSize;
+        private readonly Socket _socket;
     }
 }

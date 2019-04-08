@@ -47,13 +47,14 @@ namespace InterlockLedger.Peer2Peer
             await UsePipes(_socket.RemoteEndPoint);
             if (_shutdownSocketOnExit)
                 _socket.Shutdown(SocketShutdown.Both);
+            _socket.Dispose();
             _socket = null;
             _stopProcessor();
         }
 
         public void ForceStop() => _linkedSource.Cancel();
 
-        internal Pipeline(Socket socket, Sender sender, ILogger logger, CancellationTokenSource source, ulong messageTag, int minimumBufferSize, Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, Sender, Success> processor, Action stopProcessor, bool shutdownSocketOnExit) {
+        public Pipeline(ISocket socket, Sender sender, ILogger logger, CancellationTokenSource source, ulong messageTag, int minimumBufferSize, Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, Sender, Success> processor, Action stopProcessor, bool shutdownSocketOnExit) {
             _socket = socket ?? throw new ArgumentNullException(nameof(socket));
             _sender = sender ?? throw new ArgumentNullException(nameof(sender));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -78,7 +79,7 @@ namespace InterlockLedger.Peer2Peer
         private readonly Sender _sender;
         private readonly Action _stopProcessor;
         private readonly bool _shutdownSocketOnExit;
-        private Socket _socket;
+        private ISocket _socket;
         private bool Active => !_linkedToken.IsCancellationRequested;
 
         private async Task PipeFillAsync(PipeWriter writer) {

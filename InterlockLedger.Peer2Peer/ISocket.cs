@@ -30,38 +30,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
+using System.Net;
 using System.Net.Sockets;
-using System.Threading;
+using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal abstract class BaseListener
+    public interface ISocket : IDisposable
     {
-        public Pipeline CreatePipeline(Socket socket, Sender responder, bool shutdownSocketOnExit = false)
-            => new Pipeline(new NetSocket(socket), responder, _logger, _source, MessageTag, _minimumBufferSize, Processor, PipelineStopped, shutdownSocketOnExit);
+        EndPoint RemoteEndPoint { get; }
 
-        public abstract void Stop();
+        Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags);
 
-        protected readonly ILogger _logger;
+        Task SendAsync(ArraySegment<byte> segment);
 
-        protected readonly CancellationTokenSource _source;
-
-        protected BaseListener(CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize) {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _source = source ?? throw new ArgumentNullException(nameof(source));
-            _source.Token.Register(Stop);
-            _minimumBufferSize = Math.Max(512, defaultListeningBufferSize);
-        }
-
-        protected abstract ulong MessageTag { get; }
-
-        protected abstract void PipelineStopped();
-
-        protected abstract Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, Sender responder);
-
-        private readonly int _minimumBufferSize;
+        void Shutdown(SocketShutdown how);
     }
 }

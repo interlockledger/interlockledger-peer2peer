@@ -63,7 +63,6 @@ namespace UnitTest.InterlockLedger.Peer2Peer
 
         public async Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, Action<Response> respond) {
             await Task.Delay(10);
-            respond(Response.DoneFor(0));
             return Success.Exit;
         }
     }

@@ -86,9 +86,8 @@ namespace Demo.InterlockLedger.Peer2Peer
                 } catch (SocketException) {
                     // Do Nothing
                 }
-                await Task.Delay(1000);
+                await Task.Delay(2000);
             }
-            respond(Response.DoneFor(channel));
             return Success.Next;
         }
 

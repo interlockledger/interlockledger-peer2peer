@@ -40,8 +40,8 @@ namespace InterlockLedger.Peer2Peer
 {
     internal abstract class BaseListener
     {
-        public Pipeline CreatePipeline(Socket socket, Sender responder, bool shutdownSocketOnExit = false)
-            => new Pipeline(new NetSocket(socket), responder, _logger, _source, MessageTag, _minimumBufferSize, Processor, PipelineStopped, shutdownSocketOnExit);
+        public Pipeline CreatePipeline(Socket socket, bool shutdownSocketOnExit = false)
+            => new Pipeline(new NetSocket(socket), _logger, _source, MessageTag, _minimumBufferSize, Processor, PipelineStopped, shutdownSocketOnExit);
 
         public abstract void Stop();
 
@@ -60,7 +60,7 @@ namespace InterlockLedger.Peer2Peer
 
         protected abstract void PipelineStopped();
 
-        protected abstract Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, Sender responder);
+        protected abstract Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender responder);
 
         private readonly int _minimumBufferSize;
     }

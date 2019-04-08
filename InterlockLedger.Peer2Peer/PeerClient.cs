@@ -74,13 +74,12 @@ namespace InterlockLedger.Peer2Peer
             try {
                 if (!segments.IsEmpty()) {
                     if (_pipeline is null) {
-                        _sender = new Sender();
-                        _pipeline = Connect(_sender);
+                        _pipeline = Connect();
                     }
                     _sinksLocker.WithLock(() => {
                         _ = Interlocked.Increment(ref _lastChannelUsed);
                         _sinks[LastChannelUsed] = (LastChannelUsed, clientSink);
-                        _sender?.Send(new Response(LastChannelUsed, segments));
+                        _pipeline?.Send(new Response(LastChannelUsed, segments));
                     });
                 }
                 return true;
@@ -105,12 +104,11 @@ namespace InterlockLedger.Peer2Peer
 
         protected override void PipelineStopped() {
             _logger.LogTrace($"Stopping pipeline on client to address {_networkAddress}:{_networkPort}");
-            _sender = null;
             _pipeline = null;
             _sinksLocker.WithLock(_sinks.Clear);
         }
 
-        protected override Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, Sender responder)
+        protected override Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender responder)
             => _sinksLocker.WithLockAsync(async () => {
                 if (_sinks.ContainsKey(channel)) {
                     var result = await _sinks[channel].sink.SinkAsClientAsync(bytes, channel);
@@ -131,17 +129,16 @@ namespace InterlockLedger.Peer2Peer
         private readonly Locker _sinksLocker;
         private long _lastChannelUsed = 0;
         private Pipeline _pipeline;
-        private Sender _sender;
         private bool Abandon => _source.IsCancellationRequested || IsDisposed;
 
-        private Pipeline Connect(Sender responder) {
+        private Pipeline Connect() {
             try {
                 IPHostEntry ipHostInfo = Dns.GetHostEntry(_networkAddress);
                 IPAddress ipAddress = ipHostInfo.AddressList.First(ip => ip.AddressFamily == AddressFamily.InterNetwork);
                 var socket = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 socket.Connect(new IPEndPoint(ipAddress, _networkPort));
-                socket.LingerState = new LingerOption(false, 1);
-                var pipeline = CreatePipeline(socket, responder, shutdownSocketOnExit: true);
+                socket.LingerState = new LingerOption(true, 1);
+                var pipeline = CreatePipeline(socket, shutdownSocketOnExit: true);
                 _logger.LogTrace($"Client connecting into address {_networkAddress}:{_networkPort}");
                 new Thread(async () => await pipeline.Listen()).Start();
                 return pipeline;

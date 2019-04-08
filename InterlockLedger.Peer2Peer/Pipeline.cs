@@ -43,20 +43,10 @@ namespace InterlockLedger.Peer2Peer
 {
     public class Pipeline
     {
-        public async Task Listen() {
-            await UsePipes(_socket.RemoteEndPoint);
-            if (_shutdownSocketOnExit)
-                _socket.Shutdown(SocketShutdown.Both);
-            _socket.Dispose();
-            _socket = null;
-            _stopProcessor();
-        }
-
-        public void ForceStop() => _linkedSource.Cancel();
-
-        public Pipeline(ISocket socket, Sender sender, ILogger logger, CancellationTokenSource source, ulong messageTag, int minimumBufferSize, Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, Sender, Success> processor, Action stopProcessor, bool shutdownSocketOnExit) {
+        public Pipeline(ISocket socket, ILogger logger, CancellationTokenSource source, ulong messageTag, int minimumBufferSize,
+            Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, ISender, Success> processor, Action stopProcessor, bool shutdownSocketOnExit) {
             _socket = socket ?? throw new ArgumentNullException(nameof(socket));
-            _sender = sender ?? throw new ArgumentNullException(nameof(sender));
+            _sender = new Sender();
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             var parentSource = source ?? throw new ArgumentNullException(nameof(source));
             _linkedSource = new CancellationTokenSource();
@@ -69,6 +59,19 @@ namespace InterlockLedger.Peer2Peer
             _shutdownSocketOnExit = shutdownSocketOnExit;
         }
 
+        public void ForceStop() => _linkedSource.Cancel();
+
+        public async Task Listen() {
+            await UsePipes(_socket.RemoteEndPoint);
+            if (_shutdownSocketOnExit)
+                _socket.Shutdown(SocketShutdown.Both);
+            _socket.Dispose();
+            _socket = null;
+            _stopProcessor();
+        }
+
+        public void Send(Response response) => _sender.Send(response);
+
         private readonly Locker _dequeueLocker;
         private readonly CancellationTokenSource _linkedSource;
         private readonly CancellationToken _linkedToken;
@@ -77,8 +80,8 @@ namespace InterlockLedger.Peer2Peer
         private readonly int _minimumBufferSize;
         private readonly Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, Sender, Success> _processor;
         private readonly Sender _sender;
-        private readonly Action _stopProcessor;
         private readonly bool _shutdownSocketOnExit;
+        private readonly Action _stopProcessor;
         private ISocket _socket;
         private bool Active => !_linkedToken.IsCancellationRequested;
 
@@ -88,11 +91,16 @@ namespace InterlockLedger.Peer2Peer
                     _logger.LogTrace($"Getting {_minimumBufferSize} bytes to receive in the socket");
                     Memory<byte> memory = writer.GetMemory(_minimumBufferSize);
                     int bytesRead = await _socket.ReceiveAsync(memory, SocketFlags.None);
-                    if (bytesRead == 0) {
+                    if (bytesRead > 0) {
+                        // Tell the PipeWriter how much was read
+                        writer.Advance(bytesRead);
+                        // Make the data available to the PipeReader
+                        FlushResult result = await writer.FlushAsync();
+                        if (result.IsCompleted) {
+                            break;
+                        }
+                    } else
                         break;
-                    }
-                    // Tell the PipeWriter how much was read
-                    writer.Advance(bytesRead);
                 } catch (SocketException se) when (se.ErrorCode == 10054) {
                     _linkedSource.Cancel(false);
                     writer.Complete(se);
@@ -102,11 +110,6 @@ namespace InterlockLedger.Peer2Peer
                     writer.Complete(e);
                     return;
                 }
-                // Make the data available to the PipeReader
-                FlushResult result = await writer.FlushAsync();
-                if (result.IsCompleted) {
-                    break;
-                }
             }
             // Signal to the reader that we're done writing
             writer.Complete();
@@ -114,21 +117,21 @@ namespace InterlockLedger.Peer2Peer
 
         private async Task PipeReadAsync(PipeReader reader, MessageParser parser) {
             while (Active) {
-                ReadResult result = await reader.ReadAsync(_linkedToken);
-                if (result.IsCanceled)
-                    break;
                 try {
+                    ReadResult result = await reader.ReadAsync(_linkedToken);
+                    if (result.IsCanceled)
+                        break;
                     var buffer = result.Buffer;
                     if (!buffer.IsEmpty) {
                         reader.AdvanceTo(parser.Parse(result.Buffer));
                     }
+                    if (result.IsCompleted)
+                        break;
                 } catch (Exception e) {
                     _logger.LogError(e, "While reading/parsing message");
                     reader.Complete(e);
                     return;
                 }
-                if (result.IsCompleted)
-                    break;
             }
             reader.Complete();
         }
@@ -152,23 +155,23 @@ namespace InterlockLedger.Peer2Peer
 
         private async Task SendingPipeSendAsync(PipeReader reader) {
             while (Active) {
-                ReadResult result = await reader.ReadAsync(_linkedToken);
-                if (result.IsCanceled)
-                    break;
                 try {
+                    ReadResult result = await reader.ReadAsync(_linkedToken);
+                    if (result.IsCanceled)
+                        break;
                     var buffer = result.Buffer;
                     if (!buffer.IsEmpty) {
                         foreach (var b in buffer)
                             await _socket.SendAsync(MemoryExtensions.GetArraySegment(b));
                         reader.AdvanceTo(buffer.End);
                     }
+                    if (result.IsCompleted)
+                        break;
                 } catch (Exception e) {
                     _logger.LogError(e, "While sending bytes in the socket");
                     reader.Complete(e);
                     return;
                 }
-                if (result.IsCompleted)
-                    break;
             }
             reader.Complete();
         }

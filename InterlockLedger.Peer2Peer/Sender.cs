@@ -36,38 +36,34 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class Sender
+    internal class Sender : ISender
     {
-        public Sender() => Exit = false;
+        public Sender() => _shouldExit = false;
 
-        public bool Exit { get; private set; }
+        public bool Exit => _responses.IsEmpty && _shouldExit;
 
-        public void Send(Response response) {
-            if (!Exit)
-                _responses.Enqueue(response);
-        }
-
-        public void Stop() {
-            Exit = true;
-            Clear();
-        }
-
-        internal void Clear() {
-            while (_responses.TryDequeue(out _)) {
-                // Just ignore
-            }
-        }
-
-        internal async Task<Response> DequeueAsync(CancellationToken token) {
+        public async Task<Response> DequeueAsync(CancellationToken token) {
             Response response;
-            while (!_responses.TryDequeue(out response)) {
+            while (!(_responses.TryDequeue(out response) || _shouldExit)) {
                 await Task.Delay(1);
-                if (token.IsCancellationRequested)
+                if (token.IsCancellationRequested) {
+                    _shouldExit = true;
                     return default;
+                }
             }
             return response;
         }
 
+        public void Send(Response response) {
+            if (!_shouldExit)
+                _responses.Enqueue(response);
+        }
+
+        public void Stop() {
+            _shouldExit = true;
+        }
+
         private readonly ConcurrentQueue<Response> _responses = new ConcurrentQueue<Response>();
+        private bool _shouldExit;
     }
 }

@@ -49,16 +49,16 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             Assert.IsNotNull(peerServices);
             Assert.IsNull(fakeLogger.LastLog);
             INodeSink fakeNodeSink = new FakeNodeSink();
-            var peerClient = peerServices.GetClient(fakeNodeSink.MessageTag, "localhost", 80);
+            var peerClient = peerServices.GetClient(fakeNodeSink.MessageTag, "localhost", 80, 512);
             Assert.IsNotNull(peerClient);
             Assert.IsNull(fakeLogger.LastLog);
             IKnownNodesServices knownNodes = peerServices.KnownNodes;
-            var peerClient2 = knownNodes.GetClient("test2");
+            var peerClient2 = knownNodes.GetClient("test2", 512);
             Assert.IsNull(peerClient2);
             Assert.IsNull(fakeLogger.LastLog);
             Assert.AreEqual(false, knownNodes.IsKnown("test2"));
             knownNodes.Add("test3", fakeNodeSink.MessageTag, "localhost", 80);
-            var peerClient3 = knownNodes.GetClient("test3");
+            var peerClient3 = knownNodes.GetClient("test3", 512);
             Assert.AreEqual(true, knownNodes.IsKnown("test3"));
             Assert.IsNotNull(peerClient3);
             Assert.IsNull(fakeLogger.LastLog);
@@ -88,7 +88,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             IPeerServices peerServices = new PeerServices(fakeLogger, fakeDiscoverer);
             Assert.IsNotNull(peerServices);
             Assert.IsNull(fakeLogger.LastLog);
-            Assert.ThrowsException<InvalidOperationException>(() => peerServices.GetClient(13, "localhost", 80));
+            Assert.ThrowsException<InvalidOperationException>(() => peerServices.GetClient(13, "localhost", 80, 512));
             Assert.ThrowsException<InvalidOperationException>(() => peerServices.CreateListenerFor(fakeNodeSink));
             Assert.ThrowsException<ArgumentNullException>(() => peerServices.WithCancellationTokenSource(null));
             peerServices.WithCancellationTokenSource(new CancellationTokenSource());
@@ -113,12 +113,12 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             var peerListener = peerServices.CreateListenerFor(fakeNodeSink);
             Assert.IsNull(peerListener);
             Assert.IsNull(fakeLogger.LastLog);
-            var peerClient = peerServices.GetClient(fakeNodeSink.MessageTag, "localhost", 80);
+            var peerClient = peerServices.GetClient(fakeNodeSink.MessageTag, "localhost", 80, 512);
             Assert.IsNull(peerClient);
             Assert.IsNull(fakeLogger.LastLog);
             peerServices.KnownNodes.Add("test2", fakeNodeSink.MessageTag, "localhost", 80);
             Assert.IsFalse(peerServices.KnownNodes.IsKnown("test2"));
-            var peerClient2 = peerServices.KnownNodes.GetClient("test2");
+            var peerClient2 = peerServices.KnownNodes.GetClient("test2", 512);
             Assert.IsNull(peerClient2);
             Assert.IsNull(fakeLogger.LastLog);
         }

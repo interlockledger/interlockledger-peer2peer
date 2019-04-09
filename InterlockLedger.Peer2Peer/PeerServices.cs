@@ -66,7 +66,7 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        public IClient GetClient(ulong messageTag, string address, int port, int defaultListeningBufferSize = _defaultBufferSize)
+        public IClient GetClient(ulong messageTag, string address, int port, int defaultListeningBufferSize)
             => Do(() => {
                 lock (_clients) {
                     var id = $"{address}:{port}#{messageTag}";
@@ -96,12 +96,15 @@ namespace InterlockLedger.Peer2Peer
             if ((!_disposedValue) && _knownNodes.ContainsKey(nodeId)) _knownNodes.Remove(nodeId);
         }
 
-        IClient IKnownNodesServices.GetClient(string nodeId)
-            => Do(() => _knownNodes.TryGetValue(nodeId, out (string address, int port, ulong messageTag) n) ? GetClient(n.messageTag, n.address, n.port) : null);
+        IClient IKnownNodesServices.GetClient(string nodeId, int defaultListeningBufferSize)
+            => Do(
+                () => _knownNodes.TryGetValue(nodeId, out (string address, int port, ulong messageTag) n)
+                        ? GetClient(n.messageTag, n.address, n.port, defaultListeningBufferSize)
+                        : null
+                );
 
         bool IKnownNodesServices.IsKnown(string nodeId) => (!_disposedValue) && _knownNodes.ContainsKey(nodeId);
 
-        private const int _defaultBufferSize = 4096 * 4;
         private readonly IDictionary<string, IClient> _clients;
         private readonly IExternalAccessDiscoverer _discoverer;
         private readonly IDictionary<string, (string address, int port, ulong messageTag)> _knownNodes;

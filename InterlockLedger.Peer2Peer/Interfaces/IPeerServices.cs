@@ -43,8 +43,7 @@ namespace InterlockLedger.Peer2Peer
 
         IListener CreateListenerFor(INodeSink nodeSink);
 
-        IClient GetClient(ulong messageTag, string address, int port,
-            int defaultListeningBufferSize = 4096);
+        IClient GetClient(ulong messageTag, string address, int port, int defaultListeningBufferSize);
 
         IPeerServices WithCancellationTokenSource(CancellationTokenSource source);
     }

@@ -1,4 +1,4 @@
-﻿/******************************************************************************************************************************
+/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -39,7 +39,7 @@ namespace InterlockLedger.Peer2Peer
 
         void Forget(string nodeId);
 
-        IClient GetClient(string nodeId);
+        IClient GetClient(string nodeId, int defaultListeningBufferSize);
 
         bool IsKnown(string nodeId);
     }

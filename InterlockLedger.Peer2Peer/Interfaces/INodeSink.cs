@@ -71,7 +71,6 @@ namespace InterlockLedger.Peer2Peer
     public interface ISink
     {
         int DefaultListeningBufferSize { get; }
-        int DefaultTimeoutInMilliseconds { get; }
         ulong MessageTag { get; }
     }
 }

@@ -37,6 +37,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Demo.InterlockLedger.Peer2Peer
@@ -78,28 +79,17 @@ namespace Demo.InterlockLedger.Peer2Peer
             return Received(Sink(readOnlyBytes, channel));
         }
 
-        public override async Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, Action<Response> respond) {
-            var result = SinkAsServer(readOnlyBytes.SelectMany(b => b.ToArray()).ToArray());
-            foreach (var r in result) {
-                try {
-                    respond(new Response(channel,r));
-                } catch (SocketException) {
-                    // Do Nothing
-                }
-                await Task.Delay(2000);
-            }
-            return Success.Next;
+        public override Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, ISender sender) {
+            SinkAsServerWithDelayedResponsesAsync(channel, sender, readOnlyBytes.SelectMany(b => b.ToArray()).ToArray()).RunOnThread();
+            return Task.FromResult(Success.Next);
         }
 
         public IList<ArraySegment<byte>> ToMessage(IEnumerable<byte> bytes, bool isLast)
             => new List<ArraySegment<byte>> { new ArraySegment<byte>(ToMessageBytes(bytes, isLast)) };
 
         private const ulong _messageTagCode = ':';
-
         private static readonly IEnumerable<byte> _haveMoreMarker = new byte[] { 1 };
-
         private static readonly IEnumerable<byte> _isLastMarker = new byte[] { 0 };
-
         private readonly byte[] _encodedMessageTag = _messageTagCode.ILIntEncode();
 
         private static Success Sink(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel) {
@@ -112,15 +102,15 @@ namespace Demo.InterlockLedger.Peer2Peer
             return Success.Exit;
         }
 
+        private ReadOnlyMemory<byte> FormatResponse(IEnumerable<byte> buffer, bool isLast)
+            => new ReadOnlyMemory<byte>(ToMessageBytes(buffer.ToArray(), isLast));
+
+        private ReadOnlyMemory<byte> FormatTextResponse(string text, bool isLast) => FormatResponse(text.AsUTF8Bytes(), isLast);
+
         private Success Received(Success success) {
             DoneReceiving = success == Success.Exit;
             return success;
         }
-
-        private ReadOnlyMemory<byte> SendResponse(IEnumerable<byte> buffer, bool isLast)
-                => new ReadOnlyMemory<byte>(ToMessageBytes(buffer.ToArray(), isLast));
-
-        private ReadOnlyMemory<byte> SendTextResponse(string text, bool isLast) => SendResponse(text.AsUTF8Bytes(), isLast);
 
         private IEnumerable<ReadOnlyMemory<byte>> SinkAsServer(byte[] buffer) {
             var command = (buffer.Length > 1) ? (char)buffer[1] : '\0';
@@ -128,22 +118,34 @@ namespace Demo.InterlockLedger.Peer2Peer
             Console.WriteLine($"Received command '{command}'");
             switch (command) {
             case 'e':  // is echo message?
-                yield return SendResponse(text, isLast: true);
+                yield return FormatResponse(text, isLast: true);
                 break;
 
             case '3': // is triple echo message?
-                yield return SendResponse(text, isLast: false);
-                yield return SendResponse(text, isLast: false);
-                yield return SendResponse(text, isLast: true);
+                yield return FormatResponse(text, isLast: false);
+                yield return FormatResponse(text, isLast: false);
+                yield return FormatResponse(text, isLast: true);
                 break;
 
             case 'w':  // is who message?
-                yield return SendTextResponse(Url, isLast: true);
+                yield return FormatTextResponse(Url, isLast: true);
                 break;
 
             default:
-                yield return SendTextResponse("?", isLast: true);
+                yield return FormatTextResponse("?", isLast: true);
                 break;
+            }
+        }
+
+        private async Task SinkAsServerWithDelayedResponsesAsync(ulong channel, ISender sender, byte[] buffer) {
+            var result = SinkAsServer(buffer);
+            foreach (var r in result) {
+                try {
+                    sender.Send(new Response(channel, r));
+                } catch (SocketException) {
+                    // Do Nothing
+                }
+                await Task.Delay(2000);
             }
         }
 

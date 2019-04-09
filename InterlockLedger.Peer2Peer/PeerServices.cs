@@ -44,7 +44,7 @@ namespace InterlockLedger.Peer2Peer
         public PeerServices(ILoggerFactory loggerFactory, IExternalAccessDiscoverer discoverer) {
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _discoverer = discoverer ?? throw new ArgumentNullException(nameof(discoverer));
-            _cache = new Dictionary<string, (string address, int port, ulong messageTag)>();
+            _knownNodes = new Dictionary<string, (string address, int port, ulong messageTag)>();
             _clients = new Dictionary<string, IClient>();
         }
 
@@ -52,13 +52,13 @@ namespace InterlockLedger.Peer2Peer
         public CancellationTokenSource Source => _source ?? throw new InvalidOperationException("CancellationTokenSource was not set yet!");
 
         public IListener CreateListenerFor(INodeSink nodeSink)
-            => Do(() => new PeerListener(nodeSink, _discoverer, Source, CreateLogger(nameof(PeerListener))));
+            => Do(() => new PeerListener(nodeSink, _discoverer, Source, CreateLogger($"{nameof(PeerListener)}#{nodeSink.MessageTag}")));
 
         public void Dispose() {
             if (!_disposedValue) {
                 _loggerFactory.Dispose();
                 _discoverer.Dispose();
-                _cache.Clear();
+                _knownNodes.Clear();
                 foreach (var client in _clients.Values)
                     client?.Dispose();
                 _clients.Clear();
@@ -66,16 +66,12 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        public IClient GetClient(ulong messageTag, string address, int port,
-            int defaultListeningBufferSize = 4096,
-            int defaultTimeoutInMilliseconds = 30_000)
+        public IClient GetClient(ulong messageTag, string address, int port, int defaultListeningBufferSize = _defaultBufferSize)
             => Do(() => {
                 lock (_clients) {
-                    var id = $"{address}:{port}";
+                    var id = $"{address}:{port}#{messageTag}";
                     if (!_clients.ContainsKey(id)) {
-                        _clients.Add(id, new PeerClient(id, address, port, messageTag, Source,
-                            CreateLogger(nameof(PeerClient)),
-                            defaultListeningBufferSize));
+                        _clients.Add(id, new PeerClient(id, messageTag, address, port, Source, CreateLogger($"{nameof(PeerClient)}@{id}"), defaultListeningBufferSize));
                     }
                     return _clients[id];
                 }
@@ -92,22 +88,23 @@ namespace InterlockLedger.Peer2Peer
                     throw new ArgumentNullException(nameof(nodeId));
                 if (string.IsNullOrWhiteSpace(address))
                     throw new ArgumentNullException(nameof(address));
-                _cache[nodeId] = (address, port, messageTag);
+                _knownNodes[nodeId] = (address, port, messageTag);
             }
         }
 
         void IKnownNodesServices.Forget(string nodeId) {
-            if ((!_disposedValue) && _cache.ContainsKey(nodeId)) _cache.Remove(nodeId);
+            if ((!_disposedValue) && _knownNodes.ContainsKey(nodeId)) _knownNodes.Remove(nodeId);
         }
 
         IClient IKnownNodesServices.GetClient(string nodeId)
-            => Do(() => _cache.TryGetValue(nodeId, out (string address, int port, ulong messageTag) n) ? GetClient(n.messageTag, n.address, n.port) : null);
+            => Do(() => _knownNodes.TryGetValue(nodeId, out (string address, int port, ulong messageTag) n) ? GetClient(n.messageTag, n.address, n.port) : null);
 
-        bool IKnownNodesServices.IsKnown(string nodeId) => (!_disposedValue) && _cache.ContainsKey(nodeId);
+        bool IKnownNodesServices.IsKnown(string nodeId) => (!_disposedValue) && _knownNodes.ContainsKey(nodeId);
 
-        private readonly IDictionary<string, (string address, int port, ulong messageTag)> _cache;
+        private const int _defaultBufferSize = 4096 * 4;
         private readonly IDictionary<string, IClient> _clients;
         private readonly IExternalAccessDiscoverer _discoverer;
+        private readonly IDictionary<string, (string address, int port, ulong messageTag)> _knownNodes;
         private readonly ILoggerFactory _loggerFactory;
         private bool _disposedValue = false;
 

@@ -54,24 +54,24 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             var fakeDiscoverer = new FakeDiscoverer();
             var source = new CancellationTokenSource();
             var fakeSocket = new TestSocket(13, 1, 128, 2);
-            Success processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender sender) {
+            Task<Success> processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender sender) {
                 bytesProcessed = bytes.First().ToArray();
                 channelProcessed = channel;
                 sender.Send(new Response(channel, 13, 1, 128));
                 sender.Stop();
-                return Success.Exit;
+                return Task.FromResult(Success.Exit);
             }
             void stopProcessor() => stopped = true;
             var pipeline = new Pipeline(fakeSocket, fakeLogger, source, 13, 4096, processor, stopProcessor, true);
             Assert.IsNotNull(pipeline);
             Assert.IsNull(fakeLogger.LastLog);
-            pipeline.Listen().Wait();
+            pipeline.ListenAsync().Wait();
             Assert.IsNotNull(bytesProcessed);
             Assert.IsNotNull(fakeLogger.LastLog);
             Assert.AreEqual(2ul, channelProcessed);
             AssertHasSameBytes(nameof(bytesProcessed), bytesProcessed, 128);
-            Assert.IsNotNull(fakeSocket.BytesSent.Array);
-            AssertHasSameBytes(nameof(fakeSocket.BytesSent), fakeSocket.BytesSent, 13, 1, 128, 2);
+            Assert.IsNotNull(fakeSocket.BytesSent);
+            AssertHasSameBytes(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 13, 1, 128, 2);
             Assert.IsTrue(stopped);
         }
 
@@ -82,11 +82,19 @@ namespace UnitTest.InterlockLedger.Peer2Peer
 
         private static string Joined(IEnumerable<byte> bytes) => bytes.Any() ? string.Join(", ", bytes.Select(b => b.ToString())) : "-";
 
+        private static IEnumerable<byte> ToBytes(IList<ArraySegment<byte>> bytesSent) {
+            foreach (var segment in bytesSent) {
+                if (segment.Array != null)
+                    foreach (var b in segment)
+                        yield return b;
+            }
+        }
+
         private class TestSocket : ISocket
         {
             public TestSocket(params byte[] bytesReceived) => _bytesReceived = bytesReceived ?? throw new ArgumentNullException(nameof(bytesReceived));
 
-            public ArraySegment<byte> BytesSent { get; private set; }
+            public IList<ArraySegment<byte>> BytesSent { get; private set; }
             public EndPoint RemoteEndPoint => new IPEndPoint(IPAddress.Loopback, 13013);
 
             public void Dispose() {
@@ -106,7 +114,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
                 return 0;
             }
 
-            public Task SendAsync(ArraySegment<byte> segment) {
+            public Task SendAsync(IList<ArraySegment<byte>> segment) {
                 BytesSent = segment;
                 return Task.CompletedTask;
             }

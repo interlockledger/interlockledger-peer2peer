@@ -65,7 +65,7 @@ namespace InterlockLedger.Peer2Peer
 
         void PublishedAt(string address, ushort port);
 
-        Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, Action<Response> respond);
+        Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, ISender sender);
     }
 
     public interface ISink

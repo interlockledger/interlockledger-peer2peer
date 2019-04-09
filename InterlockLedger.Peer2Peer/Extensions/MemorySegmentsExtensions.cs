@@ -1,4 +1,4 @@
-﻿/******************************************************************************************************************************
+/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -40,5 +41,17 @@ namespace InterlockLedger.Peer2Peer
     {
         public static bool IsEmpty(this IList<ArraySegment<byte>> segments)
             => !segments.Any(segment => segment.Count > 0);
+
+        public static IList<ArraySegment<byte>> ToArraySegments(this ReadOnlySequence<byte> sequence)
+            => new List<ArraySegment<byte>>().Append(sequence);
+
+        private static List<ArraySegment<byte>> Append(this List<ArraySegment<byte>> buffers, ReadOnlySequence<byte> sequence) {
+            foreach (var b in sequence) {
+                ArraySegment<byte> segment = b.GetArraySegment();
+                if (segment.Count > 0)
+                    buffers.Add(segment);
+            }
+            return buffers;
+        }
     }
 }

@@ -1,4 +1,4 @@
-﻿/******************************************************************************************************************************
+/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -47,7 +48,7 @@ namespace InterlockLedger.Peer2Peer
 
         public Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags) => _socket.ReceiveAsync(memory, socketFlags);
 
-        public Task SendAsync(ArraySegment<byte> segment) => _socket.SendAsync(segment);
+        public Task SendAsync(IList<ArraySegment<byte>> buffers) => _socket.SendAsync(buffers);
 
         public void Shutdown(SocketShutdown how) => _socket.Shutdown(how);
 

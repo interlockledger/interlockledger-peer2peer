@@ -30,41 +30,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using InterlockLedger.Peer2Peer;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Linq;
 
-namespace UnitTest.InterlockLedger.Peer2Peer
+namespace InterlockLedger.Peer2Peer
 {
-    internal class FakeNodeSink : INodeSink
+    public static class IntExtensions
     {
-        public int DefaultListeningBufferSize => 1024;
-        public int DefaultTimeoutInMilliseconds => 30_000;
-        public string HostAtAddress => "localhost";
-        public ushort HostAtPortNumber => 9090;
-        public IEnumerable<string> LocalResources { get; } = new string[] { "DummyDoc1", "DummyDoc2" };
-        public ulong MessageTag => '?';
-        public string NetworkName => "UnitTesting";
-        public string NetworkProtocolName => "UnitTest";
-        public string NodeId => "DummyNode";
-        public string PublishAtAddress => HostAtAddress;
-        public ushort? PublishAtPortNumber => HostAtPortNumber;
-        public IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "None" };
-        public bool UseChannel => false;
-
-        public void HostedAt(string address, ushort port) {
-            // Do nothing
-        }
-
-        public void PublishedAt(string address, ushort port) {
-            // Do nothing
-        }
-
-        public async Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, ISender sender) {
-            await Task.Delay(10);
-            sender.Stop();
-            return Success.Exit;
-        }
+        public static bool In(this int value, params int[] list) => list.Any(n => n == value);
     }
 }

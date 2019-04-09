@@ -37,6 +37,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace UnitTest.InterlockLedger.Peer2Peer
 {
@@ -45,7 +46,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
     {
         [TestMethod]
         public void Creation() {
-            Success messageProcessor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel) => Success.Exit;
+            Task<Success> messageProcessor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel) => Task.FromResult(Success.Exit);
             var mp = new MessageParser(15, this, messageProcessor);
             Assert.IsNotNull(mp);
             Assert.ThrowsException<ArgumentNullException>(() => new MessageParser(15, null, messageProcessor));
@@ -89,9 +90,9 @@ namespace UnitTest.InterlockLedger.Peer2Peer
 
         private void DoRawParsing(ulong[] expectedChannels, IEnumerable<ReadOnlySequence<byte>> sequencesToParse, ulong expectedTag, params byte[][] expectedPayloads) {
             var results = new List<(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel)>();
-            Success messageProcessor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel) {
+            Task<Success> messageProcessor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel) {
                 results.Add((bytes, channel));
-                return results.Count < expectedPayloads.Length ? Success.Next : Success.Exit;
+                return Task.FromResult(results.Count < expectedPayloads.Length ? Success.Next : Success.Exit);
             }
             var mp = new MessageParser(expectedTag, this, messageProcessor);
             foreach (var sequence in sequencesToParse) {

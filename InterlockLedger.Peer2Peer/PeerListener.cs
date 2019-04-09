@@ -59,7 +59,7 @@ namespace InterlockLedger.Peer2Peer
         public void Start() {
             if (_source.IsCancellationRequested)
                 return;
-            new Thread(async () => await Listen()).Start();
+            Listen().RunOnThread();
         }
 
         public override void Stop() {
@@ -83,8 +83,8 @@ namespace InterlockLedger.Peer2Peer
             // Do Nothing
         }
 
-        protected override Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender responder)
-            => _nodeSink.SinkAsNodeAsync(bytes, channel, responder.Send).Result;
+        protected override Task<Success> ProcessorAsync(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender responder)
+            => _nodeSink.SinkAsNodeAsync(bytes, channel, responder);
 
         private readonly INodeSink _nodeSink;
 
@@ -105,8 +105,7 @@ namespace InterlockLedger.Peer2Peer
                 try {
                     while (!_source.IsCancellationRequested) {
                         var socket = await _listenSocket.AcceptAsync();
-                        Pipeline pipeline = CreatePipeline(socket);
-                        new Thread(async () => await pipeline.Listen()).Start();
+                        CreatePipeline(socket).ListenAsync().RunOnThread();
                     }
                 } catch (AggregateException e) when (e.InnerExceptions.Any(ex => ex is ObjectDisposedException)) {
                     _logger.LogTrace(e, "ObjectDisposedException");

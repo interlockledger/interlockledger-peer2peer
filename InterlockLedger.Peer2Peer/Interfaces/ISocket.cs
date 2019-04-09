@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -43,7 +44,7 @@ namespace InterlockLedger.Peer2Peer
 
         Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags);
 
-        Task SendAsync(ArraySegment<byte> segment);
+        Task SendAsync(IList<ArraySegment<byte>> buffers);
 
         void Shutdown(SocketShutdown how);
     }

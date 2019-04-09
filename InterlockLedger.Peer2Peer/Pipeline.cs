@@ -38,13 +38,14 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace InterlockLedger.Peer2Peer
 {
     public class Pipeline
     {
         public Pipeline(ISocket socket, ILogger logger, CancellationTokenSource source, ulong messageTag, int minimumBufferSize,
-            Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, ISender, Success> processor, Action stopProcessor, bool shutdownSocketOnExit) {
+            Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, ISender, Task<Success>> processor, Action stopProcessor, bool shutdownSocketOnExit) {
             _socket = socket ?? throw new ArgumentNullException(nameof(socket));
             _sender = new Sender();
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -61,7 +62,7 @@ namespace InterlockLedger.Peer2Peer
 
         public void ForceStop() => _linkedSource.Cancel();
 
-        public async Task Listen() {
+        public async Task ListenAsync() {
             await UsePipes(_socket.RemoteEndPoint);
             if (_shutdownSocketOnExit)
                 _socket.Shutdown(SocketShutdown.Both);
@@ -78,7 +79,7 @@ namespace InterlockLedger.Peer2Peer
         private readonly ILogger _logger;
         private readonly ulong _messageTag;
         private readonly int _minimumBufferSize;
-        private readonly Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, Sender, Success> _processor;
+        private readonly Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, Sender, Task<Success>> _processor;
         private readonly Sender _sender;
         private readonly bool _shutdownSocketOnExit;
         private readonly Action _stopProcessor;
@@ -101,7 +102,10 @@ namespace InterlockLedger.Peer2Peer
                         }
                     } else
                         break;
-                } catch (SocketException se) when (se.ErrorCode == 10054) {
+                } catch (OperationCanceledException oce) {
+                    writer.Complete(oce);
+                    return;
+                } catch (SocketException se) when (se.ErrorCode.In(10054, 104)) {
                     _linkedSource.Cancel(false);
                     writer.Complete(se);
                     return;
@@ -127,6 +131,9 @@ namespace InterlockLedger.Peer2Peer
                     }
                     if (result.IsCompleted)
                         break;
+                } catch (OperationCanceledException oce) {
+                    reader.Complete(oce);
+                    return;
                 } catch (Exception e) {
                     _logger.LogError(e, "While reading/parsing message");
                     reader.Complete(e);
@@ -144,6 +151,9 @@ namespace InterlockLedger.Peer2Peer
                     Response response = await _sender.DequeueAsync(_linkedToken);
                     if (!await WriteResponse(writer, response))
                         break;
+                } catch (OperationCanceledException oce) {
+                    writer.Complete(oce);
+                    return;
                 } catch (Exception e) {
                     _logger.LogError(e, "While dequeueing");
                     writer.Complete(e);
@@ -159,14 +169,16 @@ namespace InterlockLedger.Peer2Peer
                     ReadResult result = await reader.ReadAsync(_linkedToken);
                     if (result.IsCanceled)
                         break;
-                    var buffer = result.Buffer;
-                    if (!buffer.IsEmpty) {
-                        foreach (var b in buffer)
-                            await _socket.SendAsync(MemoryExtensions.GetArraySegment(b));
-                        reader.AdvanceTo(buffer.End);
+                    var sequence = result.Buffer;
+                    if (!sequence.IsEmpty) {
+                        await _socket.SendAsync(sequence.ToArraySegments());
+                        reader.AdvanceTo(sequence.End);
                     }
                     if (result.IsCompleted)
                         break;
+                } catch (OperationCanceledException oce) {
+                    reader.Complete(oce);
+                    return;
                 } catch (Exception e) {
                     _logger.LogError(e, "While sending bytes in the socket");
                     reader.Complete(e);
@@ -175,6 +187,7 @@ namespace InterlockLedger.Peer2Peer
             }
             reader.Complete();
         }
+
 
         private async Task UsePipes(EndPoint remoteEndPoint) {
             _logger.LogTrace($"[{remoteEndPoint}]: connected");

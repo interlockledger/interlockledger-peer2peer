@@ -35,13 +35,14 @@ using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
     internal abstract class BaseListener
     {
         public Pipeline CreatePipeline(Socket socket, bool shutdownSocketOnExit = false)
-            => new Pipeline(new NetSocket(socket), _logger, _source, MessageTag, _minimumBufferSize, Processor, PipelineStopped, shutdownSocketOnExit);
+            => new Pipeline(new NetSocket(socket), _logger, _source, MessageTag, _minimumBufferSize, ProcessorAsync, PipelineStopped, shutdownSocketOnExit);
 
         public abstract void Stop();
 
@@ -60,7 +61,7 @@ namespace InterlockLedger.Peer2Peer
 
         protected abstract void PipelineStopped();
 
-        protected abstract Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender responder);
+        protected abstract Task<Success> ProcessorAsync(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender responder);
 
         private readonly int _minimumBufferSize;
     }

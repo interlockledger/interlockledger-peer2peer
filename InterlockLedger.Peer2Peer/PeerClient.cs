@@ -43,7 +43,7 @@ namespace InterlockLedger.Peer2Peer
 {
     internal sealed class PeerClient : BaseListener, IClient
     {
-        public PeerClient(string id, string networkAddress, int port, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
+        public PeerClient(string id, ulong tag, string networkAddress, int port, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
             : base(source, logger, defaultListeningBufferSize) {
             if (string.IsNullOrWhiteSpace(id))
                 throw new ArgumentNullException(nameof(id));
@@ -79,7 +79,7 @@ namespace InterlockLedger.Peer2Peer
                     _sinksLocker.WithLock(() => {
                         _ = Interlocked.Increment(ref _lastChannelUsed);
                         _sinks[LastChannelUsed] = (LastChannelUsed, clientSink);
-                        _pipeline?.Send(new Response(LastChannelUsed, segments));
+                        _pipeline.Send(new Response(LastChannelUsed, segments));
                     });
                 }
                 return true;
@@ -103,13 +103,13 @@ namespace InterlockLedger.Peer2Peer
         protected override ulong MessageTag { get; }
 
         protected override void PipelineStopped() {
-            _logger.LogTrace($"Stopping pipeline on client to address {_networkAddress}:{_networkPort}");
+            _logger.LogTrace($"Stopping pipeline on client {Id}");
             _pipeline = null;
             _sinksLocker.WithLock(_sinks.Clear);
         }
 
-        protected override Success Processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender responder)
-            => _sinksLocker.WithLockAsync(async () => {
+        protected override async Task<Success> ProcessorAsync(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender responder)
+            => await _sinksLocker.WithLockAsync(async () => {
                 if (_sinks.ContainsKey(channel)) {
                     var result = await _sinks[channel].sink.SinkAsClientAsync(bytes, channel);
                     if (result == Success.Exit) {
@@ -119,7 +119,7 @@ namespace InterlockLedger.Peer2Peer
                     return result;
                 }
                 return Success.Next;
-            }).Result;
+            });
 
         private const int _hoursOfSilencedDuplicateErrors = 8;
         private static readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
@@ -140,7 +140,7 @@ namespace InterlockLedger.Peer2Peer
                 socket.LingerState = new LingerOption(true, 1);
                 var pipeline = CreatePipeline(socket, shutdownSocketOnExit: true);
                 _logger.LogTrace($"Client connecting into address {_networkAddress}:{_networkPort}");
-                new Thread(async () => await pipeline.Listen()).Start();
+                pipeline.ListenAsync().RunOnThread();
                 return pipeline;
             } catch (Exception se) {
                 throw new PeerException($"Client could not connect into address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}", se);

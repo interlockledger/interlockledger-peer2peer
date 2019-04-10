@@ -59,7 +59,7 @@ namespace InterlockLedger.Peer2Peer
         public void Start() {
             if (_source.IsCancellationRequested)
                 return;
-            Listen().RunOnThread();
+            Listen().RunOnThread(nameof(PeerListener));
         }
 
         public override void Stop() {
@@ -105,7 +105,7 @@ namespace InterlockLedger.Peer2Peer
                 try {
                     while (!_source.IsCancellationRequested) {
                         var socket = await _listenSocket.AcceptAsync();
-                        CreatePipeline(socket).ListenAsync().RunOnThread();
+                        CreatePipeline(socket).ListenAsync().RunOnThread($"Pipeline from {socket.RemoteEndPoint}");
                     }
                 } catch (AggregateException e) when (e.InnerExceptions.Any(ex => ex is ObjectDisposedException)) {
                     _logger.LogTrace(e, "ObjectDisposedException");

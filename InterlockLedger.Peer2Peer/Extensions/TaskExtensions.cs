@@ -1,4 +1,4 @@
-﻿/******************************************************************************************************************************
+/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -37,6 +37,12 @@ namespace InterlockLedger.Peer2Peer
 {
     public static class TaskExtensions
     {
-        public static void RunOnThread(this Task task) => new Thread(async () => await task).Start();
+        public static void RunOnThread(this Task task, string name) {
+            var thread = new Thread(task.Wait) {
+                Name = name,
+                Priority = ThreadPriority.AboveNormal
+            };
+            thread.Start();
+        }
     }
 }

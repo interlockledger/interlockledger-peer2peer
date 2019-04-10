@@ -145,7 +145,7 @@ namespace InterlockLedger.Peer2Peer
                 socket.LingerState = new LingerOption(true, 1);
                 var pipeline = CreatePipeline(socket, shutdownSocketOnExit: true);
                 _logger.LogTrace($"Client connecting into address {_networkAddress}:{_networkPort}");
-                pipeline.ListenAsync().RunOnThread();
+                pipeline.ListenAsync().RunOnThread($"Pipeline to {socket.RemoteEndPoint}");
                 return pipeline;
             } catch (Exception se) {
                 throw new PeerException($"Client could not connect into address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}", se);

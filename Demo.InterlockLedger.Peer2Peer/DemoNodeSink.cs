@@ -80,7 +80,7 @@ namespace Demo.InterlockLedger.Peer2Peer
         }
 
         public override Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, ISender sender) {
-            SinkAsServerWithDelayedResponsesAsync(channel, sender, readOnlyBytes.SelectMany(b => b.ToArray()).ToArray()).RunOnThread();
+            SinkAsServerWithDelayedResponsesAsync(channel, sender, readOnlyBytes.SelectMany(b => b.ToArray()).ToArray()).RunOnThread("DemoServer-DelayedResponses");
             return Task.FromResult(Success.Next);
         }
 

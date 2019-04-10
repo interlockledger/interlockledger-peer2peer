@@ -124,13 +124,16 @@ namespace InterlockLedger.Peer2Peer
                     if (result.IsCanceled)
                         break;
                     var buffer = result.Buffer;
-                    if (!buffer.IsEmpty) {
+                    if (!buffer.IsEmpty)
                         reader.AdvanceTo(parser.Parse(result.Buffer));
-                    }
                     if (result.IsCompleted)
                         break;
                 } catch (OperationCanceledException oce) {
                     reader.Complete(oce);
+                    return;
+                } catch (SocketException se) when (se.ErrorCode.In(10054, 104)) {
+                    _linkedSource.Cancel(false);
+                    reader.Complete(se);
                     return;
                 } catch (Exception e) {
                     _logger.LogError(e, "While reading/parsing message");
@@ -154,6 +157,10 @@ namespace InterlockLedger.Peer2Peer
                     }
                 } catch (OperationCanceledException oce) {
                     writer.Complete(oce);
+                    return;
+                } catch (SocketException se) when (se.ErrorCode.In(10054, 104)) {
+                    _linkedSource.Cancel(false);
+                    writer.Complete(se);
                     return;
                 } catch (Exception e) {
                     _logger.LogError(e, "While dequeueing");
@@ -182,6 +189,10 @@ namespace InterlockLedger.Peer2Peer
                         break;
                 } catch (OperationCanceledException oce) {
                     reader.Complete(oce);
+                    return;
+                } catch (SocketException se) when (se.ErrorCode.In(10054, 104)) {
+                    _linkedSource.Cancel(false);
+                    reader.Complete(se);
                     return;
                 } catch (Exception e) {
                     _logger.LogError(e, "While sending bytes in the socket");

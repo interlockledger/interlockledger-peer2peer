@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>0.12.1</Version>
+    <Version>0.13.0</Version>
     <Authors>Rafael Teixeira</Authors>
     <Company>InterlockLedger Network</Company>
     <Product>InterlockLedger</Product>
@@ -13,7 +13,7 @@
     <RepositoryUrl>https://github.com/interlockledger/peer2peer.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageReleaseNotes>Remove some default values for parameters that are proving to not be good defaults</PackageReleaseNotes>
+    <PackageReleaseNotes>Abandon Locker and use Monitor.Enter/Exit and AsyncLock</PackageReleaseNotes>
     <LangVersion>latest</LangVersion>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>

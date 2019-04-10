@@ -48,18 +48,23 @@ namespace InterlockLedger.Peer2Peer
             _expectedTag = expectedTag;
             LastResult = Success.Next;
             _state = State.Init;
-            _locker = new Locker(CancellationToken.None);
         }
 
         public Success LastResult { get; private set; }
 
-        public SequencePosition Parse(ReadOnlySequence<byte> buffer) => _locker.WithLock(() => InnerParse(buffer));
+        public SequencePosition Parse(ReadOnlySequence<byte> buffer) {
+            Monitor.Enter(this);
+            try {
+                return InnerParse(buffer);
+            } finally {
+                Monitor.Exit(this);
+            }
+        }
 
         private const ulong _maxBytesToRead = 16 * 1024 * 1024;
         private readonly ILIntReader _channelReader = new ILIntReader();
         private readonly ulong _expectedTag;
         private readonly ILIntReader _lengthReader = new ILIntReader();
-        private readonly Locker _locker;
         private readonly ILogger _logger;
         private readonly Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, Task<Success>> _messageProcessor;
         private readonly List<ReadOnlyMemory<byte>> _segments = new List<ReadOnlyMemory<byte>>();

@@ -30,51 +30,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace InterlockLedger.Peer2Peer
+namespace UnitTest.InterlockLedger.Peer2Peer
 {
-    public class Locker
+    public static class TestHelpers
     {
-        public Locker(CancellationToken token) => _token = token;
-
-        public void WithLock(Action action) => WithLockAsync(action).Wait();
-
-        public T WithLock<T>(Func<T> action) => WithLockAsync(() => Task.FromResult(action())).Result;
-
-        public async Task<T> WithLockAsync<T>(Func<Task<T>> action) {
-            if (1 == Interlocked.Exchange(ref _locked, 1))
-                await Task.Delay(1, _token);
-            try {
-                return await action();
-            } finally {
-                Interlocked.Exchange(ref _locked, 0);
-            }
+        public static void AssertHasSameItems<T>(string sequenceName, IEnumerable<T> actualItems, params T[] expectedItems) {
+            var ab = actualItems ?? Enumerable.Empty<T>();
+            Assert.IsTrue(expectedItems.SequenceEqual(ab), $"Sequence of {nameof(T)}s '{sequenceName}' doesn't match. Expected: {Joined(expectedItems)} - Actual {Joined(ab)}");
         }
 
-        public async Task WithLockAsync(Func<Task> action) {
-            if (1 == Interlocked.Exchange(ref _locked, 1))
-                await Task.Delay(1, _token);
-            try {
-                await action();
-            } finally {
-                Interlocked.Exchange(ref _locked, 0);
-            }
-        }
+        public static string Joined<T>(IEnumerable<T> items) => items.Any() ? string.Join(", ", items.Select(b => b.ToString())) : "-";
 
-        public async Task WithLockAsync(Action action) {
-            if (1 == Interlocked.Exchange(ref _locked, 1))
-                await Task.Delay(1, _token);
-            try {
-                action();
-            } finally {
-                Interlocked.Exchange(ref _locked, 0);
-            }
-        }
-
-        private readonly CancellationToken _token;
-        private int _locked = 0;
     }
 }

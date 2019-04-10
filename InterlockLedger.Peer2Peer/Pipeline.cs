@@ -52,7 +52,6 @@ namespace InterlockLedger.Peer2Peer
             var parentSource = source ?? throw new ArgumentNullException(nameof(source));
             _linkedSource = new CancellationTokenSource();
             _linkedToken = CancellationTokenSource.CreateLinkedTokenSource(parentSource.Token, _linkedSource.Token).Token;
-            _dequeueLocker = new Locker(_linkedToken);
             _messageTag = messageTag;
             _minimumBufferSize = minimumBufferSize;
             _processor = processor ?? throw new ArgumentNullException(nameof(processor));
@@ -73,7 +72,6 @@ namespace InterlockLedger.Peer2Peer
 
         public void Send(Response response) => _sender.Send(response);
 
-        private readonly Locker _dequeueLocker;
         private readonly CancellationTokenSource _linkedSource;
         private readonly CancellationToken _linkedToken;
         private readonly ILogger _logger;
@@ -144,13 +142,16 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private async Task SendingPipeDequeueAsync(PipeWriter writer) {
+            var senderWriterLock = new AsyncLock();
             while (Active) {
                 try {
                     if (_sender.Exit)
                         break;
                     Response response = await _sender.DequeueAsync(_linkedToken);
-                    if (!await WriteResponse(writer, response))
-                        break;
+                    using (await senderWriterLock.LockAsync()) {
+                        if (!await WriteResponse(writer, response))
+                            break;
+                    }
                 } catch (OperationCanceledException oce) {
                     writer.Complete(oce);
                     return;
@@ -164,6 +165,7 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private async Task SendingPipeSendAsync(PipeReader reader) {
+            var senderSocketLock = new AsyncLock();
             while (Active) {
                 try {
                     ReadResult result = await reader.ReadAsync(_linkedToken);
@@ -171,8 +173,10 @@ namespace InterlockLedger.Peer2Peer
                         break;
                     var sequence = result.Buffer;
                     if (!sequence.IsEmpty) {
-                        await _socket.SendAsync(sequence.ToArraySegments());
-                        reader.AdvanceTo(sequence.End);
+                        using (await senderSocketLock.LockAsync()) {
+                            await _socket.SendAsync(sequence.ToArraySegments());
+                            reader.AdvanceTo(sequence.End);
+                        }
                     }
                     if (result.IsCompleted)
                         break;
@@ -187,7 +191,6 @@ namespace InterlockLedger.Peer2Peer
             }
             reader.Complete();
         }
-
 
         private async Task UsePipes(EndPoint remoteEndPoint) {
             _logger.LogTrace($"[{remoteEndPoint}]: connected");
@@ -209,14 +212,18 @@ namespace InterlockLedger.Peer2Peer
             _logger.LogTrace($"[{remoteEndPoint}]: disconnected");
         }
 
-        private async Task<bool> WriteResponse(PipeWriter writer, Response response)
-            => await _dequeueLocker.WithLockAsync(async () => {
-                if (response.IsEmpty)
-                    return true;
+        private async Task<bool> WriteResponse(PipeWriter writer, Response response) {
+            if (response.IsEmpty)
+                return true;
+            Monitor.Enter(writer);
+            try {
                 foreach (var segment in response.DataList)
                     if ((await writer.WriteAsync(segment, _linkedToken)).IsCanceled)
                         return false;
                 return !(await writer.WriteILintAsync(response.Channel, _linkedToken)).IsCanceled;
-            });
+            } finally {
+                Monitor.Exit(writer);
+            }
+        }
     }
 }

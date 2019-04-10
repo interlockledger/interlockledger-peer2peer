@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -50,7 +51,6 @@ namespace InterlockLedger.Peer2Peer
             if (string.IsNullOrWhiteSpace(networkAddress))
                 throw new ArgumentNullException(nameof(networkAddress));
             Id = id;
-            _sinksLocker = new Locker(_source.Token);
             MessageTag = tag;
             _networkAddress = networkAddress;
             _networkPort = port;
@@ -76,7 +76,7 @@ namespace InterlockLedger.Peer2Peer
                     if (_pipeline is null) {
                         _pipeline = Connect();
                     }
-                    _sinksLocker.WithLock(() => {
+                    WithLockedSinks(() => {
                         _ = Interlocked.Increment(ref _lastChannelUsed);
                         _sinks[LastChannelUsed] = (LastChannelUsed, clientSink);
                         _pipeline.Send(new Response(LastChannelUsed, segments));
@@ -105,30 +105,35 @@ namespace InterlockLedger.Peer2Peer
         protected override void PipelineStopped() {
             _logger.LogTrace($"Stopping pipeline on client {Id}");
             _pipeline = null;
-            _sinksLocker.WithLock(_sinks.Clear);
+            WithLockedSinks(_sinks.Clear);
         }
 
-        protected override async Task<Success> ProcessorAsync(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender responder)
-            => await _sinksLocker.WithLockAsync(async () => {
-                if (_sinks.ContainsKey(channel)) {
-                    var result = await _sinks[channel].sink.SinkAsClientAsync(bytes, channel);
-                    if (result == Success.Exit) {
-                        _sinks.Remove(channel);
-                        return Success.Next;
-                    }
-                    return result;
+        protected override async Task<Success> ProcessorAsync(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender responder) {
+            if (_sinks.TryGetValue(channel, out var tuple)) {
+                var result = await tuple.sink.SinkAsClientAsync(bytes, channel);
+                if (result == Success.Exit) {
+                    _sinks.TryRemove(channel, out _);
+                    return Success.Next;
                 }
-                return Success.Next;
-            });
+                return result;
+            }
+            return Success.Next;
+        }
 
         private const int _hoursOfSilencedDuplicateErrors = 8;
+
         private static readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
+
         private readonly string _networkAddress;
+
         private readonly int _networkPort;
-        private readonly Dictionary<ulong, (ulong channel, IClientSink sink)> _sinks = new Dictionary<ulong, (ulong channel, IClientSink sink)>();
-        private readonly Locker _sinksLocker;
+
+        private readonly ConcurrentDictionary<ulong, (ulong channel, IClientSink sink)> _sinks = new ConcurrentDictionary<ulong, (ulong channel, IClientSink sink)>();
+
         private long _lastChannelUsed = 0;
+
         private Pipeline _pipeline;
+
         private bool Abandon => _source.IsCancellationRequested || IsDisposed;
 
         private Pipeline Connect() {
@@ -151,6 +156,15 @@ namespace InterlockLedger.Peer2Peer
             if (!(_errors.TryGetValue(message, out var dateTime) && (DateTimeOffset.Now - dateTime).Hours < _hoursOfSilencedDuplicateErrors)) {
                 _logger.LogError(message);
                 _errors[message] = DateTimeOffset.Now;
+            }
+        }
+
+        private void WithLockedSinks(Action action) {
+            Monitor.Enter(_sinks);
+            try {
+                action();
+            } finally {
+                Monitor.Exit(_sinks);
             }
         }
     }

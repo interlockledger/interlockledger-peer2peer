@@ -39,9 +39,11 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using static UnitTest.InterlockLedger.Peer2Peer.TestHelpers;
 
 namespace UnitTest.InterlockLedger.Peer2Peer
 {
+
     [TestClass]
     public class UnitTestPipeline
     {
@@ -69,19 +71,13 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             Assert.IsNotNull(bytesProcessed);
             Assert.IsNotNull(fakeLogger.LastLog);
             Assert.AreEqual(2ul, channelProcessed);
-            AssertHasSameBytes(nameof(bytesProcessed), bytesProcessed, 128);
+            AssertHasSameItems<byte>(nameof(bytesProcessed), bytesProcessed, 128);
             Assert.IsNotNull(fakeSocket.BytesSent);
-            AssertHasSameBytes(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 13, 1, 128, 2);
+            AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 13, 1, 128, 2);
             Assert.IsTrue(stopped);
         }
 
-        private static void AssertHasSameBytes(string sequenceName, IEnumerable<byte> actualBytes, params byte[] expectedBytes) {
-            var ab = actualBytes ?? Enumerable.Empty<byte>();
-            Assert.IsTrue(expectedBytes.SequenceEqual(ab), $"Sequence of bytes '{sequenceName}' doesn't match. Expected: {Joined(expectedBytes)} - Actual {Joined(ab)}");
-        }
-
-        private static string Joined(IEnumerable<byte> bytes) => bytes.Any() ? string.Join(", ", bytes.Select(b => b.ToString())) : "-";
-
+ 
         private static IEnumerable<byte> ToBytes(IList<ArraySegment<byte>> bytesSent) {
             foreach (var segment in bytesSent) {
                 if (segment.Array != null)

@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>0.14.0</Version>
+    <Version>0.14.1</Version>
     <Authors>Rafael Teixeira</Authors>
     <Company>InterlockLedger Network</Company>
     <Product>InterlockLedger</Product>
@@ -13,7 +13,7 @@
     <RepositoryUrl>https://github.com/interlockledger/peer2peer.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageReleaseNotes>Eliminate lingering pipeline (as one of the four tasks was indefinitevily waiting in the socket for bytes to receive), more of a problem in the client-side</PackageReleaseNotes>
+    <PackageReleaseNotes>Task.Yield =&gt; Task.Delay not to abuse CPU needlessly</PackageReleaseNotes>
     <LangVersion>latest</LangVersion>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>

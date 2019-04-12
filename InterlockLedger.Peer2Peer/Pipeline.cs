@@ -103,7 +103,7 @@ namespace InterlockLedger.Peer2Peer
                         } else
                             break;
                     } else
-                        await Task.Yield();
+                        await Task.Delay(1, _linkedToken);
                 } catch (OperationCanceledException oce) {
                     writer.Complete(oce);
                     return;

@@ -43,7 +43,6 @@ using static UnitTest.InterlockLedger.Peer2Peer.TestHelpers;
 
 namespace UnitTest.InterlockLedger.Peer2Peer
 {
-
     [TestClass]
     public class UnitTestPipeline
     {
@@ -55,7 +54,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             var fakeLogger = new FakeLogging();
             var fakeDiscoverer = new FakeDiscoverer();
             var source = new CancellationTokenSource();
-            var fakeSocket = new TestSocket(13, 1, 128, 2);
+            var fakeSocket = new TestSocket(source, 13, 1, 128, 2);
             Task<Success> processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender sender) {
                 bytesProcessed = bytes.First().ToArray();
                 channelProcessed = channel;
@@ -77,7 +76,6 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             Assert.IsTrue(stopped);
         }
 
- 
         private static IEnumerable<byte> ToBytes(IList<ArraySegment<byte>> bytesSent) {
             foreach (var segment in bytesSent) {
                 if (segment.Array != null)
@@ -88,8 +86,12 @@ namespace UnitTest.InterlockLedger.Peer2Peer
 
         private class TestSocket : ISocket
         {
-            public TestSocket(params byte[] bytesReceived) => _bytesReceived = bytesReceived ?? throw new ArgumentNullException(nameof(bytesReceived));
+            public TestSocket(CancellationTokenSource source, params byte[] bytesReceived) {
+                _source = source;
+                _bytesReceived = bytesReceived ?? throw new ArgumentNullException(nameof(bytesReceived));
+            }
 
+            public int Available => _bytesReceived.Length - _receivedCount;
             public IList<ArraySegment<byte>> BytesSent { get; private set; }
             public EndPoint RemoteEndPoint => new IPEndPoint(IPAddress.Loopback, 13013);
 
@@ -97,7 +99,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
                 // Do nothing
             }
 
-            public async Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags) {
+            public async Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token) {
                 await Task.Yield();
                 if (_bytesReceived.Length > _receivedCount) {
                     int howMany = Math.Min(memory.Length, _bytesReceived.Length - _receivedCount);
@@ -112,6 +114,8 @@ namespace UnitTest.InterlockLedger.Peer2Peer
 
             public Task SendAsync(IList<ArraySegment<byte>> segment) {
                 BytesSent = segment;
+                if (Available == 0)
+                    _source.CancelAfter(10);
                 return Task.CompletedTask;
             }
 
@@ -119,7 +123,8 @@ namespace UnitTest.InterlockLedger.Peer2Peer
                 // Do nothing
             }
 
-            private Memory<byte> _bytesReceived;
+            private readonly CancellationTokenSource _source;
+            private readonly Memory<byte> _bytesReceived;
             private int _receivedCount;
         }
     }

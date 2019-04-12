@@ -45,7 +45,7 @@ namespace InterlockLedger.Peer2Peer
         public async Task<Response> DequeueAsync(CancellationToken token) {
             Response response;
             while (!(_responses.TryDequeue(out response) || _shouldExit)) {
-                await Task.Delay(1);
+                await Task.Delay(1, token);
                 if (token.IsCancellationRequested) {
                     _shouldExit = true;
                     return default;
@@ -59,9 +59,7 @@ namespace InterlockLedger.Peer2Peer
                 _responses.Enqueue(response);
         }
 
-        public void Stop() {
-            _shouldExit = true;
-        }
+        public void Stop() => _shouldExit = true;
 
         private readonly ConcurrentQueue<Response> _responses = new ConcurrentQueue<Response>();
         private bool _shouldExit;

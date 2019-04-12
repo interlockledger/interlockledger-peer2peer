@@ -34,6 +34,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
@@ -44,9 +45,15 @@ namespace InterlockLedger.Peer2Peer
 
         public EndPoint RemoteEndPoint => _socket.RemoteEndPoint;
 
+        public int Available => _socket.Available;
+
         public void Dispose() => _socket.Dispose();
 
-        public Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags) => _socket.ReceiveAsync(memory, socketFlags);
+        public async Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token) {
+            if (token.IsCancellationRequested)
+                return 0;
+            return await _socket.ReceiveAsync(memory, socketFlags);
+        }
 
         public Task SendAsync(IList<ArraySegment<byte>> buffers) => _socket.SendAsync(buffers);
 

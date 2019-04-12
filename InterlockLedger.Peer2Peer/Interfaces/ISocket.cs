@@ -34,15 +34,17 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
     public interface ISocket : IDisposable
     {
+        int Available { get; }
         EndPoint RemoteEndPoint { get; }
 
-        Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags);
+        Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token);
 
         Task SendAsync(IList<ArraySegment<byte>> buffers);
 

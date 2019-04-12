@@ -48,14 +48,17 @@ namespace Demo.InterlockLedger.Peer2Peer
             var factory = new LoggerFactory();
             factory.AddConsole(LogLevel.Information);
             _nodeSink = new DemoNodeSink();
-            _peerServices = new PeerServices(factory, new DummyExternalAccessDiscoverer(factory))
-                .WithCancellationTokenSource(_cancellationSource);
-            if (args.Length > 0 && args[0].Equals("server", StringComparison.OrdinalIgnoreCase))
-                Server();
-            else
-                Client();
+            using (_peerServices = BuildPeerServices(factory)) {
+                if (args.Length > 0 && args[0].Equals("server", StringComparison.OrdinalIgnoreCase))
+                    Server();
+                else
+                    Client();
+            }
             Console.WriteLine("-- Done!");
         }
+
+        private static IPeerServices BuildPeerServices(LoggerFactory factory)
+            => new PeerServices(factory, new DummyExternalAccessDiscoverer(factory)).WithCancellationTokenSource(_cancellationSource);
 
         public static void Server() {
             PrepareConsole("Server");
@@ -73,14 +76,15 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         private static void Client() {
             PrepareConsole("Client");
-            while (!_cancellationSource.IsCancellationRequested) {
-                Console.WriteLine();
-                Console.Write(_nodeSink.Prompt);
-                var command = Console.ReadLine();
-                if (command == null || command.FirstOrDefault() == 'x')
-                    break;
-                var client = _peerServices.GetClient(_nodeSink.MessageTag, "localhost", 8080, 512);
-                _nodeSink.SendCommand(client, command);
+            using (var client = _peerServices.GetClient(_nodeSink.MessageTag, "localhost", 8080, 512)) {
+                while (!_cancellationSource.IsCancellationRequested) {
+                    Console.WriteLine();
+                    Console.Write(_nodeSink.Prompt);
+                    var command = Console.ReadLine();
+                    if (command == null || command.FirstOrDefault() == 'x')
+                        break;
+                    _nodeSink.SendCommand(client, command);
+                }
             }
         }
 

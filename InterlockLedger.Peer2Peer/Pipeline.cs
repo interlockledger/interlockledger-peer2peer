@@ -38,7 +38,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Linq;
 
 namespace InterlockLedger.Peer2Peer
 {
@@ -232,15 +231,10 @@ namespace InterlockLedger.Peer2Peer
         private async Task<bool> WriteResponse(PipeWriter writer, Response response) {
             if (response.IsEmpty)
                 return true;
-            Monitor.Enter(writer);
-            try {
-                foreach (var segment in response.DataList)
-                    if ((await writer.WriteAsync(segment, _linkedToken)).IsCanceled)
-                        return false;
-                return !(await writer.WriteILintAsync(response.Channel, _linkedToken)).IsCanceled;
-            } finally {
-                Monitor.Exit(writer);
-            }
+            foreach (var segment in response.DataList)
+                if ((await writer.WriteAsync(segment, _linkedToken)).IsCanceled)
+                    return false;
+            return !(await writer.WriteILintAsync(response.Channel, _linkedToken)).IsCanceled;
         }
     }
 }

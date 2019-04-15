@@ -59,7 +59,6 @@ namespace InterlockLedger.Peer2Peer
 
         public string Id { get; }
         public bool IsDisposed { get; private set; } = false;
-        public ulong LastChannelUsed => (ulong)_lastChannelUsed;
 
         public void Dispose() {
             if (!IsDisposed) {
@@ -76,11 +75,9 @@ namespace InterlockLedger.Peer2Peer
                     if (_pipeline is null) {
                         _pipeline = Connect();
                     }
-                    WithLockedSinks(() => {
-                        _ = Interlocked.Increment(ref _lastChannelUsed);
-                        _sinks[LastChannelUsed] = (LastChannelUsed, clientSink);
-                        _pipeline.Send(new Response(LastChannelUsed, segments));
-                    });
+                    var channel = (ulong)Interlocked.Increment(ref _lastChannelUsed);
+                    _sinks[channel] = (channel, clientSink);
+                    _pipeline.Send(new Response(channel, segments));
                 }
                 return true;
             } catch (PeerException pe) {
@@ -105,7 +102,7 @@ namespace InterlockLedger.Peer2Peer
         protected override void PipelineStopped() {
             _logger.LogTrace($"Stopping pipeline on client {Id}");
             _pipeline = null;
-            WithLockedSinks(_sinks.Clear);
+            _sinks.Clear();
         }
 
         protected override async Task<Success> ProcessorAsync(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender responder) {
@@ -159,13 +156,5 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        private void WithLockedSinks(Action action) {
-            Monitor.Enter(_sinks);
-            try {
-                action();
-            } finally {
-                Monitor.Exit(_sinks);
-            }
-        }
     }
 }

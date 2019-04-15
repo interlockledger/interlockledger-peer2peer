@@ -53,11 +53,12 @@ namespace InterlockLedger.Peer2Peer
         public Success LastResult { get; private set; }
 
         public SequencePosition Parse(ReadOnlySequence<byte> buffer) {
-            Monitor.Enter(this);
             try {
+                if (Interlocked.Increment(ref _parsingCount) > 1)
+                    throw new InvalidOperationException("This MessageParser is already parsing a buffer!");
                 return InnerParse(buffer);
             } finally {
-                Monitor.Exit(this);
+                Interlocked.Decrement(ref _parsingCount);
             }
         }
 
@@ -71,6 +72,7 @@ namespace InterlockLedger.Peer2Peer
         private readonly ILIntReader _tagReader = new ILIntReader();
         private ulong _channel;
         private ulong _lengthToRead;
+        private volatile int _parsingCount = 0;
         private State _state = State.Init;
 
         private SequencePosition InnerParse(ReadOnlySequence<byte> buffer) {

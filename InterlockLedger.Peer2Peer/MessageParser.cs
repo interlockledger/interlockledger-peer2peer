@@ -82,7 +82,7 @@ namespace InterlockLedger.Peer2Peer
                 if (!skip) {
                     var slice = buffer.Slice(current, bytesToRead);
                     foreach (var segment in slice)
-                        _segments.Add(segment);
+                        _segments.Add(segment.ToArray());
                 }
                 current += bytesToRead;
                 return length - (ulong)bytesToRead;

@@ -143,8 +143,8 @@ namespace InterlockLedger.Peer2Peer
                 var socket = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 socket.Connect(new IPEndPoint(ipAddress, _networkPort));
                 socket.LingerState = new LingerOption(true, 1);
-                var pipeline = CreatePipeline(socket, shutdownSocketOnExit: true);
                 _logger.LogTrace($"Client connecting into address {_networkAddress}:{_networkPort}");
+                var pipeline = CreatePipeline(socket, shutdownSocketOnExit: true);
                 pipeline.ListenAsync().RunOnThread($"Pipeline to {socket.RemoteEndPoint}");
                 return pipeline;
             } catch (Exception se) {

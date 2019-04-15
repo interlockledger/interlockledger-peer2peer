@@ -40,7 +40,7 @@ namespace InterlockLedger.Peer2Peer
         public static void RunOnThread(this Task task, string name) {
             var thread = new Thread(task.Wait) {
                 Name = name,
-                Priority = ThreadPriority.AboveNormal
+                Priority = ThreadPriority.Normal
             };
             thread.Start();
         }

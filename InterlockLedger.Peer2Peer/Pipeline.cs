@@ -32,7 +32,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
@@ -43,10 +42,11 @@ namespace InterlockLedger.Peer2Peer
 {
     public class Pipeline
     {
-        public Pipeline(ISocket socket, ILogger logger, CancellationTokenSource source, ulong messageTag, int minimumBufferSize,
-            Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, ISender, Task<Success>> processor, Action stopProcessor, bool shutdownSocketOnExit) {
+        public Pipeline(ISocket socket, IResponder client, ILogger logger, CancellationTokenSource source, ulong messageTag, int minimumBufferSize,
+            Func<ChannelBytes, IResponder, Task<Success>> processor, Action stopProcessor, bool shutdownSocketOnExit) {
             _socket = socket ?? throw new ArgumentNullException(nameof(socket));
-            _sender = new Sender();
+            _client = client ?? throw new ArgumentNullException(nameof(client));
+            _queue = new SendingQueue();
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             var parentSource = source ?? throw new ArgumentNullException(nameof(source));
             _localSource = new CancellationTokenSource();
@@ -58,8 +58,6 @@ namespace InterlockLedger.Peer2Peer
             _shutdownSocketOnExit = shutdownSocketOnExit;
         }
 
-        public void ForceStop() => _localSource.Cancel();
-
         public async Task ListenAsync() {
             await UsePipes(_socket.RemoteEndPoint);
             await Task.Delay(10);
@@ -70,15 +68,18 @@ namespace InterlockLedger.Peer2Peer
             _stopProcessor();
         }
 
-        public void Send(Response response) => _sender.Send(response);
+        public void Send(ChannelBytes response) => _queue.Enqueue(response);
 
+        public void Stop() => _queue.Stop();
+
+        private readonly IResponder _client;
         private readonly CancellationToken _linkedToken;
         private readonly CancellationTokenSource _localSource;
         private readonly ILogger _logger;
         private readonly ulong _messageTag;
         private readonly int _minimumBufferSize;
-        private readonly Func<IEnumerable<ReadOnlyMemory<byte>>, ulong, Sender, Task<Success>> _processor;
-        private readonly Sender _sender;
+        private readonly Func<ChannelBytes, IResponder, Task<Success>> _processor;
+        private readonly SendingQueue _queue;
         private readonly bool _shutdownSocketOnExit;
         private readonly Action _stopProcessor;
         private ISocket _socket;
@@ -151,9 +152,9 @@ namespace InterlockLedger.Peer2Peer
             var senderWriterLock = new AsyncLock();
             while (Active) {
                 try {
-                    if (_sender.Exit)
+                    if (_queue.Exit)
                         break;
-                    Response response = await _sender.DequeueAsync(_linkedToken);
+                    ChannelBytes response = await _queue.DequeueAsync(_linkedToken);
                     using (await senderWriterLock.LockAsync()) {
                         if (!await WriteResponse(writer, response))
                             break;
@@ -188,6 +189,8 @@ namespace InterlockLedger.Peer2Peer
                             reader.AdvanceTo(sequence.End);
                         }
                     }
+                    if (_queue.Exit)
+                        _localSource.Cancel(false);
                     if (result.IsCompleted)
                         break;
                 } catch (OperationCanceledException oce) {
@@ -209,7 +212,7 @@ namespace InterlockLedger.Peer2Peer
         private async Task UsePipes(EndPoint remoteEndPoint) {
             _logger.LogTrace($"[{remoteEndPoint}]: connected");
             try {
-                var parser = new MessageParser(_messageTag, _logger, (bytes, channel) => _processor(bytes, channel, _sender));
+                var parser = new MessageParser(_messageTag, _logger, (channelBytes) => _processor(channelBytes, _client));
                 var listeningPipe = new Pipe();
                 var respondingPipe = new Pipe();
                 var pipeTasks = new Task[] {
@@ -228,7 +231,7 @@ namespace InterlockLedger.Peer2Peer
             _logger.LogTrace($"[{remoteEndPoint}]: disconnected");
         }
 
-        private async Task<bool> WriteResponse(PipeWriter writer, Response response) {
+        private async Task<bool> WriteResponse(PipeWriter writer, ChannelBytes response) {
             if (response.IsEmpty)
                 return true;
             foreach (var segment in response.DataList)

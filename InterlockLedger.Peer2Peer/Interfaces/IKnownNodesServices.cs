@@ -30,16 +30,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-
 namespace InterlockLedger.Peer2Peer
 {
     public interface IKnownNodesServices
     {
-        void Add(string nodeId, ulong messageTag, string address, int port, bool retain = false);
+        void Add(string nodeId, ulong messageTag, string address, int port, int defaultListeningBufferSize, bool retain = false);
+
+        void Add(string nodeId, IResponder responder, bool retain = false);
 
         void Forget(string nodeId);
 
-        IClient GetClient(string nodeId, int defaultListeningBufferSize);
+        IResponder GetClient(string nodeId);
 
         bool IsKnown(string nodeId);
     }

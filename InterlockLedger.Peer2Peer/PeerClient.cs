@@ -42,42 +42,41 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal sealed class PeerClient : BaseListener, IClient
+    internal sealed class PeerClient : BaseListener, IResponder
     {
+        public PeerClient(string id, ulong tag, Socket socket, BaseListener origin, int defaultListeningBufferSize)
+            : base(id, tag, origin._source, origin._logger, defaultListeningBufferSize) {
+            if (socket is null)
+                throw new ArgumentNullException(nameof(socket));
+            var ipEndPoint = (IPEndPoint)socket.RemoteEndPoint;
+            _networkAddress = ipEndPoint.Address.ToString();
+            _networkPort = ipEndPoint.Port;
+            SinkAsync = origin.SinkAsync;
+            _pipeline = RunPipeline(socket, this, shutdownSocketOnExit: false);
+        }
+
         public PeerClient(string id, ulong tag, string networkAddress, int port, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
-            : base(source, logger, defaultListeningBufferSize) {
-            if (string.IsNullOrWhiteSpace(id))
-                throw new ArgumentNullException(nameof(id));
+            : base(id, tag, source, logger, defaultListeningBufferSize) {
             if (string.IsNullOrWhiteSpace(networkAddress))
                 throw new ArgumentNullException(nameof(networkAddress));
-            Id = id;
-            MessageTag = tag;
             _networkAddress = networkAddress;
             _networkPort = port;
-            _pipeline = null; // connect lazily
+            SinkAsync = ClientListSinkAsync;
+            _pipeline = Connect();
         }
 
-        public string Id { get; }
-        public bool IsDisposed { get; private set; } = false;
-
-        public void Dispose() {
-            if (!IsDisposed) {
-                Stop();
-                IsDisposed = true;
-            }
-        }
-
-        public bool Send(IList<ArraySegment<byte>> segments, IClientSink clientSink) {
+        public bool Send(ChannelBytes bytes, ISink clientSink = null) {
             if (Abandon)
                 return false;
             try {
-                if (!segments.IsEmpty()) {
-                    if (_pipeline is null) {
-                        _pipeline = Connect();
+                if (!bytes.IsEmpty) {
+                    if (clientSink != null) {
+                        var channel = (ulong)Interlocked.Increment(ref _lastChannelUsed);
+                        _sinks[channel] = clientSink;
+                        _pipeline.Send(new ChannelBytes(channel, bytes.DataList));
+                    } else {
+                        _pipeline.Send(bytes);
                     }
-                    var channel = (ulong)Interlocked.Increment(ref _lastChannelUsed);
-                    _sinks[channel] = (channel, clientSink);
-                    _pipeline.Send(new Response(channel, segments));
                 }
                 return true;
             } catch (PeerException pe) {
@@ -93,45 +92,34 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public override void Stop() {
-            _pipeline?.ForceStop();
-            _pipeline = null;
+            _pipeline.Stop();
         }
-
-        protected override ulong MessageTag { get; }
 
         protected override void PipelineStopped() {
             _logger.LogTrace($"Stopping pipeline on client {Id}");
-            _pipeline = null;
             _sinks.Clear();
         }
 
-        protected override async Task<Success> ProcessorAsync(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender responder) {
-            if (_sinks.TryGetValue(channel, out var tuple)) {
-                var result = await tuple.sink.SinkAsClientAsync(bytes, channel);
+        private const int _hoursOfSilencedDuplicateErrors = 8;
+        private static readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
+        private readonly string _networkAddress;
+        private readonly int _networkPort;
+        private readonly Pipeline _pipeline;
+        private readonly ConcurrentDictionary<ulong, ISink> _sinks = new ConcurrentDictionary<ulong, ISink>();
+        private long _lastChannelUsed = 0;
+        private bool Abandon => _source.IsCancellationRequested || IsDisposed;
+
+        private async Task<Success> ClientListSinkAsync(ChannelBytes channelBytes, IResponder responder) {
+            if (_sinks.TryGetValue(channelBytes.Channel, out var sink)) {
+                var result = await sink.SinkAsync(channelBytes, responder);
                 if (result == Success.Exit) {
-                    _sinks.TryRemove(channel, out _);
+                    _sinks.TryRemove(channelBytes.Channel, out _);
                     return Success.Next;
                 }
                 return result;
             }
             return Success.Next;
         }
-
-        private const int _hoursOfSilencedDuplicateErrors = 8;
-
-        private static readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
-
-        private readonly string _networkAddress;
-
-        private readonly int _networkPort;
-
-        private readonly ConcurrentDictionary<ulong, (ulong channel, IClientSink sink)> _sinks = new ConcurrentDictionary<ulong, (ulong channel, IClientSink sink)>();
-
-        private long _lastChannelUsed = 0;
-
-        private Pipeline _pipeline;
-
-        private bool Abandon => _source.IsCancellationRequested || IsDisposed;
 
         private Pipeline Connect() {
             try {
@@ -141,9 +129,7 @@ namespace InterlockLedger.Peer2Peer
                 socket.Connect(new IPEndPoint(ipAddress, _networkPort));
                 socket.LingerState = new LingerOption(true, 1);
                 _logger.LogTrace($"Client connecting into address {_networkAddress}:{_networkPort}");
-                var pipeline = CreatePipeline(socket, shutdownSocketOnExit: true);
-                pipeline.ListenAsync().RunOnThread($"Pipeline to {socket.RemoteEndPoint}");
-                return pipeline;
+                return RunPipeline(socket, this, shutdownSocketOnExit: true);
             } catch (Exception se) {
                 throw new PeerException($"Client could not connect into address {_networkAddress}:{_networkPort}.{Environment.NewLine}{se.Message}", se);
             }
@@ -155,6 +141,5 @@ namespace InterlockLedger.Peer2Peer
                 _errors[message] = DateTimeOffset.Now;
             }
         }
-
     }
 }

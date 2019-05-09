@@ -41,57 +41,21 @@ namespace Demo.InterlockLedger.Peer2Peer
 {
     public static class Program
     {
-        public static byte[] AsUTF8Bytes(this string s) => Encoding.UTF8.GetBytes(s);
-
         public static void Main(string[] args) {
             Console.WriteLine("Demo.InterlockLedger.Peer2Peer!");
-            var factory = new LoggerFactory();
-            factory.AddConsole(LogLevel.Information);
-            _nodeSink = new DemoNodeSink();
-            using (_peerServices = BuildPeerServices(factory)) {
+            var source = new CancellationTokenSource();
+            using (var peerServices = BuildPeerServices(source)) {
                 if (args.Length > 0 && args[0].Equals("server", StringComparison.OrdinalIgnoreCase))
-                    Server();
+                    new DemoServer(source).Run(peerServices);
                 else
-                    Client();
+                    new DemoClient(source).Run(peerServices);
             }
             Console.WriteLine("-- Done!");
         }
 
-        private static IPeerServices BuildPeerServices(LoggerFactory factory)
-            => new PeerServices(factory, new DummyExternalAccessDiscoverer(factory)).WithCancellationTokenSource(_cancellationSource);
-
-        public static void Server() {
-            PrepareConsole("Server");
-            using (var listener = _peerServices.CreateListenerFor(_nodeSink)) {
-                listener.Start();
-                while (listener.Alive) {
-                    Thread.Sleep(1);
-                }
-            }
-        }
-
-        private static readonly CancellationTokenSource _cancellationSource = new CancellationTokenSource();
-        private static DemoNodeSink _nodeSink;
-        private static IPeerServices _peerServices;
-
-        private static void Client() {
-            PrepareConsole("Client");
-            using (var client = _peerServices.GetClient(_nodeSink.MessageTag, "localhost", 8080, 512)) {
-                while (!_cancellationSource.IsCancellationRequested) {
-                    Console.WriteLine();
-                    Console.Write(_nodeSink.Prompt);
-                    var command = Console.ReadLine();
-                    if (command == null || command.FirstOrDefault() == 'x')
-                        break;
-                    _nodeSink.SendCommand(client, command);
-                }
-            }
-        }
-
-        private static void PrepareConsole(string message) {
-            Console.WriteLine(message);
-            Console.TreatControlCAsInput = false;
-            Console.CancelKeyPress += (object sender, ConsoleCancelEventArgs e) => { Console.WriteLine("Exiting..."); _cancellationSource.Cancel(); };
+        private static IPeerServices BuildPeerServices(CancellationTokenSource source) {
+            var factory = new LoggerFactory().AddConsole(LogLevel.Information);
+            return new PeerServices(factory, new DummyExternalAccessDiscoverer(factory)).WithCancellationTokenSource(source);
         }
     }
 }

@@ -31,26 +31,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal static class MemoryExtensions
+    public interface IResponder : IDisposable
     {
-        public static ArraySegment<byte> GetArraySegment(this ReadOnlyMemory<byte> memory) {
-            if (!MemoryMarshal.TryGetArray(memory, out var result)) {
-                throw new InvalidOperationException("Buffer backed by array was expected");
-            }
-            return result;
-        }
+        bool Send(ChannelBytes bytes, ISink sink = null);
 
-        public static ArraySegment<byte> GetArraySegment(this Memory<byte> memory) => GetArraySegment((ReadOnlyMemory<byte>)memory);
-
-        public static IEnumerable<ArraySegment<byte>> ToArraySegments(this IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes)
-            => readOnlyBytes.Select(rob => rob.GetArraySegment());
-
-        public static string ToBase64(this ReadOnlyMemory<byte> bytes) => Convert.ToBase64String(bytes.ToArray());
+        void Stop();
     }
 }

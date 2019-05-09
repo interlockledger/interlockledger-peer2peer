@@ -32,7 +32,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
@@ -46,15 +45,13 @@ namespace InterlockLedger.Peer2Peer
 #pragma warning restore S3881 // "IDisposable" should be implemented correctly
     {
         public PeerListener(INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger)
-            : base(source, logger, nodeSink?.DefaultListeningBufferSize ?? 0) {
+            : base(nodeSink.NodeId, nodeSink.MessageTag, source, logger, nodeSink.DefaultListeningBufferSize) {
             _nodeSink = nodeSink ?? throw new ArgumentNullException(nameof(nodeSink));
             _listenSocket = DetermineExternalAccess(discoverer ?? throw new ArgumentNullException(nameof(discoverer)));
+            SinkAsync = _nodeSink.SinkAsync;
         }
 
         public bool Alive => _listenSocket != null;
-        protected override ulong MessageTag => _nodeSink.MessageTag;
-
-        public void Dispose() => Stop();
 
         public void Start() {
             if (_source.IsCancellationRequested)
@@ -83,14 +80,12 @@ namespace InterlockLedger.Peer2Peer
             // Do Nothing
         }
 
-        protected override Task<Success> ProcessorAsync(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender responder)
-            => _nodeSink.SinkAsNodeAsync(bytes, channel, responder);
-
         private readonly INodeSink _nodeSink;
-
         private ExternalAccess _externalAccess;
-
         private Socket _listenSocket;
+
+        private PeerClient RunPeerClient(Socket socket)
+            => new PeerClient("ListenerClient", _nodeSink.MessageTag, socket, this, _nodeSink.DefaultListeningBufferSize);
 
         private Socket DetermineExternalAccess(IExternalAccessDiscoverer _discoverer) {
             _externalAccess = _discoverer.DetermineExternalAccessAsync(_nodeSink).Result;
@@ -104,8 +99,7 @@ namespace InterlockLedger.Peer2Peer
             do {
                 try {
                     while (!_source.IsCancellationRequested) {
-                        var socket = await _listenSocket.AcceptAsync();
-                        CreatePipeline(socket).ListenAsync().RunOnThread($"Pipeline from {socket.RemoteEndPoint}");
+                        RunPeerClient(await _listenSocket.AcceptAsync());
                     }
                 } catch (AggregateException e) when (e.InnerExceptions.Any(ex => ex is ObjectDisposedException)) {
                     _logger.LogTrace(e, "ObjectDisposedException");

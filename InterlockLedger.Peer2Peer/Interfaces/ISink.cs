@@ -30,27 +30,23 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal static class MemoryExtensions
+    public enum Success
     {
-        public static ArraySegment<byte> GetArraySegment(this ReadOnlyMemory<byte> memory) {
-            if (!MemoryMarshal.TryGetArray(memory, out var result)) {
-                throw new InvalidOperationException("Buffer backed by array was expected");
-            }
-            return result;
-        }
+        Next = 0,
+        Retry = 1,
+        SwitchToListen = 4,
+        Exit = 128
+    }
 
-        public static ArraySegment<byte> GetArraySegment(this Memory<byte> memory) => GetArraySegment((ReadOnlyMemory<byte>)memory);
+    public interface ISink
+    {
+        int DefaultListeningBufferSize { get; }
+        ulong MessageTag { get; }
 
-        public static IEnumerable<ArraySegment<byte>> ToArraySegments(this IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes)
-            => readOnlyBytes.Select(rob => rob.GetArraySegment());
-
-        public static string ToBase64(this ReadOnlyMemory<byte> bytes) => Convert.ToBase64String(bytes.ToArray());
+        Task<Success> SinkAsync(ChannelBytes channelBytes, IResponder responder);
     }
 }

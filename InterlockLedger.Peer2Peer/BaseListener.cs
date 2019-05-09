@@ -32,7 +32,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -41,28 +40,44 @@ namespace InterlockLedger.Peer2Peer
 {
     internal abstract class BaseListener
     {
-        public Pipeline CreatePipeline(Socket socket, bool shutdownSocketOnExit = false)
-            => new Pipeline(new NetSocket(socket), _logger, _source, MessageTag, _minimumBufferSize, ProcessorAsync, PipelineStopped, shutdownSocketOnExit);
+        public string Id { get; }
+
+        public bool IsDisposed { get; private set; } = false;
+        public Func<ChannelBytes, IResponder, Task<Success>> SinkAsync { get; protected set; }
+
+        public void Dispose() {
+            if (!IsDisposed) {
+                Stop();
+                IsDisposed = true;
+            }
+        }
 
         public abstract void Stop();
 
-        protected readonly ILogger _logger;
+        protected internal readonly ILogger _logger;
 
-        protected readonly CancellationTokenSource _source;
+        protected internal readonly CancellationTokenSource _source;
 
-        protected BaseListener(CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize) {
+        protected BaseListener(string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize) {
+            if (string.IsNullOrWhiteSpace(id))
+                throw new ArgumentNullException(nameof(id));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _source = source ?? throw new ArgumentNullException(nameof(source));
-            _source.Token.Register(Stop);
+            Id = id;
+            _messageTag = tag;
+            _source.Token.Register(Dispose);
             _minimumBufferSize = Math.Max(512, defaultListeningBufferSize);
         }
 
-        protected abstract ulong MessageTag { get; }
-
         protected abstract void PipelineStopped();
 
-        protected abstract Task<Success> ProcessorAsync(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender responder);
+        protected Pipeline RunPipeline(Socket socket, IResponder responder, bool shutdownSocketOnExit = false) {
+            var pipeline = new Pipeline(new NetSocket(socket), responder, _logger, _source, _messageTag, _minimumBufferSize, SinkAsync, PipelineStopped, shutdownSocketOnExit);
+            pipeline.ListenAsync().RunOnThread($"Pipeline to {socket.RemoteEndPoint}");
+            return pipeline;
+        }
 
+        private readonly ulong _messageTag;
         private readonly int _minimumBufferSize;
     }
 }

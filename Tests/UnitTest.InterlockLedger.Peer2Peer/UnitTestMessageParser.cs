@@ -46,7 +46,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
     {
         [TestMethod]
         public void Creation() {
-            Task<Success> messageProcessor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel) => Task.FromResult(Success.Exit);
+            Task<Success> messageProcessor(ChannelBytes channelBytes) => Task.FromResult(Success.Exit);
             var mp = new MessageParser(15, this, messageProcessor);
             Assert.IsNotNull(mp);
             Assert.ThrowsException<ArgumentNullException>(() => new MessageParser(15, null, messageProcessor));
@@ -89,9 +89,9 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             => DoRawParsing(new ulong[] { expectedChannel }, ToSequences(arrayToParse), arrayToParse[0], arrayToParse.Skip(2).SkipLast(1).ToArray());
 
         private void DoRawParsing(ulong[] expectedChannels, IEnumerable<ReadOnlySequence<byte>> sequencesToParse, ulong expectedTag, params byte[][] expectedPayloads) {
-            var results = new List<(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel)>();
-            Task<Success> messageProcessor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel) {
-                results.Add((bytes, channel));
+            var results = new List<ChannelBytes>();
+            Task<Success> messageProcessor(ChannelBytes channelBytes) {
+                results.Add(channelBytes);
                 return Task.FromResult(results.Count < expectedPayloads.Length ? Success.Next : Success.Exit);
             }
             var mp = new MessageParser(expectedTag, this, messageProcessor);
@@ -99,9 +99,9 @@ namespace UnitTest.InterlockLedger.Peer2Peer
                 mp.Parse(sequence);
             }
             int payloadIndex = 0;
-            foreach (var (bytes, channel) in results) {
-                var inputBytes = bytes.SelectMany(b => b.ToArray());
-                Assert.AreEqual(expectedChannels[payloadIndex], channel);
+            foreach (var channelBytes in results) {
+                var inputBytes = channelBytes.AllBytes;
+                Assert.AreEqual(expectedChannels[payloadIndex], channelBytes.Channel);
                 byte[] expectedPayload = expectedPayloads[payloadIndex++];
                 Assert.AreEqual(expectedPayload.Length, inputBytes.Count());
                 Assert.IsTrue(expectedPayload.SequenceEqual(inputBytes.ToArray()));

@@ -30,13 +30,38 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public interface IClient : IDisposable
+    internal class SendingQueue
     {
-        bool Send(IList<ArraySegment<byte>> segments, IClientSink clientSink);
+        public SendingQueue() => _shouldExit = false;
+
+        public bool Exit => _responses.IsEmpty && _shouldExit;
+
+        public async Task<ChannelBytes> DequeueAsync(CancellationToken token) {
+            ChannelBytes response;
+            while (!(_responses.TryDequeue(out response) || _shouldExit)) {
+                await Task.Delay(1, token);
+                if (token.IsCancellationRequested) {
+                    _shouldExit = true;
+                    return default;
+                }
+            }
+            return response;
+        }
+
+        public void Enqueue(ChannelBytes response) {
+            if (!_shouldExit)
+                _responses.Enqueue(response);
+        }
+
+        public void Stop() => _shouldExit = true;
+
+        private readonly ConcurrentQueue<ChannelBytes> _responses = new ConcurrentQueue<ChannelBytes>();
+        private bool _shouldExit;
     }
 }

@@ -36,19 +36,6 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public enum Success
-    {
-        Next = 0,
-        Retry = 1,
-        SwitchToListen = 4,
-        Exit = 128
-    }
-
-    public interface IClientSink
-    {
-        Task<Success> SinkAsClientAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel);
-    }
-
     public interface INodeSink : ISink
     {
         string HostAtAddress { get; }
@@ -64,13 +51,5 @@ namespace InterlockLedger.Peer2Peer
         void HostedAt(string address, ushort port);
 
         void PublishedAt(string address, ushort port);
-
-        Task<Success> SinkAsNodeAsync(IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes, ulong channel, ISender sender);
-    }
-
-    public interface ISink
-    {
-        int DefaultListeningBufferSize { get; }
-        ulong MessageTag { get; }
     }
 }

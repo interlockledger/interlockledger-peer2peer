@@ -55,16 +55,18 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             var fakeDiscoverer = new FakeDiscoverer();
             var source = new CancellationTokenSource();
             var fakeSocket = new TestSocket(source, 13, 1, 128, 2);
-            Task<Success> processor(IEnumerable<ReadOnlyMemory<byte>> bytes, ulong channel, ISender sender) {
-                bytesProcessed = bytes.First().ToArray();
-                channelProcessed = channel;
-                sender.Send(new Response(channel, 13, 1, 128));
+            Task<Success> processor(ChannelBytes channelBytes, IResponder sender) {
+                bytesProcessed = channelBytes.AllBytes;
+                channelProcessed = channelBytes.Channel;
+                sender.Send(new ChannelBytes(channelProcessed, 13, 1, 128));
                 sender.Stop();
                 return Task.FromResult(Success.Exit);
             }
             void stopProcessor() => stopped = true;
-            var pipeline = new Pipeline(fakeSocket, fakeLogger, source, 13, 4096, processor, stopProcessor, true);
+            var fakeClient = new TestClient("FakeTestClient");
+            var pipeline = new Pipeline(fakeSocket, fakeClient, fakeLogger, source, 13, 4096, processor, stopProcessor, true);
             Assert.IsNotNull(pipeline);
+            fakeClient.Pipeline = pipeline;
             Assert.IsNull(fakeLogger.LastLog);
             pipeline.ListenAsync().Wait();
             Assert.IsNotNull(bytesProcessed);
@@ -81,6 +83,26 @@ namespace UnitTest.InterlockLedger.Peer2Peer
                 if (segment.Array != null)
                     foreach (var b in segment)
                         yield return b;
+            }
+        }
+
+        private class TestClient : IResponder
+        {
+            public Pipeline Pipeline;
+
+            public TestClient(string id) => Id = id ?? throw new ArgumentNullException(nameof(id));
+
+            public string Id { get; }
+
+            public void Dispose() => Stop();
+
+            public bool Send(ChannelBytes bytes, ISink clientSink = null) {
+                Pipeline?.Send(bytes);
+                return true;
+            }
+
+            public void Stop() {
+                Pipeline?.Stop();
             }
         }
 
@@ -123,8 +145,10 @@ namespace UnitTest.InterlockLedger.Peer2Peer
                 // Do nothing
             }
 
-            private readonly CancellationTokenSource _source;
+            public void Stop() => throw new NotImplementedException();
+
             private readonly Memory<byte> _bytesReceived;
+            private readonly CancellationTokenSource _source;
             private int _receivedCount;
         }
     }

@@ -30,38 +30,60 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using System.Collections.Concurrent;
+using InterlockLedger.Peer2Peer;
+using System;
+using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace InterlockLedger.Peer2Peer
+namespace Demo.InterlockLedger.Peer2Peer
 {
-    internal class Sender : ISender
+    internal class DemoClient : DemoBaseSink
     {
-        public Sender() => _shouldExit = false;
+        public DemoClient(CancellationTokenSource source) : base("Client", source) {
+        }
 
-        public bool Exit => _responses.IsEmpty && _shouldExit;
+        public bool DoneReceiving { get; set; } = false;
 
-        public async Task<Response> DequeueAsync(CancellationToken token) {
-            Response response;
-            while (!(_responses.TryDequeue(out response) || _shouldExit)) {
-                await Task.Delay(1, token);
-                if (token.IsCancellationRequested) {
-                    _shouldExit = true;
-                    return default;
+        public string Prompt => @"Command (
+    x to exit,
+    w to get who is answering,
+    e... to echo ...,
+    3... to echo ... 3 times,
+    4... to echo ... 4 times from stored responder): ";
+
+        public override void Run(IPeerServices peerServices) {
+            using (var client = peerServices.GetClient(MessageTag, "localhost", 8080, 512)) {
+                while (!_source.IsCancellationRequested) {
+                    Console.WriteLine();
+                    Console.Write(Prompt);
+                    var command = Console.ReadLine();
+                    if (command == null || command.FirstOrDefault() == 'x')
+                        break;
+                    client.Send(ToMessage(AsUTF8Bytes(command), isLast: true), this);
                 }
             }
-            return response;
         }
 
-        public void Send(Response response) {
-            if (!_shouldExit)
-                _responses.Enqueue(response);
+        public override async Task<Success> SinkAsync(ChannelBytes channelBytes, IResponder responder) {
+            await Task.Delay(1);
+            return Received(Sink(channelBytes));
         }
 
-        public void Stop() => _shouldExit = true;
+        private static Success Sink(ChannelBytes channelBytes) {
+            var bytes = channelBytes.AllBytes;
+            if (bytes.Length > 1) {
+                var message = Encoding.UTF8.GetString(bytes, 1, bytes.Length - 1);
+                Console.WriteLine($@"[{channelBytes.Channel}] {message}");
+                return bytes[0] == 0 ? Success.Exit : Success.Next;
+            }
+            return Success.Exit;
+        }
 
-        private readonly ConcurrentQueue<Response> _responses = new ConcurrentQueue<Response>();
-        private bool _shouldExit;
+        private Success Received(Success success) {
+            DoneReceiving = success == Success.Exit;
+            return success;
+        }
     }
 }

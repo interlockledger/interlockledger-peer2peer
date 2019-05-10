@@ -48,10 +48,15 @@ namespace InterlockLedger.Peer2Peer
             : base(nodeSink.NodeId, nodeSink.MessageTag, source, logger, nodeSink.DefaultListeningBufferSize) {
             _nodeSink = nodeSink ?? throw new ArgumentNullException(nameof(nodeSink));
             _listenSocket = DetermineExternalAccess(discoverer ?? throw new ArgumentNullException(nameof(discoverer)));
-            SinkAsync = _nodeSink.SinkAsync;
         }
 
         public bool Alive => _listenSocket != null;
+
+        public override void PipelineStopped() {
+            // Do Nothing
+        }
+
+        public override Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder) => _nodeSink.SinkAsync(slice, responder);
 
         public void Start() {
             if (_source.IsCancellationRequested)
@@ -76,16 +81,9 @@ namespace InterlockLedger.Peer2Peer
         protected void LogHeader(string verb)
             => _logger.LogInformation($"-- {verb} listening {_nodeSink.NetworkProtocolName} protocol in {_nodeSink.NetworkName} network at {_externalAccess.Route}!");
 
-        protected override void PipelineStopped() {
-            // Do Nothing
-        }
-
         private readonly INodeSink _nodeSink;
         private ExternalAccess _externalAccess;
         private Socket _listenSocket;
-
-        private PeerClient RunPeerClient(Socket socket)
-            => new PeerClient("ListenerClient", _nodeSink.MessageTag, socket, this, _nodeSink.DefaultListeningBufferSize);
 
         private Socket DetermineExternalAccess(IExternalAccessDiscoverer _discoverer) {
             _externalAccess = _discoverer.DetermineExternalAccessAsync(_nodeSink).Result;
@@ -113,5 +111,8 @@ namespace InterlockLedger.Peer2Peer
                 }
             } while (!_source.IsCancellationRequested);
         }
+
+        private ListenerClient RunPeerClient(Socket socket)
+            => new ListenerClient("ListenerClient", _nodeSink.MessageTag, socket, this, _nodeSink.DefaultListeningBufferSize);
     }
 }

@@ -42,26 +42,26 @@ namespace InterlockLedger.Peer2Peer
 
         public bool Exit => _responses.IsEmpty && _shouldExit;
 
-        public async Task<ChannelBytes> DequeueAsync(CancellationToken token) {
-            ChannelBytes response;
-            while (!(_responses.TryDequeue(out response) || _shouldExit)) {
+        public async Task<NetworkMessageSlice> DequeueAsync(CancellationToken token) {
+            NetworkMessageSlice slice;
+            while (!(_responses.TryDequeue(out slice) || _shouldExit)) {
                 await Task.Delay(1, token);
                 if (token.IsCancellationRequested) {
                     _shouldExit = true;
                     return default;
                 }
             }
-            return response;
+            return slice;
         }
 
-        public void Enqueue(ChannelBytes response) {
+        public void Enqueue(NetworkMessageSlice response) {
             if (!_shouldExit)
                 _responses.Enqueue(response);
         }
 
         public void Stop() => _shouldExit = true;
 
-        private readonly ConcurrentQueue<ChannelBytes> _responses = new ConcurrentQueue<ChannelBytes>();
+        private readonly ConcurrentQueue<NetworkMessageSlice> _responses = new ConcurrentQueue<NetworkMessageSlice>();
         private bool _shouldExit;
     }
 }

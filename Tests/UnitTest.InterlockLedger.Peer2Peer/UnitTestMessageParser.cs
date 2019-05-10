@@ -46,7 +46,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
     {
         [TestMethod]
         public void Creation() {
-            Task<Success> messageProcessor(ChannelBytes channelBytes) => Task.FromResult(Success.Exit);
+            Task<Success> messageProcessor(NetworkMessageSlice channelBytes) => Task.FromResult(Success.Exit);
             var mp = new MessageParser(15, this, messageProcessor);
             Assert.IsNotNull(mp);
             Assert.ThrowsException<ArgumentNullException>(() => new MessageParser(15, null, messageProcessor));
@@ -89,8 +89,8 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             => DoRawParsing(new ulong[] { expectedChannel }, ToSequences(arrayToParse), arrayToParse[0], arrayToParse.Skip(2).SkipLast(1).ToArray());
 
         private void DoRawParsing(ulong[] expectedChannels, IEnumerable<ReadOnlySequence<byte>> sequencesToParse, ulong expectedTag, params byte[][] expectedPayloads) {
-            var results = new List<ChannelBytes>();
-            Task<Success> messageProcessor(ChannelBytes channelBytes) {
+            var results = new List<NetworkMessageSlice>();
+            Task<Success> messageProcessor(NetworkMessageSlice channelBytes) {
                 results.Add(channelBytes);
                 return Task.FromResult(results.Count < expectedPayloads.Length ? Success.Next : Success.Exit);
             }

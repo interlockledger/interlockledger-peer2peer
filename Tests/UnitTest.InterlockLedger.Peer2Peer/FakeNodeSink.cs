@@ -61,7 +61,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             // Do nothing
         }
 
-        public async Task<Success> SinkAsync(ChannelBytes bytes, IResponder sender) {
+        public async Task<Success> SinkAsync(NetworkMessageSlice bytes, IResponder sender) {
             await Task.Delay(10);
             sender.Stop();
             return Success.Exit;

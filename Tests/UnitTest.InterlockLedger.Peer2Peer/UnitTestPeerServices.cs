@@ -92,11 +92,14 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             IPeerServices peerServices = new PeerServices(fakeLogger, fakeDiscoverer);
             Assert.IsNotNull(peerServices);
             Assert.IsNull(fakeLogger.LastLog);
-            Assert.ThrowsException<InvalidOperationException>(() => peerServices.GetClient(13, "localhost", 80, 512));
+            Assert.IsNull(peerServices.GetClient(13, "localhost", 80, 512));
+            Assert.IsNotNull(fakeLogger.LastLog);
             Assert.ThrowsException<InvalidOperationException>(() => peerServices.CreateListenerFor(fakeNodeSink));
             Assert.ThrowsException<ArgumentNullException>(() => peerServices.WithCancellationTokenSource(null));
             peerServices.WithCancellationTokenSource(new CancellationTokenSource());
             Assert.IsNotNull(peerServices.Source);
+            var client = peerServices.GetClient(13, "localhost", 80, 512);
+            Assert.IsNotNull(client);
         }
 
         [TestMethod]

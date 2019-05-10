@@ -36,7 +36,7 @@ namespace InterlockLedger.Peer2Peer
 {
     public interface IResponder : IDisposable
     {
-        bool Send(ChannelBytes bytes, ISink sink = null);
+        bool Send(NetworkMessageSlice bytes, ISink sink = null);
 
         void Stop();
     }

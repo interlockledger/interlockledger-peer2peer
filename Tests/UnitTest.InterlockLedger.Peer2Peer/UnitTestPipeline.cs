@@ -55,16 +55,16 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             var fakeDiscoverer = new FakeDiscoverer();
             var source = new CancellationTokenSource();
             var fakeSocket = new TestSocket(source, 13, 1, 128, 2);
-            Task<Success> processor(ChannelBytes channelBytes, IResponder sender) {
+            Task<Success> processor(NetworkMessageSlice channelBytes, IResponder sender) {
                 bytesProcessed = channelBytes.AllBytes;
                 channelProcessed = channelBytes.Channel;
-                sender.Send(new ChannelBytes(channelProcessed, 13, 1, 128));
+                sender.Send(new NetworkMessageSlice(channelProcessed, 13, 1, 128));
                 sender.Stop();
                 return Task.FromResult(Success.Exit);
             }
             void stopProcessor() => stopped = true;
             var fakeClient = new TestClient("FakeTestClient");
-            var pipeline = new Pipeline(fakeSocket, fakeClient, fakeLogger, source, 13, 4096, processor, stopProcessor, true);
+            var pipeline = new Pipeline(fakeSocket, fakeClient, source, 13, 4096, processor, stopProcessor, fakeLogger);
             Assert.IsNotNull(pipeline);
             fakeClient.Pipeline = pipeline;
             Assert.IsNull(fakeLogger.LastLog);
@@ -96,7 +96,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
 
             public void Dispose() => Stop();
 
-            public bool Send(ChannelBytes bytes, ISink clientSink = null) {
+            public bool Send(NetworkMessageSlice bytes, ISink clientSink = null) {
                 Pipeline?.Send(bytes);
                 return true;
             }

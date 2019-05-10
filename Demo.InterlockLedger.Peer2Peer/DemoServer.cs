@@ -65,12 +65,12 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
         }
 
-        public override Task<Success> SinkAsync(ChannelBytes channelBytes, IResponder responder) {
+        public override Task<Success> SinkAsync(NetworkMessageSlice channelBytes, IResponder responder) {
             _queue.Enqueue((channelBytes, responder));
             return Task.FromResult(Success.Next);
         }
 
-        private readonly ConcurrentQueue<(ChannelBytes channelBytes, IResponder responder)> _queue = new ConcurrentQueue<(ChannelBytes channelBytes, IResponder responder)>();
+        private readonly ConcurrentQueue<(NetworkMessageSlice channelBytes, IResponder responder)> _queue = new ConcurrentQueue<(NetworkMessageSlice channelBytes, IResponder responder)>();
         private readonly ConcurrentQueue<(ulong channel, string key)> _queueKeys = new ConcurrentQueue<(ulong channel, string key)>();
 
         private IPeerServices _peerServices;
@@ -79,7 +79,7 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         private static void Send(IResponder responder, ulong channel, ReadOnlyMemory<byte> bytes) {
             try {
-                responder.Send(new ChannelBytes(channel, bytes));
+                responder.Send(new NetworkMessageSlice(channel, bytes));
             } catch (SocketException) {
                 // Do Nothing
             }
@@ -112,12 +112,12 @@ namespace Demo.InterlockLedger.Peer2Peer
             while (++i < 5) {
                 await Task.Delay(1_000);
                 var message = FormatTextResponse($"{key}#{i}", isLast: i >= 4);
-                _ = r?.Send(new ChannelBytes(channel, message));
+                _ = r?.Send(new NetworkMessageSlice(channel, message));
             }
             _peerServices.KnownNodes.Forget(key);
         }
 
-        private IEnumerable<ReadOnlyMemory<byte>> SinkAsServer(ChannelBytes channelBytes, IResponder responder) {
+        private IEnumerable<ReadOnlyMemory<byte>> SinkAsServer(NetworkMessageSlice channelBytes, IResponder responder) {
             byte[] buffer = channelBytes.AllBytes;
             var command = (buffer.Length > 1) ? (char)buffer[1] : '\0';
             IEnumerable<byte> text = buffer.Skip(2);
@@ -150,7 +150,7 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
         }
 
-        private async Task SinkAsServerWithDelayedResponsesAsync(ChannelBytes channelBytes, IResponder responder) {
+        private async Task SinkAsServerWithDelayedResponsesAsync(NetworkMessageSlice channelBytes, IResponder responder) {
             var result = SinkAsServer(channelBytes, responder);
             var channel = channelBytes.Channel;
             if (result.Count() <= 1)

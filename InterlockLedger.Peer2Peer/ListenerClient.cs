@@ -31,30 +31,39 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
-using System.Collections.Generic;
+using System.Net;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public abstract class AbstractNodeSink : INodeSink
+    internal sealed class ListenerClient : BasePeerClient
     {
-        public int DefaultListeningBufferSize { get; protected set; }
-        public int DefaultTimeoutInMilliseconds { get; protected set; }
-        public string HostAtAddress { get; protected set; }
-        public ushort HostAtPortNumber { get; protected set; }
-        public abstract IEnumerable<string> LocalResources { get; }
-        public ulong MessageTag { get; protected set; }
-        public string NetworkName { get; protected set; }
-        public string NetworkProtocolName { get; protected set; }
-        public string NodeId { get; protected set; }
-        public string PublishAtAddress { get; protected set; }
-        public ushort? PublishAtPortNumber { get; protected set; }
-        public abstract IEnumerable<string> SupportedNetworkProtocolFeatures { get; }
+        public ListenerClient(string id, ulong tag, Socket socket, BaseListener origin, int defaultListeningBufferSize)
+            : base(id, tag, origin._source, origin._logger, defaultListeningBufferSize) {
+            if (socket is null)
+                throw new ArgumentNullException(nameof(socket));
+            var ipEndPoint = (IPEndPoint)socket.RemoteEndPoint;
+            NetworkAddress = ipEndPoint.Address.ToString();
+            NetworkPort = ipEndPoint.Port;
+            _socket = socket;
+            _origin = origin;
+            StartPipeline();
+        }
 
-        public abstract void HostedAt(string address, ushort port);
+        public override void PipelineStopped() => _origin.PipelineStopped();
 
-        public abstract void PublishedAt(string address, ushort port);
+        public override Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder) => _origin.SinkAsync(slice, responder);
 
-        public abstract Task<Success> SinkAsync(NetworkMessageSlice channelBytes, IResponder responder);
+        protected override NetworkMessageSlice AdjustSlice(NetworkMessageSlice slice, ISink clientSink) {
+            if (clientSink != null)
+                throw new InvalidOperationException("Listener Client can't handle this????");
+            return slice;
+        }
+
+        protected override Socket BuildSocket() => _socket;
+
+        private readonly BaseListener _origin;
+        private readonly Socket _socket;
     }
 }

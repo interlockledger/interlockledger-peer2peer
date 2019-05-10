@@ -41,9 +41,7 @@ namespace InterlockLedger.Peer2Peer
     internal abstract class BaseListener
     {
         public string Id { get; }
-
         public bool IsDisposed { get; private set; } = false;
-        public Func<ChannelBytes, IResponder, Task<Success>> SinkAsync { get; protected set; }
 
         public void Dispose() {
             if (!IsDisposed) {
@@ -52,11 +50,16 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
+        public abstract void PipelineStopped();
+
+        public abstract Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder);
+
         public abstract void Stop();
 
         protected internal readonly ILogger _logger;
-
         protected internal readonly CancellationTokenSource _source;
+        protected readonly ulong _messageTag;
+        protected readonly int _minimumBufferSize;
 
         protected BaseListener(string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize) {
             if (string.IsNullOrWhiteSpace(id))
@@ -69,15 +72,6 @@ namespace InterlockLedger.Peer2Peer
             _minimumBufferSize = Math.Max(512, defaultListeningBufferSize);
         }
 
-        protected abstract void PipelineStopped();
-
-        protected Pipeline RunPipeline(Socket socket, IResponder responder, bool shutdownSocketOnExit = false) {
-            var pipeline = new Pipeline(new NetSocket(socket), responder, _logger, _source, _messageTag, _minimumBufferSize, SinkAsync, PipelineStopped, shutdownSocketOnExit);
-            pipeline.ListenAsync().RunOnThread($"Pipeline to {socket.RemoteEndPoint}");
-            return pipeline;
-        }
-
-        private readonly ulong _messageTag;
-        private readonly int _minimumBufferSize;
+        protected bool Abandon => _source.IsCancellationRequested || IsDisposed;
     }
 }

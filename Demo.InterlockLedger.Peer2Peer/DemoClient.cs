@@ -66,12 +66,12 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
         }
 
-        public override async Task<Success> SinkAsync(ChannelBytes channelBytes, IResponder responder) {
+        public override async Task<Success> SinkAsync(NetworkMessageSlice channelBytes, IResponder responder) {
             await Task.Delay(1);
             return Received(Sink(channelBytes));
         }
 
-        private static Success Sink(ChannelBytes channelBytes) {
+        private static Success Sink(NetworkMessageSlice channelBytes) {
             var bytes = channelBytes.AllBytes;
             if (bytes.Length > 1) {
                 var message = Encoding.UTF8.GetString(bytes, 1, bytes.Length - 1);

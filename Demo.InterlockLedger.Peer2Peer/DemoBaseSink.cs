@@ -78,8 +78,8 @@ namespace Demo.InterlockLedger.Peer2Peer
         protected static readonly IEnumerable<byte> _isLastMarker = new byte[] { 0 };
         protected readonly CancellationTokenSource _source;
 
-        protected static ChannelBytes ToMessage(IEnumerable<byte> bytes, bool isLast)
-            => new ChannelBytes(0, ToMessageBytes(bytes, isLast));
+        protected static NetworkMessageSlice ToMessage(IEnumerable<byte> bytes, bool isLast)
+            => new NetworkMessageSlice(0, ToMessageBytes(bytes, isLast));
 
         protected static byte[] ToMessageBytes(IEnumerable<byte> bytes, bool isLast) {
             var prefixedBytes = (isLast ? _isLastMarker : _haveMoreMarker).Concat(bytes);

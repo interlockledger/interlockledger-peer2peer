@@ -42,7 +42,7 @@ namespace InterlockLedger.Peer2Peer
 {
     public class MessageParser
     {
-        public MessageParser(ulong expectedTag, ILogger logger, Func<ChannelBytes, Task<Success>> messageProcessor) {
+        public MessageParser(ulong expectedTag, ILogger logger, Func<NetworkMessageSlice, Task<Success>> messageProcessor) {
             _messageProcessor = messageProcessor ?? throw new ArgumentNullException(nameof(messageProcessor));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _expectedTag = expectedTag;
@@ -67,7 +67,7 @@ namespace InterlockLedger.Peer2Peer
         private readonly ulong _expectedTag;
         private readonly ILIntReader _lengthReader = new ILIntReader();
         private readonly ILogger _logger;
-        private readonly Func<ChannelBytes, Task<Success>> _messageProcessor;
+        private readonly Func<NetworkMessageSlice, Task<Success>> _messageProcessor;
         private readonly List<ReadOnlyMemory<byte>> _segments = new List<ReadOnlyMemory<byte>>();
         private readonly ILIntReader _tagReader = new ILIntReader();
         private ulong _channel;
@@ -143,7 +143,7 @@ namespace InterlockLedger.Peer2Peer
                             try {
                                 if (_segments.Any()) {
                                     _logger.LogTrace($"Message body received {string.Join("|", _segments.Select(b => b.ToBase64()))}");
-                                    LastResult = _messageProcessor(new ChannelBytes(_channel, _segments)).Result;
+                                    LastResult = _messageProcessor(new NetworkMessageSlice(_channel, _segments)).Result;
                                 }
                             } catch (Exception e) {
                                 _logger.LogError(e, "Failed to process last message!");

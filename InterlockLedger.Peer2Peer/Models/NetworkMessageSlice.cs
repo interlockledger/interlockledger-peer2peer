@@ -40,27 +40,29 @@ using System.Linq;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public struct ChannelBytes
+    public struct NetworkMessageSlice
     {
-        public ChannelBytes(ulong channel, MemoryStream ms) : this(channel, ms.ToArray()) {
+        public NetworkMessageSlice WithChannel(ulong channel) => new NetworkMessageSlice(channel, DataList);
+
+        public NetworkMessageSlice(ulong channel, MemoryStream ms) : this(channel, ms.ToArray()) {
         }
 
-        public ChannelBytes(ulong channel, ReadOnlyMemory<byte> readOnlyMemory) : this(channel, readOnlyMemory.ToArray()) {
+        public NetworkMessageSlice(ulong channel, ReadOnlyMemory<byte> readOnlyMemory) : this(channel, readOnlyMemory.ToArray()) {
         }
 
-        public ChannelBytes(ulong channel, ArraySegment<byte> data) : this(channel, new List<ArraySegment<byte>>() { data }) {
+        public NetworkMessageSlice(ulong channel, ArraySegment<byte> data) : this(channel, new List<ArraySegment<byte>>() { data }) {
         }
 
-        public ChannelBytes(ulong channel, params byte[] array) : this(channel, array, 0, array.Length) {
+        public NetworkMessageSlice(ulong channel, params byte[] array) : this(channel, array, 0, array.Length) {
         }
 
-        public ChannelBytes(ulong channel, byte[] array, int start, int length) : this(channel, new ArraySegment<byte>(array, start, length)) {
+        public NetworkMessageSlice(ulong channel, byte[] array, int start, int length) : this(channel, new ArraySegment<byte>(array, start, length)) {
         }
 
-        public ChannelBytes(ulong channel, IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes) : this(channel, readOnlyBytes.ToArraySegments()) {
+        public NetworkMessageSlice(ulong channel, IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes) : this(channel, readOnlyBytes.ToArraySegments()) {
         }
 
-        public ChannelBytes(ulong channel, IEnumerable<ArraySegment<byte>> dataList) {
+        public NetworkMessageSlice(ulong channel, IEnumerable<ArraySegment<byte>> dataList) {
             if (dataList == null)
                 throw new ArgumentNullException(nameof(dataList));
             _segmentList = new List<ArraySegment<byte>>(dataList);
@@ -73,11 +75,11 @@ namespace InterlockLedger.Peer2Peer
         public IList<ArraySegment<byte>> DataList => _dataList ?? (_dataList = (_segmentList ?? new List<ArraySegment<byte>>()).AsReadOnly());
         public bool IsEmpty => !DataList.Any(s => s.Count > 0);
 
-        public ChannelBytes Add(byte[] array) => Add(new ArraySegment<byte>(array));
+        public NetworkMessageSlice Add(byte[] array) => Add(new ArraySegment<byte>(array));
 
-        public ChannelBytes Add(byte[] array, int start, int length) => Add(new ArraySegment<byte>(array, start, length));
+        public NetworkMessageSlice Add(byte[] array, int start, int length) => Add(new ArraySegment<byte>(array, start, length));
 
-        public ChannelBytes Add(ArraySegment<byte> data) {
+        public NetworkMessageSlice Add(ArraySegment<byte> data) {
             if (_dataList == null)
                 _segmentList.Add(data);
             return this;

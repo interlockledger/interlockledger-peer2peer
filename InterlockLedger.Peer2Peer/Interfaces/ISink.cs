@@ -47,6 +47,6 @@ namespace InterlockLedger.Peer2Peer
         int DefaultListeningBufferSize { get; }
         ulong MessageTag { get; }
 
-        Task<Success> SinkAsync(ChannelBytes channelBytes, IResponder responder);
+        Task<Success> SinkAsync(NetworkMessageSlice channelBytes, IResponder responder);
     }
 }

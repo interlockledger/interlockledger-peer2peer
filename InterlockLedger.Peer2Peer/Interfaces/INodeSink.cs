@@ -41,8 +41,6 @@ namespace InterlockLedger.Peer2Peer
         string HostAtAddress { get; }
         ushort HostAtPortNumber { get; }
         IEnumerable<string> LocalResources { get; }
-        string NetworkName { get; }
-        string NetworkProtocolName { get; }
         string NodeId { get; }
         string PublishAtAddress { get; }
         ushort? PublishAtPortNumber { get; }

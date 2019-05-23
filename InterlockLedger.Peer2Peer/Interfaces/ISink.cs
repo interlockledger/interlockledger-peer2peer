@@ -44,7 +44,6 @@ namespace InterlockLedger.Peer2Peer
 
     public interface ISink
     {
-        int DefaultListeningBufferSize { get; }
         ulong MessageTag { get; }
         string NetworkName { get; }
         string NetworkProtocolName { get; }

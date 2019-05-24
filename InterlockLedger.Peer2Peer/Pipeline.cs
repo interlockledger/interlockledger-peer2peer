@@ -88,7 +88,6 @@ namespace InterlockLedger.Peer2Peer
                 await UsePipes(_socket.RemoteEndPoint);
                 await Task.Delay(10);
             } finally {
-                _socket.Shutdown(SocketShutdown.Both);
                 _socket.Dispose();
                 _stopProcessor();
             }

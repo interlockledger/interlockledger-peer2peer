@@ -41,7 +41,6 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-
     internal sealed class PeerClient : BasePeerClient
     {
         public PeerClient(string id, ulong tag, string networkAddress, int port, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
@@ -57,9 +56,9 @@ namespace InterlockLedger.Peer2Peer
             _sinks.Clear();
         }
 
-        public override async Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder) {
-            if (_sinks.TryGetValue(slice.Channel, out var sink)) {
-                var result = await sink.SinkAsync(slice, responder);
+        protected internal override async Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder) {
+            if (_sinks.TryGetValue(slice.Channel, out var clientSink)) {
+                var result = await clientSink.SinkAsync(slice, responder);
                 if (result == Success.Exit) {
                     _sinks.TryRemove(slice.Channel, out _);
                     return Success.Next;

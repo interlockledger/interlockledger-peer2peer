@@ -1,4 +1,4 @@
-/******************************************************************************************************************************
+﻿/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -30,32 +30,34 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using InterlockLedger.Peer2Peer;
-using Microsoft.Extensions.Logging;
 using System;
-using System.Linq;
-using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
-namespace Demo.InterlockLedger.Peer2Peer
+namespace InterlockLedger.Peer2Peer
 {
-    public static class Program
+    public class Disposer
     {
-        public static void Main(string[] args) {
-            Console.WriteLine("Demo.InterlockLedger.Peer2Peer!");
-            var source = new CancellationTokenSource();
-            using (var peerServices = BuildPeerServices(source)) {
-                if (args.Length > 0 && args[0].Equals("server", StringComparison.OrdinalIgnoreCase))
-                    new DemoServer(source).Run(peerServices);
-                else
-                    new DemoClient(source).Run(peerServices);
-            }
-            Console.WriteLine("-- Done!");
+        public bool Disposed => _disposed != 0;
+
+        public void Dispose(Action action) {
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
+                action();
         }
 
-        private static IPeerServices BuildPeerServices(CancellationTokenSource source) {
-            var factory = new LoggerFactory().AddConsole(LogLevel.Information);
-            return new PeerServices(factory, new DummyExternalAccessDiscoverer(factory)).WithCancellationTokenSource(source);
+        public T Do<T>(Func<T> function, T @default = default) => !Disposed ? function() : @default;
+
+        public void Do(Action action) {
+            if (!Disposed) action();
         }
+
+        public async Task<T> DoAsync<T>(Func<Task<T>> function, T @default = default) => !Disposed ? await function() : @default;
+
+        public async Task DoAsync<T>(Func<Task> function) {
+            if (!Disposed)
+                await function();
+        }
+
+        private int _disposed = 0;
     }
 }

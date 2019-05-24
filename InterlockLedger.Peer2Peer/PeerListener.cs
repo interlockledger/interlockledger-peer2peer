@@ -39,10 +39,7 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-#pragma warning disable S3881 // "IDisposable" should be implemented correctly
-
     internal class PeerListener : BaseListener, IListener
-#pragma warning restore S3881 // "IDisposable" should be implemented correctly
     {
         public PeerListener(INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger)
             : base(nodeSink.NodeId, nodeSink.MessageTag, source, logger, nodeSink.DefaultListeningBufferSize) {
@@ -55,8 +52,6 @@ namespace InterlockLedger.Peer2Peer
         public override void PipelineStopped() {
             // Do Nothing
         }
-
-        public override Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder) => _nodeSink.SinkAsync(slice, responder);
 
         public void Start() {
             if (_source.IsCancellationRequested)
@@ -77,6 +72,9 @@ namespace InterlockLedger.Peer2Peer
                 _listenSocket = null;
             }
         }
+
+        protected internal override Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder)
+            => _nodeSink.SinkAsync(slice, responder);
 
         protected void LogHeader(string verb)
             => _logger.LogInformation($"-- {verb} listening {_nodeSink.NetworkProtocolName} protocol in {_nodeSink.NetworkName} network at {_externalAccess.Route}!");

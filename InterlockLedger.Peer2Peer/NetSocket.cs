@@ -39,26 +39,30 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
+
     public class NetSocket : ISocket
     {
-        public NetSocket(Socket socket) => _socket = socket ?? throw new ArgumentNullException(nameof(socket));
-
-        public EndPoint RemoteEndPoint => _socket.RemoteEndPoint;
-
-        public int Available => _socket.Available;
-
-        public void Dispose() => _socket.Dispose();
-
-        public async Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token) {
-            if (token.IsCancellationRequested)
-                return 0;
-            return await _socket.ReceiveAsync(memory, socketFlags);
+        public NetSocket(Socket socket) {
+            _disposer = new Disposer();
+            _socket = socket ?? throw new ArgumentNullException(nameof(socket));
+            RemoteEndPoint = _socket.RemoteEndPoint;
         }
 
-        public Task SendAsync(IList<ArraySegment<byte>> buffers) => _socket.SendAsync(buffers);
+        public int Available => _disposer.Do(() => _socket.Available);
+        public bool Disposed => _disposer.Disposed;
+        public EndPoint RemoteEndPoint { get; }
 
-        public void Shutdown(SocketShutdown how) => _socket.Shutdown(how);
+        public void Dispose() => _disposer.Dispose(() => {
+            _socket.Shutdown(SocketShutdown.Both);
+            _socket.Dispose();
+        });
 
+        public Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token)
+            => _disposer.DoAsync(async () => token.IsCancellationRequested ? 0 : await _socket.ReceiveAsync(memory, socketFlags));
+
+        public Task SendAsync(IList<ArraySegment<byte>> buffers) => _disposer.DoAsync(() => _socket.SendAsync(buffers));
+
+        private readonly Disposer _disposer;
         private readonly Socket _socket;
     }
 }

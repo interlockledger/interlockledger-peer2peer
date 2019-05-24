@@ -53,7 +53,7 @@ namespace InterlockLedger.Peer2Peer
 
         public override void PipelineStopped() => _origin.PipelineStopped();
 
-        public override Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder) => _origin.SinkAsync(slice, responder);
+        protected internal override Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder) => _origin.SinkAsync(slice, responder);
 
         protected override NetworkMessageSlice AdjustSlice(NetworkMessageSlice slice, ISink clientSink) {
             if (clientSink != null)

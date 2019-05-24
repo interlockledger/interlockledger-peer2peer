@@ -40,23 +40,24 @@ namespace InterlockLedger.Peer2Peer
     internal abstract class BaseListener
     {
         public string Id { get; }
-        public bool IsDisposed { get; private set; } = false;
+        public bool Disposed { get; private set; } = false;
 
         public void Dispose() {
-            if (!IsDisposed) {
+            if (!Disposed) {
                 Stop();
-                IsDisposed = true;
+                Disposed = true;
             }
         }
 
         public abstract void PipelineStopped();
 
-        public abstract Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder);
-
         public abstract void Stop();
 
         protected internal readonly ILogger _logger;
         protected internal readonly CancellationTokenSource _source;
+
+        protected internal abstract Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder);
+
         protected readonly ulong _messageTag;
         protected readonly int _minimumBufferSize;
 
@@ -71,6 +72,6 @@ namespace InterlockLedger.Peer2Peer
             _minimumBufferSize = Math.Max(512, defaultListeningBufferSize);
         }
 
-        protected bool Abandon => _source.IsCancellationRequested || IsDisposed;
+        protected bool Abandon => _source.IsCancellationRequested || Disposed;
     }
 }

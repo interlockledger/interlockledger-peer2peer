@@ -55,12 +55,13 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             var fakeDiscoverer = new FakeDiscoverer();
             var source = new CancellationTokenSource();
             var fakeSocket = new TestSocket(source, 13, 1, 128, 2);
-            Task<Success> processor(NetworkMessageSlice channelBytes, IResponder sender) {
+            async Task<Success> processor(NetworkMessageSlice channelBytes, IResponder sender) {
                 bytesProcessed = channelBytes.AllBytes;
                 channelProcessed = channelBytes.Channel;
                 sender.Send(new NetworkMessageSlice(channelProcessed, 13, 1, 128));
+                await Task.Delay(100);
                 sender.Stop();
-                return Task.FromResult(Success.Exit);
+                return Success.Exit;
             }
             void stopProcessor() => stopped = true;
             var fakeClient = new TestClient("FakeTestClient");

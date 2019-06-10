@@ -44,10 +44,11 @@ namespace InterlockLedger.Peer2Peer
 
     public interface ISink
     {
+        ulong Channel { get; set; }
         ulong MessageTag { get; }
         string NetworkName { get; }
         string NetworkProtocolName { get; }
 
-        Task<Success> SinkAsync(NetworkMessageSlice channelBytes, IResponder responder);
+        Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder);
     }
 }

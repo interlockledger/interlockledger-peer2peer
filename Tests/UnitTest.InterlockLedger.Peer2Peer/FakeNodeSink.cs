@@ -39,6 +39,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
 {
     internal class FakeNodeSink : INodeSink
     {
+        public ulong Channel { get; set; } = 0;
         public int DefaultListeningBufferSize => 1024;
         public int DefaultTimeoutInMilliseconds => 30_000;
         public string HostAtAddress => "localhost";

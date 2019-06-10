@@ -53,13 +53,11 @@ namespace InterlockLedger.Peer2Peer
 
         public override void PipelineStopped() => _origin.PipelineStopped();
 
-        protected internal override Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder) => _origin.SinkAsync(slice, responder);
+        protected internal override Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder)
+            => _origin.SinkAsync(slice, responder);
 
-        protected override NetworkMessageSlice AdjustSlice(NetworkMessageSlice slice, ISink clientSink) {
-            if (clientSink != null)
-                throw new InvalidOperationException("Listener Client can't handle this????");
-            return slice;
-        }
+        protected override NetworkMessageSlice AdjustSlice(NetworkMessageSlice slice, ISink clientSink)
+            => clientSink == null ? slice : slice.WithChannel(clientSink.Channel);
 
         protected override Socket BuildSocket() => _socket;
 

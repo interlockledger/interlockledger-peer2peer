@@ -38,6 +38,7 @@ namespace InterlockLedger.Peer2Peer
 {
     public abstract class AbstractNodeSink : INodeSink
     {
+        public ulong Channel { get; set; }
         public int DefaultListeningBufferSize { get; protected set; }
         public int DefaultTimeoutInMilliseconds { get; protected set; }
         public string HostAtAddress { get; protected set; }

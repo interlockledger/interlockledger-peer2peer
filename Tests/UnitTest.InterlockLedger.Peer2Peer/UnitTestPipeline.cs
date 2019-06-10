@@ -115,7 +115,8 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             }
 
             public int Available => _bytesReceived.Length - _receivedCount;
-            public IList<ArraySegment<byte>> BytesSent { get; private set; }
+
+            public IList<ArraySegment<byte>> BytesSent => bytesSent;
             public EndPoint RemoteEndPoint => new IPEndPoint(IPAddress.Loopback, 13013);
 
             public void Dispose() {
@@ -136,9 +137,9 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             }
 
             public Task SendAsync(IList<ArraySegment<byte>> segment) {
-                BytesSent = segment;
+                bytesSent.AddRange(segment);
                 if (Available == 0)
-                    _source.CancelAfter(10);
+                    _source.CancelAfter(100);
                 return Task.CompletedTask;
             }
 
@@ -150,6 +151,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
 
             private readonly Memory<byte> _bytesReceived;
             private readonly CancellationTokenSource _source;
+            private readonly List<ArraySegment<byte>> bytesSent = new List<ArraySegment<byte>>();
             private int _receivedCount;
         }
     }

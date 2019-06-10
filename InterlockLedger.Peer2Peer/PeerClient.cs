@@ -68,14 +68,8 @@ namespace InterlockLedger.Peer2Peer
             return Success.Next;
         }
 
-        protected override NetworkMessageSlice AdjustSlice(NetworkMessageSlice slice, ISink clientSink) {
-            if (clientSink != null) {
-                var channel = (ulong)Interlocked.Increment(ref _lastChannelUsed);
-                _sinks[channel] = clientSink;
-                return slice.WithChannel(channel);
-            }
-            return slice;
-        }
+        protected override NetworkMessageSlice AdjustSlice(NetworkMessageSlice slice, ISink clientSink)
+            => clientSink == null ? slice : slice.WithChannel(AlocateChannel(clientSink));
 
         protected override Socket BuildSocket() {
             IPHostEntry ipHostInfo = Dns.GetHostEntry(NetworkAddress);
@@ -89,5 +83,12 @@ namespace InterlockLedger.Peer2Peer
 
         private readonly ConcurrentDictionary<ulong, ISink> _sinks = new ConcurrentDictionary<ulong, ISink>();
         private long _lastChannelUsed = 0;
+
+        private ulong AlocateChannel(ISink clientSink) {
+            var channel = (ulong)Interlocked.Increment(ref _lastChannelUsed);
+            clientSink.Channel = channel;
+            _sinks[channel] = clientSink;
+            return channel;
+        }
     }
 }

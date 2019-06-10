@@ -51,26 +51,6 @@ namespace InterlockLedger.Peer2Peer
             NetworkPort = port;
         }
 
-        public override void PipelineStopped() {
-            _logger.LogTrace($"Stopping pipeline on client {Id}");
-            _sinks.Clear();
-        }
-
-        protected internal override async Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder) {
-            if (_sinks.TryGetValue(slice.Channel, out var clientSink)) {
-                var result = await clientSink.SinkAsync(slice, responder);
-                if (result == Success.Exit) {
-                    _sinks.TryRemove(slice.Channel, out _);
-                    return Success.Next;
-                }
-                return result;
-            }
-            return Success.Next;
-        }
-
-        protected override NetworkMessageSlice AdjustSlice(NetworkMessageSlice slice, ISink clientSink)
-            => clientSink == null ? slice : slice.WithChannel(AlocateChannel(clientSink));
-
         protected override Socket BuildSocket() {
             IPHostEntry ipHostInfo = Dns.GetHostEntry(NetworkAddress);
             IPAddress ipAddress = ipHostInfo.AddressList.First(ip => ip.AddressFamily == AddressFamily.InterNetwork);
@@ -79,16 +59,6 @@ namespace InterlockLedger.Peer2Peer
             socket.LingerState = new LingerOption(true, 1);
             _logger.LogTrace($"Client connecting into address {NetworkAddress}:{NetworkPort}");
             return socket;
-        }
-
-        private readonly ConcurrentDictionary<ulong, ISink> _sinks = new ConcurrentDictionary<ulong, ISink>();
-        private long _lastChannelUsed = 0;
-
-        private ulong AlocateChannel(ISink clientSink) {
-            var channel = (ulong)Interlocked.Increment(ref _lastChannelUsed);
-            clientSink.Channel = channel;
-            _sinks[channel] = clientSink;
-            return channel;
         }
     }
 }

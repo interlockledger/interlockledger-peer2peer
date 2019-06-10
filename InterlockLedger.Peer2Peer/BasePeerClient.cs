@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading;
@@ -41,6 +42,11 @@ namespace InterlockLedger.Peer2Peer
 {
     internal abstract class BasePeerClient : BaseListener, IResponder
     {
+        public override void PipelineStopped() {
+            _logger.LogTrace($"Stopping pipeline on client {Id}");
+            _sinks.Clear();
+        }
+
         public bool Send(NetworkMessageSlice slice, ISink clientSink = null) {
             if (Abandon)
                 return false;
@@ -63,6 +69,20 @@ namespace InterlockLedger.Peer2Peer
 
         public override void Stop() => _pipeline?.Stop();
 
+        protected internal override async Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder) {
+            if (_sinks.TryGetValue(slice.Channel, out var clientSink)) {
+                var result = await clientSink.SinkAsync(slice, responder);
+                if (result == Success.Exit) {
+                    _sinks.TryRemove(slice.Channel, out _);
+                    return Success.Next;
+                }
+                return result;
+            }
+            return _origin == null ? Success.Next : await _origin.SinkAsync(slice, responder);
+        }
+
+        protected BaseListener _origin;
+
         protected BasePeerClient(string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
             : base(id, tag, source, logger, defaultListeningBufferSize) => _pipeline = null;
 
@@ -70,7 +90,8 @@ namespace InterlockLedger.Peer2Peer
 
         protected int NetworkPort { get; set; }
 
-        protected abstract NetworkMessageSlice AdjustSlice(NetworkMessageSlice slice, ISink clientSink);
+        protected NetworkMessageSlice AdjustSlice(NetworkMessageSlice slice, ISink clientSink)
+            => clientSink == null ? slice : slice.WithChannel(AlocateChannel(clientSink));
 
         protected abstract Socket BuildSocket();
 
@@ -85,6 +106,9 @@ namespace InterlockLedger.Peer2Peer
 
         private const int _hoursOfSilencedDuplicateErrors = 8;
         private static readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
+
+        private readonly ConcurrentDictionary<ulong, ISink> _sinks = new ConcurrentDictionary<ulong, ISink>();
+        private long _lastChannelUsed = 0;
         private Pipeline _pipeline;
 
         private Pipeline Pipeline {
@@ -100,8 +124,15 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
+        private ulong AlocateChannel(ISink clientSink) {
+            var channel = (ulong)Interlocked.Increment(ref _lastChannelUsed);
+            clientSink.Channel = channel;
+            _sinks[channel] = clientSink;
+            return channel;
+        }
+
         private Pipeline RunPipeline(Socket socket, IResponder responder)
-             => new Pipeline(new NetSocket(socket), responder, _source, _messageTag, _minimumBufferSize, SinkAsync, PipelineStopped, _logger)
+            => new Pipeline(new NetSocket(socket), responder, _source, _messageTag, _minimumBufferSize, SinkAsync, PipelineStopped, _logger)
                 .Start($"Pipeline {Id} to {socket.RemoteEndPoint}");
     }
 }

@@ -51,17 +51,13 @@ namespace InterlockLedger.Peer2Peer
             StartPipeline();
         }
 
-        public override void PipelineStopped() => _origin.PipelineStopped();
-
-        protected internal override Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder)
-            => _origin.SinkAsync(slice, responder);
-
-        protected override NetworkMessageSlice AdjustSlice(NetworkMessageSlice slice, ISink clientSink)
-            => clientSink == null ? slice : slice.WithChannel(clientSink.Channel);
+        public override void PipelineStopped() {
+            _origin.PipelineStopped();
+            base.PipelineStopped();
+        }
 
         protected override Socket BuildSocket() => _socket;
 
-        private readonly BaseListener _origin;
         private readonly Socket _socket;
     }
 }

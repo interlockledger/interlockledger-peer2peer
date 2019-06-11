@@ -30,27 +30,44 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public interface INodeSink : IChannelSink
+    public abstract class ListenerBase
     {
-        int DefaultListeningBufferSize { get; }
-        string HostAtAddress { get; }
-        ushort HostAtPortNumber { get; }
-        IEnumerable<string> LocalResources { get; }
-        ulong MessageTag { get; }
-        string NetworkName { get; }
-        string NetworkProtocolName { get; }
-        string NodeId { get; }
-        string PublishAtAddress { get; }
-        ushort? PublishAtPortNumber { get; }
-        IEnumerable<string> SupportedNetworkProtocolFeatures { get; }
+        public bool Disposed { get; private set; } = false;
+        public string Id { get; }
 
-        void HostedAt(string address, ushort port);
+        public void Dispose() {
+            if (!Disposed) {
+                Stop();
+                Disposed = true;
+            }
+        }
 
-        void PublishedAt(string address, ushort port);
+        public abstract void Stop();
+
+        protected internal readonly ILogger _logger;
+        protected internal readonly CancellationTokenSource _source;
+
+        protected internal bool Abandon => _source.IsCancellationRequested || Disposed;
+
+        protected readonly ulong _messageTag;
+        protected readonly int _minimumBufferSize;
+
+        protected ListenerBase(string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize) {
+            if (string.IsNullOrWhiteSpace(id))
+                throw new ArgumentNullException(nameof(id));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _source = source ?? throw new ArgumentNullException(nameof(source));
+            Id = id;
+            _messageTag = tag;
+            _source.Token.Register(Dispose);
+            _minimumBufferSize = Math.Max(512, defaultListeningBufferSize);
+        }
     }
 }

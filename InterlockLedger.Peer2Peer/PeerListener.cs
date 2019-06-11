@@ -39,7 +39,7 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal class PeerListener : BaseListener, IListener
+    internal class PeerListener : ListenerBase, IListener
     {
         public PeerListener(INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger)
             : base(nodeSink.NodeId, nodeSink.MessageTag, source, logger, nodeSink.DefaultListeningBufferSize) {
@@ -49,9 +49,14 @@ namespace InterlockLedger.Peer2Peer
 
         public bool Alive => _listenSocket != null;
 
-        public override void PipelineStopped() {
-            // Do Nothing
-        }
+        public ulong MessageTag => _nodeSink.MessageTag;
+
+        public string NetworkName => _nodeSink.NetworkName;
+
+        public string NetworkProtocolName => _nodeSink.NetworkProtocolName;
+
+        public Task<Success> SinkAsync(byte[] message, IActiveChannel channel)
+            => _nodeSink.SinkAsync(message, channel);
 
         public void Start() {
             if (_source.IsCancellationRequested)
@@ -72,9 +77,6 @@ namespace InterlockLedger.Peer2Peer
                 _listenSocket = null;
             }
         }
-
-        protected internal override Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder)
-            => _nodeSink.SinkAsync(slice, responder);
 
         protected void LogHeader(string verb)
             => _logger.LogInformation($"-- {verb} listening {_nodeSink.NetworkProtocolName} protocol in {_nodeSink.NetworkName} network at {_externalAccess.Route}!");
@@ -110,7 +112,7 @@ namespace InterlockLedger.Peer2Peer
             } while (!_source.IsCancellationRequested);
         }
 
-        private ListenerClient RunPeerClient(Socket socket)
-            => new ListenerClient("ListenerClient", _nodeSink.MessageTag, socket, this, _nodeSink.DefaultListeningBufferSize);
+        private ConnectionInitiatedByPeer RunPeerClient(Socket socket)
+            => new ConnectionInitiatedByPeer("ListenerClient", _nodeSink.MessageTag, socket, this, _nodeSink.DefaultListeningBufferSize);
     }
 }

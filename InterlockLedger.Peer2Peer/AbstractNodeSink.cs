@@ -38,7 +38,6 @@ namespace InterlockLedger.Peer2Peer
 {
     public abstract class AbstractNodeSink : INodeSink
     {
-        public ulong Channel { get; set; }
         public int DefaultListeningBufferSize { get; protected set; }
         public int DefaultTimeoutInMilliseconds { get; protected set; }
         public string HostAtAddress { get; protected set; }
@@ -55,7 +54,6 @@ namespace InterlockLedger.Peer2Peer
         public abstract void HostedAt(string address, ushort port);
 
         public abstract void PublishedAt(string address, ushort port);
-
-        public abstract Task<Success> SinkAsync(NetworkMessageSlice channelBytes, IResponder responder);
+        public abstract Task<Success> SinkAsync(byte[] message, IActiveChannel channel);
     }
 }

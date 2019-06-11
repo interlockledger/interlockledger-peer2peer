@@ -30,34 +30,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using System;
-using System.Net;
-using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal sealed class ListenerClient : BasePeerClient
+    public interface IChannelSink
     {
-        public ListenerClient(string id, ulong tag, Socket socket, BaseListener origin, int defaultListeningBufferSize)
-            : base(id, tag, origin._source, origin._logger, defaultListeningBufferSize) {
-            if (socket is null)
-                throw new ArgumentNullException(nameof(socket));
-            var ipEndPoint = (IPEndPoint)socket.RemoteEndPoint;
-            NetworkAddress = ipEndPoint.Address.ToString();
-            NetworkPort = ipEndPoint.Port;
-            _socket = socket;
-            _origin = origin;
-            StartPipeline();
-        }
-
-        public override void PipelineStopped() {
-            _origin.PipelineStopped();
-            base.PipelineStopped();
-        }
-
-        protected override Socket BuildSocket() => _socket;
-
-        private readonly Socket _socket;
+        Task<Success> SinkAsync(byte[] message, IActiveChannel channel);
     }
 }

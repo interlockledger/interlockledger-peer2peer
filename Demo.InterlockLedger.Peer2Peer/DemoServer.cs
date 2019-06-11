@@ -65,21 +65,23 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
         }
 
-        public override Task<Success> SinkAsync(NetworkMessageSlice channelBytes, IResponder responder) {
-            _queue.Enqueue((channelBytes, responder));
+        public override Task<Success> SinkAsync(byte[] message, IActiveChannel channel) {
+            _queue.Enqueue((message, channel));
             return Task.FromResult(Success.Next);
+
         }
 
-        private readonly ConcurrentQueue<(NetworkMessageSlice channelBytes, IResponder responder)> _queue = new ConcurrentQueue<(NetworkMessageSlice channelBytes, IResponder responder)>();
+        private readonly ConcurrentQueue<(byte[] message, IActiveChannel activeChannel)> _queue = new ConcurrentQueue<(byte[] message, IActiveChannel activeChannel)>();
         private readonly ConcurrentQueue<(ulong channel, string key)> _queueKeys = new ConcurrentQueue<(ulong channel, string key)>();
 
         private IPeerServices _peerServices;
 
         private bool _stop = false;
 
-        private static void Send(IResponder responder, ulong channel, ReadOnlyMemory<byte> bytes) {
+        private static void Send(IActiveChannel channel, byte[] bytes)
+        {
             try {
-                responder.Send(new NetworkMessageSlice(channel, bytes));
+                channel.Send(bytes.ToArray());
             } catch (SocketException) {
                 // Do Nothing
             }
@@ -88,7 +90,7 @@ namespace Demo.InterlockLedger.Peer2Peer
         private async Task Dequeue() {
             do {
                 if (_queue.TryDequeue(out var tuple))
-                    await SinkAsServerWithDelayedResponsesAsync(tuple.channelBytes, tuple.responder);
+                    await SinkAsServerWithDelayedResponsesAsync(tuple.message, tuple.activeChannel);
                 await Task.Delay(10);
             } while (!_stop);
         }
@@ -101,27 +103,27 @@ namespace Demo.InterlockLedger.Peer2Peer
             } while (!_stop);
         }
 
-        private ReadOnlyMemory<byte> FormatResponse(IEnumerable<byte> buffer, bool isLast)
-            => new ReadOnlyMemory<byte>(ToMessageBytes(buffer.ToArray(), isLast));
+        private byte[] FormatResponse(IEnumerable<byte> buffer, bool isLast)
+            => ToMessageBytes(buffer.ToArray(), isLast);
 
-        private ReadOnlyMemory<byte> FormatTextResponse(string text, bool isLast) => FormatResponse(AsUTF8Bytes(text), isLast);
+        private byte[] FormatTextResponse(string text, bool isLast) => FormatResponse(AsUTF8Bytes(text), isLast);
 
         private async Task KeyedSend(ulong channel, string key) {
             int i = 0;
-            var r = _peerServices.KnownNodes.GetClient(key);
+            var r = _peerServices.KnownNodes.GetClient(key).GetChannel(channel);
             while (++i < 5) {
                 await Task.Delay(1_000);
                 var message = FormatTextResponse($"{key}#{i}", isLast: i >= 4);
-                _ = r?.Send(new NetworkMessageSlice(channel, message));
+                _ = r?.Send(message.ToArray());
             }
             _peerServices.KnownNodes.Forget(key);
         }
 
-        private IEnumerable<ReadOnlyMemory<byte>> SinkAsServer(NetworkMessageSlice channelBytes, IResponder responder) {
-            byte[] buffer = channelBytes.AllBytes;
+        private IEnumerable<byte[]> SinkAsServer(byte[] channelBytes, IActiveChannel activeChannel) {
+            byte[] buffer = channelBytes;
             var command = (buffer.Length > 1) ? (char)buffer[1] : '\0';
             IEnumerable<byte> text = buffer.Skip(2);
-            var channel = channelBytes.Channel;
+            var channel = activeChannel.Channel;
             Console.WriteLine($"Received command '{command}' on channel {channel}");
             switch (command) {
             case 'e':  // is echo message?
@@ -140,8 +142,11 @@ namespace Demo.InterlockLedger.Peer2Peer
                 break;
 
             case '4':
-                var key = StartAsKeyed(responder, text, channel);
-                yield return FormatTextResponse($"Using keyed connection on {key}", isLast: false);
+                var echo4 = AsString(text);
+                yield return FormatTextResponse($"{echo4}|1", isLast: false);
+                yield return FormatTextResponse($"{echo4}|2", isLast: false);
+                yield return FormatTextResponse($"{echo4}|3", isLast: false);
+                yield return FormatTextResponse($"{echo4}|4", isLast: true);
                 break;
 
             default:
@@ -150,25 +155,18 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
         }
 
-        private async Task SinkAsServerWithDelayedResponsesAsync(NetworkMessageSlice channelBytes, IResponder responder) {
-            var result = SinkAsServer(channelBytes, responder);
-            var channel = channelBytes.Channel;
+        private async Task SinkAsServerWithDelayedResponsesAsync(byte[] message, IActiveChannel activeChannel) {
+            var result = SinkAsServer(message, activeChannel);
+            var channel = activeChannel.Channel;
             if (result.Count() <= 1)
-                Send(responder, channel, result.First());
+                Send(activeChannel, result.First());
             else {
                 foreach (var r in result) {
-                    Send(responder, channel, r);
+                    Send(activeChannel, r);
                     await Task.Delay(2_000);
                 }
             }
             Console.WriteLine($"Done processing on channel {channel}");
-        }
-
-        private string StartAsKeyed(IResponder responder, IEnumerable<byte> text, ulong channel) {
-            var key = AsString(text);
-            _peerServices.KnownNodes.Add(key, responder);
-            _queueKeys.Enqueue((channel, key));
-            return key;
         }
     }
 }

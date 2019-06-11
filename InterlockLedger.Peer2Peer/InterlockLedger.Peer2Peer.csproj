@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>0.16.6</Version>
+    <Version>0.17.0</Version>
     <Authors>Rafael Teixeira</Authors>
     <Company>InterlockLedger Network</Company>
     <Product>InterlockLedger</Product>
@@ -13,7 +13,7 @@
     <RepositoryUrl>https://github.com/interlockledger/peer2peer.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageReleaseNotes>More refactoring to make proxied connections work</PackageReleaseNotes>
+    <PackageReleaseNotes>ActiveChannels new architecture</PackageReleaseNotes>
     <LangVersion>latest</LangVersion>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>

@@ -39,7 +39,6 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-
     public class NetSocket : ISocket
     {
         public NetSocket(Socket socket) {
@@ -48,9 +47,9 @@ namespace InterlockLedger.Peer2Peer
             RemoteEndPoint = _socket.RemoteEndPoint;
         }
 
+        public EndPoint RemoteEndPoint { get; }
         public int Available => _disposer.Do(() => _socket.Available);
         public bool Disposed => _disposer.Disposed;
-        public EndPoint RemoteEndPoint { get; }
 
         public void Dispose() => _disposer.Dispose(() => {
             _socket.Shutdown(SocketShutdown.Both);

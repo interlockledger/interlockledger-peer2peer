@@ -34,21 +34,5 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public enum Success
-    {
-        Next = 0,
-        Retry = 1,
-        SwitchToListen = 4,
-        Exit = 128
-    }
-
-    public interface ISink
-    {
-        ulong Channel { get; set; }
-        ulong MessageTag { get; }
-        string NetworkName { get; }
-        string NetworkProtocolName { get; }
-
-        Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder);
-    }
+    public interface ISink { }
 }

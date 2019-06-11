@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -31,11 +31,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
-using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public interface IListener : IDisposable
+    public interface IListener : IChannelSink, IDisposable
     {
         bool Alive { get; }
 

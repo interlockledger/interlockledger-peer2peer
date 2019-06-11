@@ -40,19 +40,32 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal abstract class BasePeerClient : BaseListener, IResponder
+    public abstract class ConnectionBase : ListenerBase, IConnection
     {
-        public override void PipelineStopped() {
-            _logger.LogTrace($"Stopping pipeline on client {Id}");
-            _sinks.Clear();
+        public IActiveChannel AllocateChannel(IChannelSink channelSink) {
+            var channel = (ulong)Interlocked.Increment(ref _lastChannelUsed);
+            return _channelSinks[channel] = new ActiveChannel(channel, channelSink, this);
         }
 
-        public bool Send(NetworkMessageSlice slice, ISink clientSink = null) {
+        public IActiveChannel GetChannel(ulong channel) {
+            if (_channelSinks.TryGetValue(channel, out IActiveChannel activeChannel))
+                return activeChannel;
+            throw new ArgumentOutOfRangeException(nameof(channel), $"Channel {channel} not found!!!");
+        }
+
+        public virtual void PipelineStopped() {
+            _logger.LogTrace($"Stopping pipeline on client {Id}");
+            _channelSinks.Clear();
+        }
+
+        public override void Stop() => _pipeline?.Stop();
+
+        internal bool Send(NetworkMessageSlice slice) {
             if (Abandon)
                 return false;
             try {
                 if (!slice.IsEmpty) {
-                    Pipeline.Send(AdjustSlice(slice, clientSink));
+                    Pipeline.Send(slice);
                 }
                 return true;
             } catch (PeerException pe) {
@@ -67,33 +80,16 @@ namespace InterlockLedger.Peer2Peer
             return false;
         }
 
-        public override void Stop() => _pipeline?.Stop();
-
-        protected internal override async Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder) {
-            if (_sinks.TryGetValue(slice.Channel, out var clientSink)) {
-                var result = await clientSink.SinkAsync(slice, responder);
-                if (result == Success.Exit) {
-                    _sinks.TryRemove(slice.Channel, out _);
-                    return Success.Next;
-                }
-                return result;
-            }
-            return _origin == null ? Success.Next : await _origin.SinkAsync(slice, responder);
-        }
-
-        protected BaseListener _origin;
-
-        protected BasePeerClient(string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
+        protected readonly ConcurrentDictionary<ulong, IActiveChannel> _channelSinks = new ConcurrentDictionary<ulong, IActiveChannel>();
+ 
+        protected ConnectionBase(string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
             : base(id, tag, source, logger, defaultListeningBufferSize) => _pipeline = null;
 
         protected string NetworkAddress { get; set; }
 
         protected int NetworkPort { get; set; }
 
-        protected NetworkMessageSlice AdjustSlice(NetworkMessageSlice slice, ISink clientSink)
-            => clientSink == null ? slice : slice.WithChannel(AlocateChannel(clientSink));
-
-        protected abstract Socket BuildSocket();
+        protected abstract ISocket BuildSocket();
 
         protected void LogError(string message) {
             if (!(_errors.TryGetValue(message, out var dateTime) && (DateTimeOffset.Now - dateTime).Hours < _hoursOfSilencedDuplicateErrors)) {
@@ -106,8 +102,6 @@ namespace InterlockLedger.Peer2Peer
 
         private const int _hoursOfSilencedDuplicateErrors = 8;
         private static readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
-
-        private readonly ConcurrentDictionary<ulong, ISink> _sinks = new ConcurrentDictionary<ulong, ISink>();
         private long _lastChannelUsed = 0;
         private Pipeline _pipeline;
 
@@ -116,7 +110,7 @@ namespace InterlockLedger.Peer2Peer
                 try {
                     if (_pipeline != null)
                         return _pipeline;
-                    _pipeline = RunPipeline(BuildSocket(), this);
+                    _pipeline = RunPipeline(BuildSocket());
                     return _pipeline;
                 } catch (Exception se) {
                     throw new PeerException($"Client {Id} could not connect into remote endpoint {NetworkAddress}:{NetworkPort} .{Environment.NewLine}{se.Message}", se);
@@ -124,15 +118,26 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        private ulong AlocateChannel(ISink clientSink) {
-            var channel = (ulong)Interlocked.Increment(ref _lastChannelUsed);
-            clientSink.Channel = channel;
-            _sinks[channel] = clientSink;
-            return channel;
+        private Pipeline RunPipeline(ISocket socket)
+            => new Pipeline(socket, _source, _messageTag, _minimumBufferSize, SinkAsync, PipelineStopped, _logger)
+                .Start($"Pipeline {Id} to {socket.RemoteEndPoint}");
+
+        private async Task<Success> SinkAsync(NetworkMessageSlice slice) {
+            if (_channelSinks.TryGetValue(slice.Channel, out var channelSink)) {
+                var result = await channelSink.SinkAsync(slice.AllBytes);
+                if (result == Success.Exit) {
+                    _channelSinks.TryRemove(slice.Channel, out _);
+                    return Success.Next;
+                }
+                return result;
+            }
+            if (DefaultSink != null) {
+                var newChannel = _channelSinks[slice.Channel] = new ActiveChannel(slice.Channel, DefaultSink, this);
+                return await newChannel.SinkAsync(slice.AllBytes);
+            }
+            return Success.Next;
         }
 
-        private Pipeline RunPipeline(Socket socket, IResponder responder)
-            => new Pipeline(new NetSocket(socket), responder, _source, _messageTag, _minimumBufferSize, SinkAsync, PipelineStopped, _logger)
-                .Start($"Pipeline {Id} to {socket.RemoteEndPoint}");
+        protected abstract IChannelSink DefaultSink { get; }
     }
 }

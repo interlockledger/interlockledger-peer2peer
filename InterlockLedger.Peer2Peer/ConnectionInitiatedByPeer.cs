@@ -31,26 +31,29 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
-using System.Collections.Generic;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public interface INodeSink : IChannelSink
+    internal sealed class ConnectionInitiatedByPeer : ConnectionBase
     {
-        int DefaultListeningBufferSize { get; }
-        string HostAtAddress { get; }
-        ushort HostAtPortNumber { get; }
-        IEnumerable<string> LocalResources { get; }
-        ulong MessageTag { get; }
-        string NetworkName { get; }
-        string NetworkProtocolName { get; }
-        string NodeId { get; }
-        string PublishAtAddress { get; }
-        ushort? PublishAtPortNumber { get; }
-        IEnumerable<string> SupportedNetworkProtocolFeatures { get; }
+        public ConnectionInitiatedByPeer(string id, ulong tag, Socket socket, ListenerBase origin, int defaultListeningBufferSize)
+            : base(id, tag, origin._source, origin._logger, defaultListeningBufferSize) {
+            if (socket is null)
+                throw new ArgumentNullException(nameof(socket));
+            var ipEndPoint = (IPEndPoint)socket.RemoteEndPoint;
+            NetworkAddress = ipEndPoint.Address.ToString();
+            NetworkPort = ipEndPoint.Port;
+            _socket = new NetSocket(socket);
+            _origin = origin;
+            StartPipeline();
+        }
+        protected override IChannelSink DefaultSink => _origin as IChannelSink;
+        protected override ISocket BuildSocket() => _socket;
 
-        void HostedAt(string address, ushort port);
-
-        void PublishedAt(string address, ushort port);
+        private readonly NetSocket _socket;
+        private readonly ListenerBase _origin;
     }
 }

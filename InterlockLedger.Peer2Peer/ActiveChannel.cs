@@ -30,48 +30,31 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.Extensions.Logging;
 using System;
-using System.Threading;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal abstract class BaseListener
+    internal class ActiveChannel : IActiveChannel
     {
-        public string Id { get; }
-        public bool Disposed { get; private set; } = false;
+        public bool Active => !PeerConnection.Abandon;
+        public ulong Channel { get; }
 
-        public void Dispose() {
-            if (!Disposed) {
-                Stop();
-                Disposed = true;
-            }
+        public bool Send(byte[] message)
+            => Active && IsValid(message) ? PeerConnection.Send(new NetworkMessageSlice(Channel, message)) : true;
+
+        public async Task<Success> SinkAsync(byte[] message) => await Sink.SinkAsync(message, this);
+
+        internal ActiveChannel(ulong channel, IChannelSink sink, ConnectionBase peerConnection) {
+            Channel = channel;
+            PeerConnection = peerConnection ?? throw new ArgumentNullException(nameof(peerConnection));
+            Sink = sink ?? throw new ArgumentNullException(nameof(sink));
         }
 
-        public abstract void PipelineStopped();
+        internal ConnectionBase PeerConnection { get; }
+        internal IChannelSink Sink { get; }
 
-        public abstract void Stop();
-
-        protected internal readonly ILogger _logger;
-        protected internal readonly CancellationTokenSource _source;
-
-        protected internal abstract Task<Success> SinkAsync(NetworkMessageSlice slice, IResponder responder);
-
-        protected readonly ulong _messageTag;
-        protected readonly int _minimumBufferSize;
-
-        protected BaseListener(string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize) {
-            if (string.IsNullOrWhiteSpace(id))
-                throw new ArgumentNullException(nameof(id));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _source = source ?? throw new ArgumentNullException(nameof(source));
-            Id = id;
-            _messageTag = tag;
-            _source.Token.Register(Dispose);
-            _minimumBufferSize = Math.Max(512, defaultListeningBufferSize);
-        }
-
-        protected bool Abandon => _source.IsCancellationRequested || Disposed;
+        private static bool IsValid(byte[] message) => message != null && message.Length > 0;
     }
 }

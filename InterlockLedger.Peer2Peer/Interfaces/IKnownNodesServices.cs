@@ -36,11 +36,11 @@ namespace InterlockLedger.Peer2Peer
     {
         void Add(string nodeId, ulong messageTag, string address, int port, int defaultListeningBufferSize, bool retain = false);
 
-        void Add(string nodeId, IResponder responder, bool retain = false);
+        void Add(string nodeId, IConnection responder, bool retain = false);
 
         void Forget(string nodeId);
 
-        IResponder GetClient(string nodeId);
+        IConnection GetClient(string nodeId);
 
         bool IsKnown(string nodeId);
     }

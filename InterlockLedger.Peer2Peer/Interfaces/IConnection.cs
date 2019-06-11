@@ -30,35 +30,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Concurrent;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal sealed class PeerClient : BasePeerClient
+    public interface IConnection : IDisposable
     {
-        public PeerClient(string id, ulong tag, string networkAddress, int port, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
-            : base(id, tag, source, logger, defaultListeningBufferSize) {
-            if (string.IsNullOrWhiteSpace(networkAddress))
-                throw new ArgumentNullException(nameof(networkAddress));
-            NetworkAddress = networkAddress;
-            NetworkPort = port;
-        }
-
-        protected override Socket BuildSocket() {
-            IPHostEntry ipHostInfo = Dns.GetHostEntry(NetworkAddress);
-            IPAddress ipAddress = ipHostInfo.AddressList.First(ip => ip.AddressFamily == AddressFamily.InterNetwork);
-            var socket = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            socket.Connect(new IPEndPoint(ipAddress, NetworkPort));
-            socket.LingerState = new LingerOption(true, 1);
-            _logger.LogTrace($"Client connecting into address {NetworkAddress}:{NetworkPort}");
-            return socket;
-        }
+        IActiveChannel AllocateChannel(IChannelSink channelSink);
+        IActiveChannel GetChannel(ulong channel);
+        void Stop();
     }
 }

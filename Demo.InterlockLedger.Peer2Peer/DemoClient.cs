@@ -61,22 +61,21 @@ namespace Demo.InterlockLedger.Peer2Peer
                     var command = Console.ReadLine();
                     if (command == null || command.FirstOrDefault() == 'x')
                         break;
-                    client.Send(ToMessage(AsUTF8Bytes(command), isLast: true), this);
+                    var channel = client.AllocateChannel(this);
+                    channel.Send(ToMessage(AsUTF8Bytes(command), isLast: true).AllBytes);
                 }
             }
         }
 
-        public override async Task<Success> SinkAsync(NetworkMessageSlice channelBytes, IResponder responder) {
-            await Task.Delay(1);
-            return Received(Sink(channelBytes));
-        }
+        public override async Task<Success> SinkAsync(byte[] message, IActiveChannel activeChannel)
+            => Received(await Process(message, activeChannel.Channel));
 
-        private static Success Sink(NetworkMessageSlice channelBytes) {
-            var bytes = channelBytes.AllBytes;
-            if (bytes.Length > 1) {
-                var message = Encoding.UTF8.GetString(bytes, 1, bytes.Length - 1);
-                Console.WriteLine($@"[{channelBytes.Channel}] {message}");
-                return bytes[0] == 0 ? Success.Exit : Success.Next;
+        private static async Task<Success> Process(byte[] message, ulong channel) {
+            await Task.Delay(1);
+            if (message.Length > 1) {
+                var response = Encoding.UTF8.GetString(message, 1, message.Length - 1);
+                Console.WriteLine($@"[{channel}] {response}");
+                return response[0] == 0 ? Success.Exit : Success.Next;
             }
             return Success.Exit;
         }

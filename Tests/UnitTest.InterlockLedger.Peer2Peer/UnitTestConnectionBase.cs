@@ -31,10 +31,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using InterlockLedger.Peer2Peer;
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -44,40 +44,22 @@ using static UnitTest.InterlockLedger.Peer2Peer.TestHelpers;
 namespace UnitTest.InterlockLedger.Peer2Peer
 {
     [TestClass]
-    public class UnitTestPipeline
+    public class UnitTestConnectionBase
     {
         [TestMethod]
-        public void TestPipelineMinimally() {
-            bool stopped = false;
-            byte[] bytesProcessed = null;
-            ulong channelProcessed = 0;
+        public void TestConnectionMinimally() {
             var fakeLogger = new FakeLogging();
             var fakeDiscoverer = new FakeDiscoverer();
             var source = new CancellationTokenSource();
             var fakeSocket = new TestSocket(source, 13, 1, 128, 2);
-            var fakeClient = new TestClient("FakeTestClient");
-            async Task<Success> processor(NetworkMessageSlice channelBytes) {
-                bytesProcessed = channelBytes.AllBytes;
-                channelProcessed = channelBytes.Channel;
-                var activeChannel = fakeClient.GetChannel(channelProcessed);
-                activeChannel.Send(new byte[] { 13, 1, 128 });
-                await Task.Delay(100);
-                fakeClient.Stop();
-                return Success.Exit;
-            }
-            void stopProcessor() => stopped = true;
-            var pipeline = new Pipeline(fakeSocket, source, 13, 4096, processor, stopProcessor, fakeLogger);
-            Assert.IsNotNull(pipeline);
-            fakeClient.Pipeline = pipeline;
-            Assert.IsNull(fakeLogger.LastLog);
-            pipeline.ListenAsync().Wait();
-            Assert.IsNotNull(bytesProcessed);
+            var fakeSink = new TestSink();
+            var connection = new TestConnection(fakeSocket, fakeSink, "TestConnection", 13, source, fakeLogger, 4096);
+            Assert.IsNotNull(connection);
+            Assert.IsNotNull(fakeSink.bytesProcessed);
             Assert.IsNotNull(fakeLogger.LastLog);
-            Assert.AreEqual(2ul, channelProcessed);
-            AssertHasSameItems<byte>(nameof(bytesProcessed), bytesProcessed, 128);
+            AssertHasSameItems<byte>(nameof(fakeSink.bytesProcessed), fakeSink.bytesProcessed, 128);
             Assert.IsNotNull(fakeSocket.BytesSent);
             AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 13, 1, 128, 2);
-            Assert.IsTrue(stopped);
         }
 
         private static IEnumerable<byte> ToBytes(IList<ArraySegment<byte>> bytesSent) {
@@ -88,34 +70,37 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             }
         }
 
-        private class TestClient : IConnection, IActiveChannel
+        private class TestConnection : ConnectionBase
         {
-            public Pipeline Pipeline;
-
-            public TestClient(string id) => Id = id ?? throw new ArgumentNullException(nameof(id));
-
-            public bool Active => true;
-            public ulong Channel { get; private set; }
-            public string Id { get; }
-
-            public IActiveChannel AllocateChannel(IChannelSink channelSink) => this;
-
-            public void Dispose() => Stop();
-
-            public IActiveChannel GetChannel(ulong channel) {
-                Channel = channel;
-                return this;
+            public TestConnection(ISocket socket, IChannelSink sink, string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
+                : base(id, tag, source, logger, defaultListeningBufferSize) {
+                _socket = socket;
+                _sink = sink;
+                StartPipeline();
             }
 
-            public bool Send(byte[] message) {
-                Pipeline?.Send(new NetworkMessageSlice(Channel, message));
-                return true;
-            }
+            protected override IChannelSink DefaultSink => _sink;
+            protected override ISocket BuildSocket() => _socket;
 
-            public Task<Success> SinkAsync(byte[] message) => throw new NotImplementedException();
+            private readonly ISocket _socket;
+            private readonly IChannelSink _sink;
+        }
 
-            public void Stop() {
-                Pipeline?.Stop();
+        private class TestSink : IChannelSink
+        {
+            public byte[] bytesProcessed = null;
+            public ulong channelProcessed = 0;
+
+            public ulong MessageTag { get; }
+            public string NetworkName { get; }
+            public string NetworkProtocolName { get; }
+
+            public async Task<Success> SinkAsync(byte[] message, IActiveChannel channel) {
+                bytesProcessed = message;
+                channelProcessed = channel.Channel;
+                channel.Send(new byte[] { 13, 1, 128 });
+                await Task.Delay(100);
+                return Success.Exit;
             }
         }
 

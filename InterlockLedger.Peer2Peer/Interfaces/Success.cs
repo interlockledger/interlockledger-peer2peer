@@ -1,4 +1,4 @@
-/******************************************************************************************************************************
+﻿/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -30,27 +30,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using System;
-using System.Collections.Generic;
-
 namespace InterlockLedger.Peer2Peer
 {
-    public interface INodeSink : IChannelSink
+    public enum Success
     {
-        int DefaultListeningBufferSize { get; }
-        string HostAtAddress { get; }
-        ushort HostAtPortNumber { get; }
-        IEnumerable<string> LocalResources { get; }
-        ulong MessageTag { get; }
-        string NetworkName { get; }
-        string NetworkProtocolName { get; }
-        string NodeId { get; }
-        string PublishAtAddress { get; }
-        ushort? PublishAtPortNumber { get; }
-        IEnumerable<string> SupportedNetworkProtocolFeatures { get; }
-
-        void HostedAt(string address, ushort port);
-
-        void PublishedAt(string address, ushort port);
+        Next = 0,
+        Retry = 1,
+        SwitchToListen = 4,
+        WrongChannel = 7,
+        Exit = 128,
     }
+
 }

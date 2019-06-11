@@ -37,10 +37,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Demo.InterlockLedger.Peer2Peer
 {
-    internal abstract class DemoBaseSink : AbstractNodeSink, ISink
+    internal abstract class DemoBaseSink : AbstractNodeSink, IChannelSink
     {
         public DemoBaseSink(string message, CancellationTokenSource source) {
             _source = PrepareConsole(message, source);

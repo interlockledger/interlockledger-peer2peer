@@ -35,7 +35,6 @@ using System.Threading;
 
 namespace InterlockLedger.Peer2Peer
 {
-
     public interface IPeerServices : IDisposable
     {
         IKnownNodesServices KnownNodes { get; }
@@ -43,8 +42,10 @@ namespace InterlockLedger.Peer2Peer
 
         IListener CreateListenerFor(INodeSink nodeSink);
 
-        IResponder GetClient(ulong messageTag, string address, int port, int defaultListeningBufferSize);
-        IResponder GetClient(string id);
+        IConnection GetClient(ulong messageTag, string address, int port, int defaultListeningBufferSize);
+
+        IConnection GetClient(string id);
+
         IPeerServices WithCancellationTokenSource(CancellationTokenSource source);
     }
 }

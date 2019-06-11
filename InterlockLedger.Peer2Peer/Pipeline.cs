@@ -42,11 +42,10 @@ namespace InterlockLedger.Peer2Peer
 {
     public class Pipeline
     {
-        public Pipeline(ISocket socket, IResponder responder, CancellationTokenSource source, ulong messageTag,
-            int minimumBufferSize, Func<NetworkMessageSlice, IResponder, Task<Success>> processor,
+        public Pipeline(ISocket socket, CancellationTokenSource source, ulong messageTag,
+            int minimumBufferSize, Func<NetworkMessageSlice, Task<Success>> sliceProcessor,
             Action stopProcessor, ILogger logger) {
             _socket = socket ?? throw new ArgumentNullException(nameof(socket));
-            _responder = responder ?? throw new ArgumentNullException(nameof(responder));
             _queue = new SendingQueue();
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             var parentSource = source ?? throw new ArgumentNullException(nameof(source));
@@ -54,8 +53,18 @@ namespace InterlockLedger.Peer2Peer
             _linkedToken = CancellationTokenSource.CreateLinkedTokenSource(parentSource.Token, _localSource.Token).Token;
             _messageTag = messageTag;
             _minimumBufferSize = minimumBufferSize;
-            _processor = processor ?? throw new ArgumentNullException(nameof(processor));
+            _sliceProcessor = sliceProcessor ?? throw new ArgumentNullException(nameof(sliceProcessor));
             _stopProcessor = stopProcessor ?? throw new ArgumentNullException(nameof(stopProcessor));
+        }
+
+        public async Task ListenAsync() {
+            try {
+                await UsePipes(_socket.RemoteEndPoint);
+                await Task.Delay(10);
+            } finally {
+                _socket.Dispose();
+                _stopProcessor();
+            }
         }
 
         public void Send(NetworkMessageSlice slice) {
@@ -75,23 +84,12 @@ namespace InterlockLedger.Peer2Peer
         private readonly ILogger _logger;
         private readonly ulong _messageTag;
         private readonly int _minimumBufferSize;
-        private readonly Func<NetworkMessageSlice, IResponder, Task<Success>> _processor;
         private readonly SendingQueue _queue;
-        private readonly IResponder _responder;
+        private readonly Func<NetworkMessageSlice, Task<Success>> _sliceProcessor;
         private readonly ISocket _socket;
         private readonly Action _stopProcessor;
 
         private bool Active => !_linkedToken.IsCancellationRequested;
-
-        public async Task ListenAsync() {
-            try {
-                await UsePipes(_socket.RemoteEndPoint);
-                await Task.Delay(10);
-            } finally {
-                _socket.Dispose();
-                _stopProcessor();
-            }
-        }
 
         private async Task PipeFillAsync(PipeWriter writer) {
             while (Active) {
@@ -220,7 +218,7 @@ namespace InterlockLedger.Peer2Peer
         private async Task UsePipes(EndPoint remoteEndPoint) {
             _logger.LogTrace($"[{remoteEndPoint}]: connected");
             try {
-                var parser = new MessageParser(_messageTag, _logger, (channelBytes) => _processor(channelBytes, _responder));
+                var parser = new MessageParser(_messageTag, _logger, _sliceProcessor);
                 var listeningPipe = new Pipe();
                 var respondingPipe = new Pipe();
                 var pipeTasks = new Task[] {

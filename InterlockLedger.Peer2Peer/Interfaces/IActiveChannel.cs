@@ -6,6 +6,7 @@ namespace InterlockLedger.Peer2Peer
     {
         bool Active { get; }
         ulong Channel { get; }
+        IConnection Connection { get; }
 
         bool Send(byte[] message);
 

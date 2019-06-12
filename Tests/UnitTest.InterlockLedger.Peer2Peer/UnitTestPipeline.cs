@@ -96,6 +96,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
 
             public bool Active => true;
             public ulong Channel { get; private set; }
+            public IConnection Connection => this;
             public string Id { get; }
 
             public IActiveChannel AllocateChannel(IChannelSink channelSink) => this;

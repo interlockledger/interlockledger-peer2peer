@@ -40,6 +40,7 @@ namespace InterlockLedger.Peer2Peer
     {
         public bool Active => !PeerConnection.Abandon;
         public ulong Channel { get; }
+        public IConnection Connection => PeerConnection;
 
         public bool Send(byte[] message)
             => Active && IsValid(message) ? PeerConnection.Send(new NetworkMessageSlice(Channel, message)) : true;

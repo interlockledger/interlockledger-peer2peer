@@ -49,7 +49,6 @@ namespace InterlockLedger.Peer2Peer
             NetworkPort = port;
         }
 
-        protected override IChannelSink DefaultSink => null;
 
         protected override ISocket BuildSocket() {
             IPHostEntry ipHostInfo = Dns.GetHostEntry(NetworkAddress);
@@ -58,7 +57,7 @@ namespace InterlockLedger.Peer2Peer
             socket.Connect(new IPEndPoint(ipAddress, NetworkPort));
             socket.LingerState = new LingerOption(true, 1);
             _logger.LogTrace($"Client connecting into address {NetworkAddress}:{NetworkPort}");
-            return new NetSocket(socket);
+            return _socket = new NetSocket(socket);
         }
     }
 }

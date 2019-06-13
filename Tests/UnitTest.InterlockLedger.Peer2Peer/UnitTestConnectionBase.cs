@@ -55,11 +55,28 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             var fakeSink = new TestSink();
             var connection = new TestConnection(fakeSocket, fakeSink, "TestConnection", 13, source, fakeLogger, 4096);
             Assert.IsNotNull(connection);
+            Thread.Sleep(200);
             Assert.IsNotNull(fakeSink.bytesProcessed);
             Assert.IsNotNull(fakeLogger.LastLog);
             AssertHasSameItems<byte>(nameof(fakeSink.bytesProcessed), fakeSink.bytesProcessed, 128);
             Assert.IsNotNull(fakeSocket.BytesSent);
             AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 13, 1, 128, 2);
+            connection.AllocateChannel(fakeSink);
+            Assert.AreEqual(1, connection.LastChannelUsed);
+            Assert.AreEqual(1, connection.NumberOfActiveChannels);
+            Assert.IsNotNull(connection.GetChannel(1));
+            var ex = Assert.ThrowsException<ArgumentOutOfRangeException>(() => connection.GetChannel(10));
+            Assert.AreEqual("channel", ex.ParamName);
+            Assert.AreEqual(string.Format(ConnectionBase.ExceptionChannelNotFoundFormat, 10) + Environment.NewLine + "Parameter name: channel", ex.Message);
+            var e = Assert.ThrowsException<InvalidOperationException>(() => connection.SwitchToProxy(fakeSink));
+            Assert.AreEqual(ConnectionBase.ExceptionCantProxyWithSinkMessage, e.Message);
+            connection.ResetSink();
+            connection.SwitchToProxy(fakeSink);
+            Assert.AreEqual(1, connection.LastChannelUsed);
+            Assert.AreEqual(0, connection.NumberOfActiveChannels);
+            connection.ResetSocket();
+            var e2 = Assert.ThrowsException<InvalidOperationException>(() => connection.SwitchToProxy(fakeSink));
+            Assert.AreEqual(ConnectionBase.ExceptionCantProxyNoSocketMessage, e2.Message);
         }
 
         private static IEnumerable<byte> ToBytes(IList<ArraySegment<byte>> bytesSent) {
@@ -79,11 +96,11 @@ namespace UnitTest.InterlockLedger.Peer2Peer
                 StartPipeline();
             }
 
-            protected override IChannelSink DefaultSink => _sink;
-            protected override ISocket BuildSocket() => _socket;
+            internal void ResetSink() => _sink = null;
 
-            private readonly ISocket _socket;
-            private readonly IChannelSink _sink;
+            internal void ResetSocket() => _socket = null;
+
+            protected override ISocket BuildSocket() => _socket;
         }
 
         private class TestSink : IChannelSink

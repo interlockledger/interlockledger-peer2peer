@@ -113,6 +113,6 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private ConnectionInitiatedByPeer RunPeerClient(Socket socket)
-            => new ConnectionInitiatedByPeer("ListenerClient", _nodeSink.MessageTag, socket, this, _nodeSink.DefaultListeningBufferSize);
+            => new ConnectionInitiatedByPeer("ListenerClient", _nodeSink.MessageTag, socket, _nodeSink, _source, _logger, _nodeSink.DefaultListeningBufferSize);
     }
 }

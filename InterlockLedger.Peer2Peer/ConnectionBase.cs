@@ -42,6 +42,12 @@ namespace InterlockLedger.Peer2Peer
 {
     public abstract class ConnectionBase : ListenerBase, IConnection
     {
+        public const string ExceptionCantProxyNoSocketMessage = "Can't proxy a connection without an active underliying socket";
+        public const string ExceptionCantProxyWithSinkMessage = "Can't proxy a connection already with a default sink";
+        public const string ExceptionChannelNotFoundFormat = "Channel {0} not found!!!";
+        public long LastChannelUsed => _lastChannelUsed;
+        public int NumberOfActiveChannels => _channelSinks.Count;
+
         public IActiveChannel AllocateChannel(IChannelSink channelSink) {
             var channel = (ulong)Interlocked.Increment(ref _lastChannelUsed);
             return _channelSinks[channel] = new ActiveChannel(channel, channelSink, this);
@@ -50,7 +56,7 @@ namespace InterlockLedger.Peer2Peer
         public IActiveChannel GetChannel(ulong channel) {
             if (_channelSinks.TryGetValue(channel, out IActiveChannel activeChannel))
                 return activeChannel;
-            throw new ArgumentOutOfRangeException(nameof(channel), $"Channel {channel} not found!!!");
+            throw new ArgumentOutOfRangeException(nameof(channel), string.Format(ExceptionChannelNotFoundFormat, channel));
         }
 
         public virtual void PipelineStopped() {
@@ -59,6 +65,15 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public override void Stop() => _pipeline?.Stop();
+
+        public void SwitchToProxy(IChannelSink sink) {
+            if (_socket == null)
+                throw new InvalidOperationException(ExceptionCantProxyNoSocketMessage);
+            if (_sink != null)
+                throw new InvalidOperationException(ExceptionCantProxyWithSinkMessage);
+            _channelSinks.Clear();
+            _sink = sink;
+        }
 
         internal bool Send(NetworkMessageSlice slice) {
             if (Abandon)
@@ -81,12 +96,13 @@ namespace InterlockLedger.Peer2Peer
         }
 
         protected readonly ConcurrentDictionary<ulong, IActiveChannel> _channelSinks = new ConcurrentDictionary<ulong, IActiveChannel>();
- 
+        protected IChannelSink _sink;
+        protected ISocket _socket;
+
         protected ConnectionBase(string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
             : base(id, tag, source, logger, defaultListeningBufferSize) => _pipeline = null;
 
         protected string NetworkAddress { get; set; }
-
         protected int NetworkPort { get; set; }
 
         protected abstract ISocket BuildSocket();
@@ -131,13 +147,11 @@ namespace InterlockLedger.Peer2Peer
                 }
                 return result;
             }
-            if (DefaultSink != null) {
-                var newChannel = _channelSinks[slice.Channel] = new ActiveChannel(slice.Channel, DefaultSink, this);
+            if (_sink != null) {
+                var newChannel = _channelSinks[slice.Channel] = new ActiveChannel(slice.Channel, _sink, this);
                 return await newChannel.SinkAsync(slice.AllBytes);
             }
             return Success.Next;
         }
-
-        protected abstract IChannelSink DefaultSink { get; }
     }
 }

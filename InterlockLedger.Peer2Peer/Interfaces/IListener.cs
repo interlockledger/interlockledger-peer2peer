@@ -34,7 +34,7 @@ using System;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public interface IListener : IChannelSink, IDisposable
+    public interface IListener : IDisposable
     {
         bool Alive { get; }
 

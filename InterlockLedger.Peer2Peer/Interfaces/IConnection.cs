@@ -37,7 +37,11 @@ namespace InterlockLedger.Peer2Peer
     public interface IConnection : IDisposable
     {
         IActiveChannel AllocateChannel(IChannelSink channelSink);
+
         IActiveChannel GetChannel(ulong channel);
+
         void Stop();
+
+        void SwitchToProxy(IChannelSink sink);
     }
 }

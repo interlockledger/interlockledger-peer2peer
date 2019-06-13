@@ -113,11 +113,11 @@ namespace UnitTest.InterlockLedger.Peer2Peer
                 return true;
             }
 
+            public void SwitchToProxy(IChannelSink sink) => throw new NotImplementedException();
+
             public Task<Success> SinkAsync(byte[] message) => throw new NotImplementedException();
 
-            public void Stop() {
-                Pipeline?.Stop();
-            }
+            public void Stop() => Pipeline?.Stop();
         }
 
         private class TestSocket : ISocket

@@ -39,29 +39,16 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal class PeerListener : ListenerBase, IListener
+    public abstract class ListenerCommon : ListenerBase, IListener, IChannelSink
     {
-        public PeerListener(INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger)
-            : base(nodeSink.NodeId, nodeSink.MessageTag, source, logger, nodeSink.DefaultListeningBufferSize) {
-            _nodeSink = nodeSink ?? throw new ArgumentNullException(nameof(nodeSink));
-            _listenSocket = DetermineExternalAccess(discoverer ?? throw new ArgumentNullException(nameof(discoverer)));
-        }
-
         public bool Alive => _listenSocket != null;
 
-        public ulong MessageTag => _nodeSink.MessageTag;
-
-        public string NetworkName => _nodeSink.NetworkName;
-
-        public string NetworkProtocolName => _nodeSink.NetworkProtocolName;
-
-        public Task<Success> SinkAsync(byte[] message, IActiveChannel channel)
-            => _nodeSink.SinkAsync(message, channel);
+        public abstract Task<Success> SinkAsync(byte[] message, IActiveChannel channel);
 
         public void Start() {
             if (_source.IsCancellationRequested)
                 return;
-            Listen().RunOnThread(nameof(PeerListener));
+            Listen().RunOnThread(GetType().FullName);
         }
 
         public override void Stop() {
@@ -78,22 +65,28 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        protected void LogHeader(string verb)
-            => _logger.LogInformation($"-- {verb} listening {_nodeSink.NetworkProtocolName} protocol in {_nodeSink.NetworkName} network at {_externalAccess.Route}!");
+        protected ListenerCommon(string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
+            : base(id, tag, source, logger, defaultListeningBufferSize) { }
 
-        private readonly INodeSink _nodeSink;
-        private ExternalAccess _externalAccess;
+        protected abstract string HeaderText { get; }
+
+        protected abstract string IdPrefix { get; }
+
+        protected abstract Socket BuildSocket();
+
+        protected void LogHeader(string verb) => _logger.LogInformation($"-- {verb} " + HeaderText);
+
+        private long _lastIdUsed = 0;
         private Socket _listenSocket;
 
-        private Socket DetermineExternalAccess(IExternalAccessDiscoverer _discoverer) {
-            _externalAccess = _discoverer.DetermineExternalAccessAsync(_nodeSink).Result;
-            _nodeSink.HostedAt(_externalAccess.InternalAddress, _externalAccess.InternalPort);
-            _nodeSink.PublishedAt(_externalAccess.ExternalAddress, _externalAccess.ExternalPort);
-            return _externalAccess.Socket;
+        private string BuildId() {
+            var id = (ulong)Interlocked.Increment(ref _lastIdUsed);
+            return $"{IdPrefix}Client{id}";
         }
 
         private async Task Listen() {
             LogHeader("Started");
+            _listenSocket = BuildSocket();
             do {
                 try {
                     while (!_source.IsCancellationRequested) {
@@ -112,7 +105,7 @@ namespace InterlockLedger.Peer2Peer
             } while (!_source.IsCancellationRequested);
         }
 
-        private ConnectionInitiatedByPeer RunPeerClient(Socket socket)
-            => new ConnectionInitiatedByPeer("ListenerClient", _nodeSink.MessageTag, socket, _nodeSink, _source, _logger, _nodeSink.DefaultListeningBufferSize);
+        private void RunPeerClient(Socket socket)
+            => new ConnectionInitiatedByPeer(BuildId(), MessageTag, socket, this, _source, _logger, ListeningBufferSize);
     }
 }

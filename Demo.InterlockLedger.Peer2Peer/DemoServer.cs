@@ -68,7 +68,6 @@ namespace Demo.InterlockLedger.Peer2Peer
         public override Task<Success> SinkAsync(byte[] message, IActiveChannel channel) {
             _queue.Enqueue((message, channel));
             return Task.FromResult(Success.Next);
-
         }
 
         private readonly ConcurrentQueue<(byte[] message, IActiveChannel activeChannel)> _queue = new ConcurrentQueue<(byte[] message, IActiveChannel activeChannel)>();
@@ -78,8 +77,7 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         private bool _stop = false;
 
-        private static void Send(IActiveChannel channel, byte[] bytes)
-        {
+        private static void Send(IActiveChannel channel, byte[] bytes) {
             try {
                 channel.Send(bytes.ToArray());
             } catch (SocketException) {

@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -30,11 +30,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.Extensions.Logging;
 using System;
-using System.Linq;
 using System.Net;
-using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
@@ -44,17 +41,20 @@ namespace InterlockLedger.Peer2Peer
 
     public class DummyExternalAccessDiscoverer : IExternalAccessDiscoverer
     {
-        public DummyExternalAccessDiscoverer(ILoggerFactory loggerFactory)
-            => _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<DummyExternalAccessDiscoverer>();
+        public DummyExternalAccessDiscoverer(SocketFactory socketFactory) {
+            _socketFactory = socketFactory ?? throw new ArgumentNullException(nameof(socketFactory));
+        }
 
-        public Task<ExternalAccess> DetermineExternalAccessAsync(INodeSink nodeSink) {
+        public Task<ExternalAccess> DetermineExternalAccessAsync(INodeSink nodeSink)
+            => DetermineExternalAccessAsync(nodeSink.HostAtAddress, nodeSink.HostAtPortNumber, nodeSink.PublishAtAddress, nodeSink.PublishAtPortNumber);
+
+        public Task<ExternalAccess> DetermineExternalAccessAsync(string hostAtAddress, ushort hostAtPortNumber, string publishAtAddress, ushort? publishAtPortNumber) {
             if (_disposedValue)
                 return Task.FromResult<ExternalAccess>(null);
-            string hostingAddress = nodeSink.HostAtAddress ?? "localhost";
-            IPAddress localaddr = GetAddress(hostingAddress);
-            var listener = GetSocket(localaddr, nodeSink.HostAtPortNumber);
+            string hostingAddress = hostAtAddress ?? "localhost";
+            var listener = _socketFactory.GetSocket(hostingAddress, hostAtPortNumber);
             var port = (ushort)((IPEndPoint)listener.LocalEndPoint).Port;
-            return Task.FromResult(new ExternalAccess(listener, hostingAddress, port, nodeSink.PublishAtAddress, nodeSink.PublishAtPortNumber));
+            return Task.FromResult(new ExternalAccess(listener, hostingAddress, port, publishAtAddress, publishAtPortNumber));
         }
 
         public void Dispose() => Dispose(true);
@@ -69,36 +69,7 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        private readonly ILogger<DummyExternalAccessDiscoverer> _logger;
+        private readonly SocketFactory _socketFactory;
         private bool _disposedValue = false;
-
-        private static IPAddress GetAddress(string name) {
-            if (IPAddress.TryParse(name, out IPAddress address))
-                return address;
-            IPAddress[] addressList = Dns.GetHostEntry(name).AddressList;
-            return addressList.FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork) ?? addressList.First();
-        }
-
-        private Socket GetSocket(IPAddress localaddr, ushort portNumber) {
-            Socket InnerGetSocket(ushort port) {
-                try {
-                    var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                    listenSocket.Bind(new IPEndPoint(localaddr, port));
-                    listenSocket.Listen(120);
-                    return listenSocket;
-                } catch (Exception e) {
-                    _logger.LogError(e, $"-- Error while trying to listen to clients.");
-                    return null;
-                }
-            }
-
-            for (ushort tries = 5; tries > 0; tries--) {
-                var socket = InnerGetSocket(portNumber);
-                if (socket != null)
-                    return socket;
-                portNumber -= 18;
-            }
-            return InnerGetSocket(0);
-        }
     }
 }

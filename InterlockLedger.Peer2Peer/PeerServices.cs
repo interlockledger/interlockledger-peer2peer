@@ -52,7 +52,7 @@ namespace InterlockLedger.Peer2Peer
         public CancellationTokenSource Source => _source ?? throw new InvalidOperationException("CancellationTokenSource was not set yet!");
 
         public IListener CreateListenerFor(INodeSink nodeSink)
-            => _disposer.Do(() => new PeerListener(nodeSink, _discoverer, Source, LoggerNamed($"{nameof(PeerListener)}#{nodeSink.MessageTag}")));
+            => _disposer.Do(() => new ListenerForPeer(nodeSink, _discoverer, Source, LoggerNamed($"{nameof(ListenerForPeer)}#{nodeSink.MessageTag}")));
 
         public void Dispose()
             => _disposer.Dispose(() => {

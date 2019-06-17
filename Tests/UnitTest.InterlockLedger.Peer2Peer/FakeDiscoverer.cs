@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -42,15 +42,20 @@ namespace UnitTest.InterlockLedger.Peer2Peer
 
     internal class FakeDiscoverer : IExternalAccessDiscoverer
     {
-        public FakeDiscoverer() {
-        }
+        public FakeDiscoverer() => PortDelta = 1;
+
+        public ushort PortDelta { get; }
 
         public Task<ExternalAccess> DetermineExternalAccessAsync(INodeSink nodeSink) {
             if (nodeSink == null)
                 throw new ArgumentNullException(nameof(nodeSink));
+            return DetermineExternalAccessAsync(nodeSink.HostAtAddress, nodeSink.HostAtPortNumber, nodeSink.PublishAtAddress, nodeSink.PublishAtPortNumber);
+        }
+
+        public Task<ExternalAccess> DetermineExternalAccessAsync(string hostAtAddress, ushort hostAtPortNumber, string publishAtAddress, ushort? publishAtPortNumber) {
             var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             listenSocket.Bind(new IPEndPoint(IPAddress.Loopback, 32015));
-            return Task.FromResult(new ExternalAccess(listenSocket, nodeSink.HostAtAddress, nodeSink.HostAtPortNumber, nodeSink.PublishAtAddress, nodeSink.PublishAtPortNumber));
+            return Task.FromResult(new ExternalAccess(listenSocket, hostAtAddress, hostAtPortNumber, publishAtAddress, publishAtPortNumber));
         }
 
         public void Dispose() {

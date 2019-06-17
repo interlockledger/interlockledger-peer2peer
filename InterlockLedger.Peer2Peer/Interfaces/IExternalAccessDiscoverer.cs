@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -38,5 +38,7 @@ namespace InterlockLedger.Peer2Peer
     public interface IExternalAccessDiscoverer : IDisposable
     {
         Task<ExternalAccess> DetermineExternalAccessAsync(INodeSink nodeSink);
+
+        Task<ExternalAccess> DetermineExternalAccessAsync(string hostAtAddress, ushort hostAtPortNumber, string publishAtAddress, ushort? publishAtPortNumber);
     }
 }

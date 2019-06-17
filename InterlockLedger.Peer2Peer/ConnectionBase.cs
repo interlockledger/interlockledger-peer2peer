@@ -135,7 +135,7 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private Pipeline RunPipeline(ISocket socket)
-            => new Pipeline(socket, _source, _messageTag, _minimumBufferSize, SinkAsync, PipelineStopped, _logger)
+            => new Pipeline(socket, _source, MessageTag, ListeningBufferSize, SinkAsync, PipelineStopped, _logger)
                 .Start($"Pipeline {Id} to {socket.RemoteEndPoint}");
 
         private async Task<Success> SinkAsync(NetworkMessageSlice slice) {

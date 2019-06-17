@@ -30,34 +30,46 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using Microsoft.Extensions.Logging;
 using System;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal class ActiveChannel : IActiveChannel
+    internal class ListenerForPeer : ListenerCommon
     {
-        public bool Active => !PeerConnection.Abandon;
-        public ulong Channel { get; }
-        public IConnection Connection => PeerConnection;
+        public ListenerForPeer(INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger)
+            : base(nodeSink.NodeId, nodeSink.MessageTag, source, logger, nodeSink.DefaultListeningBufferSize)
+            => (_nodeSink, _socket, _route) = DetermineExternalAccess(
+                    nodeSink ?? throw new ArgumentNullException(nameof(nodeSink)),
+                    discoverer ?? throw new ArgumentNullException(nameof(discoverer)));
 
-        public string Id => $"{PeerConnection.Id}:{Channel}";
+        public string ExternalAddress { get; private set; }
+        public string NetworkName => _nodeSink.NetworkName;
+        public string NetworkProtocolName => _nodeSink.NetworkProtocolName;
 
-        public bool Send(byte[] message)
-                    => Active && IsValid(message) ? PeerConnection.Send(new NetworkMessageSlice(Channel, message)) : true;
+        public override Task<Success> SinkAsync(byte[] message, IActiveChannel channel)
+            => _nodeSink.SinkAsync(message, channel);
 
-        public async Task<Success> SinkAsync(byte[] message) => await Sink.SinkAsync(message, this);
+        protected override string HeaderText
+            => $"listening {NetworkProtocolName} protocol in {NetworkName} network at {_route}!";
 
-        internal ActiveChannel(ulong channel, IChannelSink sink, ConnectionBase peerConnection) {
-            Channel = channel;
-            PeerConnection = peerConnection ?? throw new ArgumentNullException(nameof(peerConnection));
-            Sink = sink ?? throw new ArgumentNullException(nameof(sink));
+        protected override string IdPrefix => "Listener";
+
+        protected override Socket BuildSocket() => _socket;
+
+        private readonly INodeSink _nodeSink;
+        private readonly string _route;
+        private readonly Socket _socket;
+
+        private (INodeSink, Socket, string) DetermineExternalAccess(INodeSink nodeSink, IExternalAccessDiscoverer discoverer) {
+            var externalAccess = discoverer.DetermineExternalAccessAsync(nodeSink).Result;
+            nodeSink.HostedAt(externalAccess.InternalAddress, externalAccess.InternalPort);
+            nodeSink.PublishedAt(externalAccess.ExternalAddress, externalAccess.ExternalPort);
+            ExternalAddress = externalAccess.ExternalAddress;
+            return (nodeSink, externalAccess.Socket, externalAccess.Route);
         }
-
-        internal ConnectionBase PeerConnection { get; }
-        internal IChannelSink Sink { get; }
-
-        private static bool IsValid(byte[] message) => message != null && message.Length > 0;
     }
 }

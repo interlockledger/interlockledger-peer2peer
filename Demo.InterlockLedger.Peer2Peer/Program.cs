@@ -44,7 +44,7 @@ namespace Demo.InterlockLedger.Peer2Peer
         public static void Main(string[] args) {
             Console.WriteLine("Demo.InterlockLedger.Peer2Peer!");
             var source = new CancellationTokenSource();
-            using (var peerServices = BuildPeerServices(source)) {
+            using (var peerServices = BuildPeerServices(source, new LoggerFactory().AddConsole(LogLevel.Information))) {
                 if (args.Length > 0 && args[0].Equals("server", StringComparison.OrdinalIgnoreCase))
                     new DemoServer(source).Run(peerServices);
                 else
@@ -53,9 +53,10 @@ namespace Demo.InterlockLedger.Peer2Peer
             Console.WriteLine("-- Done!");
         }
 
-        private static IPeerServices BuildPeerServices(CancellationTokenSource source) {
-            var factory = new LoggerFactory().AddConsole(LogLevel.Information);
-            return new PeerServices(factory, new DummyExternalAccessDiscoverer(factory)).WithCancellationTokenSource(source);
-        }
+        private static IExternalAccessDiscoverer BuildDiscoverer(ILoggerFactory loggerFactory)
+            => new DummyExternalAccessDiscoverer(new SocketFactory(loggerFactory, 4));
+
+        private static IPeerServices BuildPeerServices(CancellationTokenSource source, ILoggerFactory loggerFactory)
+            => new PeerServices(loggerFactory, BuildDiscoverer(loggerFactory)).WithCancellationTokenSource(source);
     }
 }

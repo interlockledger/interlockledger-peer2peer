@@ -59,6 +59,8 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         public override IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "Echo", "Who", "TripleEcho" };
 
+        public static string AsString(IEnumerable<byte> text) => Encoding.UTF8.GetString(text.ToArray());
+
         public static byte[] AsUTF8Bytes(string s) => Encoding.UTF8.GetBytes(s);
 
         public override void HostedAt(string address, ushort port) {
@@ -98,7 +100,5 @@ namespace Demo.InterlockLedger.Peer2Peer
             Console.CancelKeyPress += Cancel;
             return source;
         }
-
-        public static string AsString(IEnumerable<byte> text) => Encoding.UTF8.GetString(text.ToArray());
     }
 }

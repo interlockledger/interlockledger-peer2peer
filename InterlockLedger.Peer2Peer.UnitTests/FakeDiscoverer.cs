@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -31,40 +31,34 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class ILIntReader
+#pragma warning disable S3881 // "IDisposable" should be implemented correctly
+
+    internal class FakeDiscoverer : IExternalAccessDiscoverer
     {
-        public ILIntReader() => Reset();
+        public FakeDiscoverer() => PortDelta = 1;
 
-        public ulong Value => _size == 0 ? _value : throw new InvalidOperationException("ILInt still not completely read");
+        public ushort PortDelta { get; }
 
-        public bool Done(byte nextByte) {
-            if (_size < 0) {
-                if (nextByte < ILIntHelpers.ILINT_BASE) {
-                    _value = nextByte;
-                    _size = 0;
-                    return true;
-                }
-                _size = nextByte - ILIntHelpers.ILINT_BASE + 1;
-                return false;
-            }
-            _value = (_value << 8) + nextByte;
-            if (_value > ILIntHelpers.ILINT_MAX)
-                throw new InvalidOperationException("Decoded ILInt value is too large");
-            if (--_size > 0)
-                return false;
-            _value += ILIntHelpers.ILINT_BASE;
-            return true;
+        public Task<ExternalAccess> DetermineExternalAccessAsync(INodeSink nodeSink) {
+            if (nodeSink == null)
+                throw new ArgumentNullException(nameof(nodeSink));
+            return DetermineExternalAccessAsync(nodeSink.HostAtAddress, nodeSink.HostAtPortNumber, nodeSink.PublishAtAddress, nodeSink.PublishAtPortNumber);
         }
 
-        public void Reset() {
-            _size = -1;
-            _value = 0;
+        public Task<ExternalAccess> DetermineExternalAccessAsync(string hostAtAddress, ushort hostAtPortNumber, string publishAtAddress, ushort? publishAtPortNumber) {
+            var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+            listenSocket.Bind(new IPEndPoint(IPAddress.Loopback, 32015));
+            return Task.FromResult(new ExternalAccess(listenSocket, hostAtAddress, hostAtPortNumber, publishAtAddress, publishAtPortNumber));
         }
 
-        private int _size;
-        private ulong _value;
+        public void Dispose() {
+            // Method intentionally left empty.
+        }
     }
 }

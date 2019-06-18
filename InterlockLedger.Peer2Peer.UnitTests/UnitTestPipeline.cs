@@ -30,8 +30,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using InterlockLedger.Peer2Peer;
-using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
@@ -39,44 +37,48 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using static UnitTest.InterlockLedger.Peer2Peer.TestHelpers;
+using static InterlockLedger.Peer2Peer.TestHelpers;
 
-namespace UnitTest.InterlockLedger.Peer2Peer
+namespace InterlockLedger.Peer2Peer
 {
     [TestClass]
-    public class UnitTestConnectionBase
+    public class UnitTestPipeline
     {
         [TestMethod]
-        public void TestConnectionMinimally() {
+        public void TestPipelineMinimally() {
+            bool stopped = false;
+            byte[] bytesProcessed = null;
+            ulong channelProcessed = 0;
             var fakeLogger = new FakeLogging();
             var fakeDiscoverer = new FakeDiscoverer();
             var source = new CancellationTokenSource();
             var fakeSocket = new TestSocket(source, 13, 1, 128, 2);
-            var fakeSink = new TestSink();
-            var connection = new TestConnection(fakeSocket, fakeSink, "TestConnection", 13, source, fakeLogger, 4096);
-            Assert.IsNotNull(connection);
-            Thread.Sleep(200);
-            Assert.IsNotNull(fakeSink.bytesProcessed);
+            var fakeClient = new TestClient("FakeTestClient");
+            async Task<Success> processor(NetworkMessageSlice channelBytes) {
+                bytesProcessed = channelBytes.AllBytes;
+                channelProcessed = channelBytes.Channel;
+                var activeChannel = fakeClient.GetChannel(channelProcessed);
+                activeChannel.Send(new byte[] { 13, 1, 128 });
+                await Task.Delay(100);
+                fakeClient.Stop();
+                return Success.Exit;
+            }
+            void stopProcessor() {
+                stopped = true;
+            }
+
+            var pipeline = new Pipeline(fakeSocket, source, 13, 4096, processor, stopProcessor, fakeLogger);
+            Assert.IsNotNull(pipeline);
+            fakeClient.Pipeline = pipeline;
+            Assert.IsNull(fakeLogger.LastLog);
+            pipeline.ListenAsync().Wait();
+            Assert.IsNotNull(bytesProcessed);
             Assert.IsNotNull(fakeLogger.LastLog);
-            AssertHasSameItems<byte>(nameof(fakeSink.bytesProcessed), fakeSink.bytesProcessed, 128);
+            Assert.AreEqual(2ul, channelProcessed);
+            AssertHasSameItems<byte>(nameof(bytesProcessed), bytesProcessed, 128);
             Assert.IsNotNull(fakeSocket.BytesSent);
             AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 13, 1, 128, 2);
-            connection.AllocateChannel(fakeSink);
-            Assert.AreEqual(1, connection.LastChannelUsed);
-            Assert.AreEqual(1, connection.NumberOfActiveChannels);
-            Assert.IsNotNull(connection.GetChannel(1));
-            var ex = Assert.ThrowsException<ArgumentOutOfRangeException>(() => connection.GetChannel(10));
-            Assert.AreEqual("channel", ex.ParamName);
-            Assert.AreEqual(string.Format(ConnectionBase.ExceptionChannelNotFoundFormat, 10) + Environment.NewLine + "Parameter name: channel", ex.Message);
-            var e = Assert.ThrowsException<InvalidOperationException>(() => connection.SwitchToProxy(fakeSink));
-            Assert.AreEqual(ConnectionBase.ExceptionCantProxyWithSinkMessage, e.Message);
-            connection.ResetSink();
-            connection.SwitchToProxy(fakeSink);
-            Assert.AreEqual(1, connection.LastChannelUsed);
-            Assert.AreEqual(0, connection.NumberOfActiveChannels);
-            connection.ResetSocket();
-            var e2 = Assert.ThrowsException<InvalidOperationException>(() => connection.SwitchToProxy(fakeSink));
-            Assert.AreEqual(ConnectionBase.ExceptionCantProxyNoSocketMessage, e2.Message);
+            Assert.IsTrue(stopped);
         }
 
         private static IEnumerable<byte> ToBytes(IList<ArraySegment<byte>> bytesSent) {
@@ -87,38 +89,36 @@ namespace UnitTest.InterlockLedger.Peer2Peer
             }
         }
 
-        private class TestConnection : ConnectionBase
+        private class TestClient : IConnection, IActiveChannel
         {
-            public TestConnection(ISocket socket, IChannelSink sink, string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
-                : base(id, tag, source, logger, defaultListeningBufferSize) {
-                _socket = socket;
-                _sink = sink;
-                StartPipeline();
+            public Pipeline Pipeline;
+
+            public TestClient(string id) => Id = id ?? throw new ArgumentNullException(nameof(id));
+
+            public bool Active => true;
+            public ulong Channel { get; private set; }
+            public IConnection Connection => this;
+            public string Id { get; }
+
+            public IActiveChannel AllocateChannel(IChannelSink channelSink) => this;
+
+            public void Dispose() => Stop();
+
+            public IActiveChannel GetChannel(ulong channel) {
+                Channel = channel;
+                return this;
             }
 
-            internal void ResetSink() => _sink = null;
-
-            internal void ResetSocket() => _socket = null;
-
-            protected override ISocket BuildSocket() => _socket;
-        }
-
-        private class TestSink : IChannelSink
-        {
-            public byte[] bytesProcessed = null;
-            public ulong channelProcessed = 0;
-
-            public ulong MessageTag { get; }
-            public string NetworkName { get; }
-            public string NetworkProtocolName { get; }
-
-            public async Task<Success> SinkAsync(byte[] message, IActiveChannel channel) {
-                bytesProcessed = message;
-                channelProcessed = channel.Channel;
-                channel.Send(new byte[] { 13, 1, 128 });
-                await Task.Delay(100);
-                return Success.Exit;
+            public bool Send(byte[] message) {
+                Pipeline?.Send(new NetworkMessageSlice(Channel, message));
+                return true;
             }
+
+            public Task<Success> SinkAsync(byte[] message) => throw new NotImplementedException();
+
+            public void Stop() => Pipeline?.Stop();
+
+            public void SwitchToProxy(IChannelSink sink) => throw new NotImplementedException();
         }
 
         private class TestSocket : ISocket

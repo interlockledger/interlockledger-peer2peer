@@ -30,6 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using InterlockLedger.ILInt;
 using System;
 using System.Collections.Generic;
 using System.Net.Sockets;

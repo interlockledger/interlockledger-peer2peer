@@ -38,7 +38,7 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal class ListenerForPeer : ListenerCommon
+    public class ListenerForPeer : ListenerCommon
     {
         public ListenerForPeer(INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger)
             : base(nodeSink.NodeId, nodeSink.MessageTag, source, logger, nodeSink.DefaultListeningBufferSize)

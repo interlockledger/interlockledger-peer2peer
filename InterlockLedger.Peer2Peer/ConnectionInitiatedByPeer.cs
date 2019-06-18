@@ -39,16 +39,16 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal sealed class ConnectionInitiatedByPeer : ConnectionBase
+    public sealed class ConnectionInitiatedByPeer : ConnectionBase
     {
-        public ConnectionInitiatedByPeer(string id, ulong tag, Socket socket, IChannelSink sink, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
+        public ConnectionInitiatedByPeer(string id, ulong tag, ISocket socket, IChannelSink sink, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
             : base(id, tag, source, logger, defaultListeningBufferSize) {
             if (socket is null)
                 throw new ArgumentNullException(nameof(socket));
             var ipEndPoint = (IPEndPoint)socket.RemoteEndPoint;
             NetworkAddress = ipEndPoint.Address.ToString();
             NetworkPort = ipEndPoint.Port;
-            _socket = new NetSocket(socket);
+            _socket = socket;
             _sink = sink;
             StartPipeline();
         }

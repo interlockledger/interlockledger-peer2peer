@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.28729.10
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InterlockLedger.Peer2Peer", "InterlockLedger.Peer2Peer\InterlockLedger.Peer2Peer.csproj", "{A658D7AA-3DEB-4C0A-B093-B8F530A082B2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTest.InterlockLedger.Peer2Peer", "Tests\UnitTest.InterlockLedger.Peer2Peer\UnitTest.InterlockLedger.Peer2Peer.csproj", "{F30C1EF7-0321-4ABD-9292-DF6CBF81F407}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InterlockLedger.Peer2Peer.UnitTests", "InterlockLedger.Peer2Peer.UnitTests\InterlockLedger.Peer2Peer.UnitTests.csproj", "{F30C1EF7-0321-4ABD-9292-DF6CBF81F407}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Demo.InterlockLedger.Peer2Peer", "Demo.InterlockLedger.Peer2Peer\Demo.InterlockLedger.Peer2Peer.csproj", "{10FB314B-84D8-42CB-9B38-F2ECB0DBE017}"
 EndProject

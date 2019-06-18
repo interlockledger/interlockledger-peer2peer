@@ -40,7 +40,7 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal class ListenerForProxying : ListenerCommon
+    public class ListenerForProxying : ListenerCommon
     {
         public ListenerForProxying(ListenerForPeer mainListener, ushort firstPort, ConnectionInitiatedByPeer connection, SocketFactory socketFactory, CancellationTokenSource source, ILogger logger)
             : base(mainListener.Id, mainListener.MessageTag, source, logger, connection.ListeningBufferSize) {

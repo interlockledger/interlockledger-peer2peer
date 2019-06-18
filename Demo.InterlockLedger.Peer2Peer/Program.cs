@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using InterlockLedger.Peer2Peer;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
@@ -44,7 +45,8 @@ namespace Demo.InterlockLedger.Peer2Peer
         public static void Main(string[] args) {
             Console.WriteLine("Demo.InterlockLedger.Peer2Peer!");
             var source = new CancellationTokenSource();
-            using (var peerServices = BuildPeerServices(source, new LoggerFactory().AddConsole(LogLevel.Information))) {
+            var serviceProvider = Configure(source, portDelta: 4);
+            using (var peerServices = serviceProvider.GetRequiredService<IPeerServices>()) {
                 if (args.Length > 0 && args[0].Equals("server", StringComparison.OrdinalIgnoreCase))
                     new DemoServer(source).Run(peerServices);
                 else
@@ -53,10 +55,21 @@ namespace Demo.InterlockLedger.Peer2Peer
             Console.WriteLine("-- Done!");
         }
 
-        private static IExternalAccessDiscoverer BuildDiscoverer(ILoggerFactory loggerFactory)
-            => new DummyExternalAccessDiscoverer(new SocketFactory(loggerFactory, 4));
-
-        private static IPeerServices BuildPeerServices(CancellationTokenSource source, ILoggerFactory loggerFactory)
-            => new PeerServices(loggerFactory, BuildDiscoverer(loggerFactory)).WithCancellationTokenSource(source);
+        private static ServiceProvider Configure(CancellationTokenSource source, ushort portDelta) {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            return new ServiceCollection()
+                .AddLogging(builder =>
+                    builder
+                        .AddConsole(c => c.DisableColors = false)
+                        .SetMinimumLevel(LogLevel.Information))
+                .AddSingleton(sp => new SocketFactory(sp.GetRequiredService<ILoggerFactory>(), portDelta))
+                .AddSingleton<IExternalAccessDiscoverer, DummyExternalAccessDiscoverer>()
+                .AddSingleton(sp =>
+                    new PeerServices(
+                        sp.GetRequiredService<ILoggerFactory>(),
+                        sp.GetRequiredService<IExternalAccessDiscoverer>()).WithCancellationTokenSource(source))
+                .BuildServiceProvider();
+        }
     }
 }

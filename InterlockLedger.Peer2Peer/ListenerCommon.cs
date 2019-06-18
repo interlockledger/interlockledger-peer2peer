@@ -106,6 +106,6 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private void RunPeerClient(Socket socket)
-            => new ConnectionInitiatedByPeer(BuildId(), MessageTag, socket, this, _source, _logger, ListeningBufferSize);
+            => new ConnectionInitiatedByPeer(BuildId(), MessageTag, new NetSocket(socket), this, _source, _logger, ListeningBufferSize);
     }
 }

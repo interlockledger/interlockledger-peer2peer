@@ -42,8 +42,6 @@ namespace InterlockLedger.Peer2Peer
 {
     public struct NetworkMessageSlice
     {
-        public NetworkMessageSlice WithChannel(ulong channel) => new NetworkMessageSlice(channel, DataList);
-
         public NetworkMessageSlice(ulong channel, MemoryStream ms) : this(channel, ms.ToArray()) {
         }
 
@@ -71,8 +69,11 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public byte[] AllBytes => DataList.SelectMany(m => m.ToArray()).ToArray();
+
         public ulong Channel { get; }
+
         public IList<ArraySegment<byte>> DataList => _dataList ?? (_dataList = (_segmentList ?? new List<ArraySegment<byte>>()).AsReadOnly());
+
         public bool IsEmpty => !DataList.Any(s => s.Count > 0);
 
         public NetworkMessageSlice Add(byte[] array) => Add(new ArraySegment<byte>(array));
@@ -84,6 +85,8 @@ namespace InterlockLedger.Peer2Peer
                 _segmentList.Add(data);
             return this;
         }
+
+        public NetworkMessageSlice WithChannel(ulong channel) => new NetworkMessageSlice(channel, DataList);
 
         private readonly List<ArraySegment<byte>> _segmentList;
         private ReadOnlyCollection<ArraySegment<byte>> _dataList;

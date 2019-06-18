@@ -49,7 +49,6 @@ namespace InterlockLedger.Peer2Peer
             NetworkPort = port;
         }
 
-
         protected override ISocket BuildSocket() {
             IPHostEntry ipHostInfo = Dns.GetHostEntry(NetworkAddress);
             IPAddress ipAddress = ipHostInfo.AddressList.First(ip => ip.AddressFamily == AddressFamily.InterNetwork);

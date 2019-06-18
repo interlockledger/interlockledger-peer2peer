@@ -30,12 +30,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using InterlockLedger.Peer2Peer;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Threading;
 
-namespace UnitTest.InterlockLedger.Peer2Peer
+namespace InterlockLedger.Peer2Peer
 {
     [TestClass]
     public class UnitTestPeerServices

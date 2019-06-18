@@ -30,7 +30,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using InterlockLedger.Peer2Peer;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
@@ -39,14 +38,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace UnitTest.InterlockLedger.Peer2Peer
+namespace InterlockLedger.Peer2Peer
 {
     [TestClass]
     public sealed class UnitTestMessageParser : ILogger, IDisposable
     {
         [TestMethod]
         public void Creation() {
-            Task<Success> messageProcessor(NetworkMessageSlice channelBytes) => Task.FromResult(Success.Exit);
+            Task<Success> messageProcessor(NetworkMessageSlice channelBytes) {
+                return Task.FromResult(Success.Exit);
+            }
+
             var mp = new MessageParser(15, this, messageProcessor);
             Assert.IsNotNull(mp);
             Assert.ThrowsException<ArgumentNullException>(() => new MessageParser(15, null, messageProcessor));
@@ -67,6 +69,7 @@ namespace UnitTest.InterlockLedger.Peer2Peer
         [TestMethod]
         public void ParsingTwoMessagesInDifferentChannels()
             => DoRawParsing(new ulong[] { 7, 13 }, ToSequences(new byte[] { 15, 3, 1, 2, 3, 7, 15, 1, 10, 13 }), 15, new byte[] { 1, 2, 3 }, new byte[] { 10 });
+
         [TestMethod]
         public void ParsingTwoMessagesInDifferentChannelsMultipleSequences()
             => DoRawParsing(new ulong[] { 7, 13 }, ToSequences(new byte[] { 15, 3, 1, 2 }, new byte[] { 3, 7, 15, 1, 10, 13 }), 15, new byte[] { 1, 2, 3 }, new byte[] { 10 });

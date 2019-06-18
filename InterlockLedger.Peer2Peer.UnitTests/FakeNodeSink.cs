@@ -30,12 +30,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using InterlockLedger.Peer2Peer;
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace UnitTest.InterlockLedger.Peer2Peer
+namespace InterlockLedger.Peer2Peer
 {
     internal class FakeNodeSink : INodeSink
     {

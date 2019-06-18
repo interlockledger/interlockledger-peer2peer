@@ -30,21 +30,32 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 
-namespace UnitTest.InterlockLedger.Peer2Peer
+#pragma warning disable S3881 // "IDisposable" should be implemented correctly
+
+namespace InterlockLedger.Peer2Peer
 {
-    public static class TestHelpers
+    public class FakeLogging : ILoggerFactory, ILogger
     {
-        public static void AssertHasSameItems<T>(string sequenceName, IEnumerable<T> actualItems, params T[] expectedItems) {
-            var ab = actualItems ?? Enumerable.Empty<T>();
-            Assert.IsTrue(expectedItems.SequenceEqual(ab), $"Sequence of {nameof(T)}s '{sequenceName}' doesn't match. Expected: {Joined(expectedItems)} - Actual {Joined(ab)}");
+        public string LastLog { get; private set; }
+
+        void ILoggerFactory.AddProvider(ILoggerProvider provider) {
+            // Nothing to emulate here
         }
 
-        public static string Joined<T>(IEnumerable<T> items) => items.Any() ? string.Join(", ", items.Select(b => b.ToString())) : "-";
+        IDisposable ILogger.BeginScope<TState>(TState state) => this;
 
+        ILogger ILoggerFactory.CreateLogger(string categoryName) => this;
+
+        void IDisposable.Dispose() {
+            // Nothing to dispose.
+        }
+
+        bool ILogger.IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Information;
+
+        void ILogger.Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            => LastLog = $"{logLevel}: {formatter(state, exception)}";
     }
 }

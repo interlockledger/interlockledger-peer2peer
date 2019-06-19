@@ -30,13 +30,36 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 using static InterlockLedger.Peer2Peer.TestHelpers;
 
 namespace InterlockLedger.Peer2Peer
 {
+    public class TestListenerForPeer : ListenerForPeer
+    {
+        public TestListenerForPeer(TestSocket testSocket, INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger) : base(nodeSink, discoverer, source, logger)
+            => _testSocket = testSocket;
+
+        protected override Func<Socket, Task<ISocket>> AcceptSocket => async (s) => {
+            var socket = _testSocket;
+            _testSocket = null;
+            return socket ?? await AwaitCancelation();
+        };
+
+        private TestSocket _testSocket;
+
+        private async Task<ISocket> AwaitCancelation() {
+            while (!_source.IsCancellationRequested)
+                await Task.Delay(100);
+            return null;
+        }
+    }
+
     [TestClass]
     public class UnitTestListenerForProxying
     {
@@ -46,34 +69,30 @@ namespace InterlockLedger.Peer2Peer
             var fakeDiscoverer = new FakeDiscoverer();
             var source = new CancellationTokenSource();
             var fakeSocket = new TestSocket(source, 13, 1, 128, 2);
+            var fakeRedirectedSocket = new TestSocket(source, holdYourHorses: true, 13, 1, 240, 2);
             var fakeSink = new TestSink();
             var connection = new TestConnection(fakeSocket, fakeSink, "TestConnection", 13, source, fakeLogger, 4096);
             Assert.IsNotNull(connection);
             var fakeNodeSink = new FakeNodeSink();
-            var lfp = new ListenerForProxying(new ListenerForPeer(fakeNodeSink, fakeDiscoverer, source, fakeLogger),
-                333, new ConnectionInitiatedByPeer("TLFPM", 13, fakeSocket, fakeSink, source, fakeLogger, 16), new SocketFactory(fakeLogger, 3), source, fakeLogger);
+            var mainListener = new TestListenerForPeer(fakeRedirectedSocket, fakeNodeSink, fakeDiscoverer, source, fakeLogger);
+            mainListener.Start();
+            var connectionProxied = new ConnectionInitiatedByPeer("TLFPM", 13, fakeSocket, fakeSink, source, fakeLogger, 16);
+            var lfp = new ListenerForProxying(mainListener, 333, connectionProxied, new SocketFactory(fakeLogger, 3), source, fakeLogger);
+            lfp.Start();
+            Thread.Sleep(200);
+            fakeRedirectedSocket.ReleaseYourHorses();
             Thread.Sleep(200);
             Assert.IsNotNull(fakeSink.bytesProcessed);
             Assert.IsNotNull(fakeLogger.LastLog);
             AssertHasSameItems<byte>(nameof(fakeSink.bytesProcessed), fakeSink.bytesProcessed, 128);
             Assert.IsNotNull(fakeSocket.BytesSent);
             AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 13, 1, 128, 2);
+            Assert.IsNotNull(fakeRedirectedSocket.BytesSent);
+            AssertHasSameItems<byte>(nameof(fakeRedirectedSocket.BytesSent), ToBytes(fakeRedirectedSocket.BytesSent), 13, 1, 240, 2);
             connection.AllocateChannel(fakeSink);
             Assert.AreEqual(1, connection.LastChannelUsed);
             Assert.AreEqual(1, connection.NumberOfActiveChannels);
             Assert.IsNotNull(connection.GetChannel(1));
-            var ex = Assert.ThrowsException<ArgumentOutOfRangeException>(() => connection.GetChannel(10));
-            Assert.AreEqual("channel", ex.ParamName);
-            Assert.AreEqual(string.Format(ConnectionBase.ExceptionChannelNotFoundFormat, 10) + Environment.NewLine + "Parameter name: channel", ex.Message);
-            var e = Assert.ThrowsException<InvalidOperationException>(() => connection.SwitchToProxy(fakeSink));
-            Assert.AreEqual(ConnectionBase.ExceptionCantProxyWithSinkMessage, e.Message);
-            connection.ResetSink();
-            connection.SwitchToProxy(fakeSink);
-            Assert.AreEqual(1, connection.LastChannelUsed);
-            Assert.AreEqual(0, connection.NumberOfActiveChannels);
-            connection.ResetSocket();
-            var e2 = Assert.ThrowsException<InvalidOperationException>(() => connection.SwitchToProxy(fakeSink));
-            Assert.AreEqual(ConnectionBase.ExceptionCantProxyNoSocketMessage, e2.Message);
         }
     }
 }

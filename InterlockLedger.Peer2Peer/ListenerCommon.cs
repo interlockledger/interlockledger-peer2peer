@@ -68,8 +68,8 @@ namespace InterlockLedger.Peer2Peer
         protected ListenerCommon(string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
             : base(id, tag, source, logger, defaultListeningBufferSize) { }
 
+        protected virtual Func<Socket, Task<ISocket>> AcceptSocket => async (socket) => new NetSocket(await socket.AcceptAsync());
         protected abstract string HeaderText { get; }
-
         protected abstract string IdPrefix { get; }
 
         protected abstract Socket BuildSocket();
@@ -90,7 +90,7 @@ namespace InterlockLedger.Peer2Peer
             do {
                 try {
                     while (!_source.IsCancellationRequested) {
-                        RunPeerClient(await _listenSocket.AcceptAsync());
+                        RunPeerClient(await AcceptSocket(_listenSocket));
                     }
                 } catch (AggregateException e) when (e.InnerExceptions.Any(ex => ex is ObjectDisposedException)) {
                     _logger.LogTrace(e, "ObjectDisposedException");
@@ -105,7 +105,7 @@ namespace InterlockLedger.Peer2Peer
             } while (!_source.IsCancellationRequested);
         }
 
-        private void RunPeerClient(Socket socket)
-            => new ConnectionInitiatedByPeer(BuildId(), MessageTag, new NetSocket(socket), this, _source, _logger, ListeningBufferSize);
+        private void RunPeerClient(ISocket socket)
+           => new ConnectionInitiatedByPeer(BuildId(), MessageTag, socket, this, _source, _logger, ListeningBufferSize);
     }
 }

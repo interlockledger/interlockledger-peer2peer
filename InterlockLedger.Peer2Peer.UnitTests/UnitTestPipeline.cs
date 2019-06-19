@@ -31,10 +31,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using static InterlockLedger.Peer2Peer.TestHelpers;
@@ -79,14 +75,6 @@ namespace InterlockLedger.Peer2Peer
             Assert.IsNotNull(fakeSocket.BytesSent);
             AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 13, 1, 128, 2);
             Assert.IsTrue(stopped);
-        }
-
-        private static IEnumerable<byte> ToBytes(IList<ArraySegment<byte>> bytesSent) {
-            foreach (var segment in bytesSent) {
-                if (segment.Array != null)
-                    foreach (var b in segment)
-                        yield return b;
-            }
         }
     }
 }

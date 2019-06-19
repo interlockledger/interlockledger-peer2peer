@@ -37,6 +37,7 @@ namespace InterlockLedger.Peer2Peer
 {
     internal class FakeNodeSink : INodeSink
     {
+        public readonly List<byte[]> MessagesReceived = new List<byte[]>();
         public ulong Channel { get; set; } = 0;
         public int DefaultListeningBufferSize => 1024;
         public int DefaultTimeoutInMilliseconds => 30_000;
@@ -61,6 +62,7 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public async Task<Success> SinkAsync(byte[] message, IActiveChannel channel) {
+            MessagesReceived.Add(message);
             await Task.Delay(10);
             //channel.Stop();
             return Success.Exit;

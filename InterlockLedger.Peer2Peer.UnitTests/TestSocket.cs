@@ -1,4 +1,4 @@
-﻿/******************************************************************************************************************************
+/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -42,20 +42,22 @@ namespace InterlockLedger.Peer2Peer
     public class TestSocket : ISocket
     {
         public readonly Memory<byte> _bytesReceived;
-
         public readonly CancellationTokenSource _source;
-
         public readonly List<ArraySegment<byte>> bytesSent = new List<ArraySegment<byte>>();
-
         public int _receivedCount;
 
         public TestSocket(CancellationTokenSource source, params byte[] bytesReceived) {
             _source = source;
             _bytesReceived = bytesReceived ?? throw new ArgumentNullException(nameof(bytesReceived));
+            _holdYourHorses = false;
+        }
+        public TestSocket(CancellationTokenSource source, bool holdYourHorses, params byte[] bytesReceived) {
+            _source = source;
+            _bytesReceived = bytesReceived ?? throw new ArgumentNullException(nameof(bytesReceived));
+            _holdYourHorses = holdYourHorses;
         }
 
         public int Available => _bytesReceived.Length - _receivedCount;
-
         public IList<ArraySegment<byte>> BytesSent => bytesSent;
         public EndPoint RemoteEndPoint => new IPEndPoint(IPAddress.Loopback, 13013);
 
@@ -64,7 +66,8 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public async Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token) {
-            await Task.Yield();
+            while (_holdYourHorses)
+                await Task.Yield();
             if (_bytesReceived.Length > _receivedCount) {
                 int howMany = Math.Min(memory.Length, _bytesReceived.Length - _receivedCount);
                 Memory<byte> slice = _bytesReceived.Slice(_receivedCount, howMany);
@@ -75,6 +78,8 @@ namespace InterlockLedger.Peer2Peer
             }
             return 0;
         }
+
+        public void ReleaseYourHorses() => _holdYourHorses = false;
 
         public Task SendAsync(IList<ArraySegment<byte>> segment) {
             bytesSent.AddRange(segment);
@@ -88,5 +93,7 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public void Stop() => throw new NotImplementedException();
+
+        private bool _holdYourHorses;
     }
 }

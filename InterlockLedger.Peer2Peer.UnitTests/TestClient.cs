@@ -1,4 +1,4 @@
-/******************************************************************************************************************************
+﻿/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -30,28 +30,42 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public static class TestHelpers
+    public class TestClient : IConnection, IActiveChannel
     {
-        public static void AssertHasSameItems<T>(string sequenceName, IEnumerable<T> actualItems, params T[] expectedItems) {
-            var ab = actualItems ?? Enumerable.Empty<T>();
-            Assert.IsTrue(expectedItems.SequenceEqual(ab), $"Sequence of {nameof(T)}s '{sequenceName}' doesn't match. Expected: {Joined(expectedItems)} - Actual {Joined(ab)}");
+        public Pipeline Pipeline;
+
+        public TestClient(string id) => Id = id ?? throw new ArgumentNullException(nameof(id));
+
+        public bool Active => true;
+        public ulong Channel { get; private set; }
+        public IConnection Connection => this;
+        public string Id { get; }
+
+        public IActiveChannel AllocateChannel(IChannelSink channelSink) => this;
+
+        public void Dispose() => Stop();
+
+        public IActiveChannel GetChannel(ulong channel) {
+            Channel = channel;
+            return this;
         }
 
-        public static string Joined<T>(IEnumerable<T> items) => items.Any() ? string.Join(", ", items.Select(b => b.ToString())) : "-";
-
-        public static IEnumerable<byte> ToBytes(IList<ArraySegment<byte>> bytesSent) {
-            foreach (var segment in bytesSent) {
-                if (segment.Array != null)
-                    foreach (var b in segment)
-                        yield return b;
-            }
+        public bool Send(byte[] message) {
+            Pipeline?.Send(new NetworkMessageSlice(Channel, message));
+            return true;
         }
+
+        public Task<Success> SinkAsync(byte[] message) => throw new NotImplementedException();
+
+        public void Stop() => Pipeline?.Stop();
+
+        public void SwitchToProxy(IChannelSink sink) => throw new NotImplementedException();
     }
+
+
 }

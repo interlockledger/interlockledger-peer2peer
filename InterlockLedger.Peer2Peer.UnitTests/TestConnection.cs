@@ -1,4 +1,4 @@
-/******************************************************************************************************************************
+﻿/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -30,28 +30,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using Microsoft.Extensions.Logging;
+using System.Threading;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public static class TestHelpers
+    public class TestConnection : ConnectionBase
     {
-        public static void AssertHasSameItems<T>(string sequenceName, IEnumerable<T> actualItems, params T[] expectedItems) {
-            var ab = actualItems ?? Enumerable.Empty<T>();
-            Assert.IsTrue(expectedItems.SequenceEqual(ab), $"Sequence of {nameof(T)}s '{sequenceName}' doesn't match. Expected: {Joined(expectedItems)} - Actual {Joined(ab)}");
+        public TestConnection(ISocket socket, IChannelSink sink, string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
+            : base(id, tag, source, logger, defaultListeningBufferSize) {
+            _socket = socket;
+            _sink = sink;
+            StartPipeline();
         }
 
-        public static string Joined<T>(IEnumerable<T> items) => items.Any() ? string.Join(", ", items.Select(b => b.ToString())) : "-";
+        internal void ResetSink() => _sink = null;
 
-        public static IEnumerable<byte> ToBytes(IList<ArraySegment<byte>> bytesSent) {
-            foreach (var segment in bytesSent) {
-                if (segment.Array != null)
-                    foreach (var b in segment)
-                        yield return b;
-            }
-        }
+        internal void ResetSocket() => _socket = null;
+
+        protected override ISocket BuildSocket() => _socket;
     }
 }

@@ -1,4 +1,4 @@
-/******************************************************************************************************************************
+﻿/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -30,28 +30,25 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public static class TestHelpers
+    public class TestSink : IChannelSink
     {
-        public static void AssertHasSameItems<T>(string sequenceName, IEnumerable<T> actualItems, params T[] expectedItems) {
-            var ab = actualItems ?? Enumerable.Empty<T>();
-            Assert.IsTrue(expectedItems.SequenceEqual(ab), $"Sequence of {nameof(T)}s '{sequenceName}' doesn't match. Expected: {Joined(expectedItems)} - Actual {Joined(ab)}");
-        }
+        public byte[] bytesProcessed = null;
+        public ulong channelProcessed = 0;
 
-        public static string Joined<T>(IEnumerable<T> items) => items.Any() ? string.Join(", ", items.Select(b => b.ToString())) : "-";
+        public ulong MessageTag { get; }
+        public string NetworkName { get; }
+        public string NetworkProtocolName { get; }
 
-        public static IEnumerable<byte> ToBytes(IList<ArraySegment<byte>> bytesSent) {
-            foreach (var segment in bytesSent) {
-                if (segment.Array != null)
-                    foreach (var b in segment)
-                        yield return b;
-            }
+        public async Task<Success> SinkAsync(byte[] message, IActiveChannel channel) {
+            bytesProcessed = message;
+            channelProcessed = channel.Channel;
+            channel.Send(new byte[] { 13, 1, 128 });
+            await Task.Delay(100);
+            return Success.Exit;
         }
     }
 }

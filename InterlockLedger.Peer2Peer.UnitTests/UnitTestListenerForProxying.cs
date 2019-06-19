@@ -30,31 +30,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Tasks;
 using static InterlockLedger.Peer2Peer.TestHelpers;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class Helpers { }
-
     [TestClass]
-    public class UnitTestListenerForProxying : Helpers
+    public class UnitTestListenerForProxying
     {
-        public static IEnumerable<byte> ToBytes(IList<ArraySegment<byte>> bytesSent) {
-            foreach (var segment in bytesSent) {
-                if (segment.Array != null)
-                    foreach (var b in segment)
-                        yield return b;
-            }
-        }
-
         [TestMethod]
         public void TestListenerForProxyingMinimally() {
             var fakeLogger = new FakeLogging();
@@ -89,91 +74,6 @@ namespace InterlockLedger.Peer2Peer
             connection.ResetSocket();
             var e2 = Assert.ThrowsException<InvalidOperationException>(() => connection.SwitchToProxy(fakeSink));
             Assert.AreEqual(ConnectionBase.ExceptionCantProxyNoSocketMessage, e2.Message);
-        }
-
-        public class TestConnection : ConnectionBase
-        {
-            public TestConnection(ISocket socket, IChannelSink sink, string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
-                : base(id, tag, source, logger, defaultListeningBufferSize) {
-                _socket = socket;
-                _sink = sink;
-                StartPipeline();
-            }
-
-            internal void ResetSink() => _sink = null;
-
-            internal void ResetSocket() => _socket = null;
-
-            protected override ISocket BuildSocket() => _socket;
-        }
-
-        public class TestSink : IChannelSink
-        {
-            public byte[] bytesProcessed = null;
-            public ulong channelProcessed = 0;
-
-            public ulong MessageTag { get; }
-            public string NetworkName { get; }
-            public string NetworkProtocolName { get; }
-
-            public async Task<Success> SinkAsync(byte[] message, IActiveChannel channel) {
-                bytesProcessed = message;
-                channelProcessed = channel.Channel;
-                channel.Send(new byte[] { 13, 1, 128 });
-                await Task.Delay(100);
-                return Success.Exit;
-            }
-        }
-
-        public class TestSocket : ISocket
-        {
-            public readonly Memory<byte> _bytesReceived;
-
-            public readonly CancellationTokenSource _source;
-
-            public readonly List<ArraySegment<byte>> bytesSent = new List<ArraySegment<byte>>();
-
-            public int _receivedCount;
-
-            public TestSocket(CancellationTokenSource source, params byte[] bytesReceived) {
-                _source = source;
-                _bytesReceived = bytesReceived ?? throw new ArgumentNullException(nameof(bytesReceived));
-            }
-
-            public int Available => _bytesReceived.Length - _receivedCount;
-
-            public IList<ArraySegment<byte>> BytesSent => bytesSent;
-            public EndPoint RemoteEndPoint => new IPEndPoint(IPAddress.Loopback, 13013);
-
-            public void Dispose() {
-                // Do nothing
-            }
-
-            public async Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token) {
-                await Task.Yield();
-                if (_bytesReceived.Length > _receivedCount) {
-                    int howMany = Math.Min(memory.Length, _bytesReceived.Length - _receivedCount);
-                    Memory<byte> slice = _bytesReceived.Slice(_receivedCount, howMany);
-                    if (slice.TryCopyTo(memory)) {
-                        _receivedCount += slice.Length;
-                        return slice.Length;
-                    }
-                }
-                return 0;
-            }
-
-            public Task SendAsync(IList<ArraySegment<byte>> segment) {
-                bytesSent.AddRange(segment);
-                if (Available == 0)
-                    _source.CancelAfter(100);
-                return Task.CompletedTask;
-            }
-
-            public void Shutdown(SocketShutdown how) {
-                // Do nothing
-            }
-
-            public void Stop() => throw new NotImplementedException();
         }
     }
 }

@@ -1,4 +1,4 @@
-/******************************************************************************************************************************
+﻿/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -30,13 +30,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public interface IChannelSink
+    public class TestListenerForPeer : ListenerForPeer
     {
-        Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel);
+        public TestListenerForPeer(TestSocket testSocket, INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger) : base(nodeSink, discoverer, source, logger)
+            => _testSocket = new SingleUseSocket(testSocket, _source);
+
+        protected override Func<Socket, Task<ISocket>> AcceptSocket => _testSocket.AcceptSocketOnce;
+
+        private readonly SingleUseSocket _testSocket;
     }
 }

@@ -30,19 +30,23 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public interface IActiveChannel
+    public interface IActiveChannel : ISender
     {
         bool Active { get; }
         ulong Channel { get; }
         IConnection Connection { get; }
         string Id { get; }
 
-        bool Send(byte[] message);
+        Task<Success> SinkAsync(IEnumerable<byte> message);
+    }
 
-        Task<Success> SinkAsync(byte[] message);
+    public interface ISender
+    {
+        bool Send(IEnumerable<byte> message);
     }
 }

@@ -1,4 +1,4 @@
-/******************************************************************************************************************************
+﻿/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -30,13 +30,36 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using System.Collections.Generic;
+using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public interface IChannelSink
+    public class SingleUseSocket
     {
-        Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel);
+        public SingleUseSocket(TestSocket testSocket, CancellationTokenSource source) {
+            _socket = testSocket;
+            _source = source;
+        }
+
+        public async Task<ISocket> AcceptSocketOnce(Socket _) {
+            var socket = _socket;
+            _socket = null;
+            return socket ?? await AwaitCancelation();
+        }
+
+        private readonly CancellationTokenSource _source;
+
+        private TestSocket _socket;
+
+        private async Task<ISocket> AwaitCancelation() {
+            while (!_source.IsCancellationRequested) {
+                Thread.Yield();
+                await Task.Delay(100);
+            }
+            return null;
+        }
     }
+
 }

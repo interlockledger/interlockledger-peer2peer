@@ -1,4 +1,4 @@
-﻿/******************************************************************************************************************************
+/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -30,25 +30,29 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
     public class TestSink : IChannelSink
     {
-        public byte[] bytesProcessed = null;
+        public IEnumerable<byte> bytesProcessed = null;
         public ulong channelProcessed = 0;
 
-        public ulong MessageTag { get; }
-        public string NetworkName { get; }
-        public string NetworkProtocolName { get; }
+        public TestSink(params byte[] response)
+            => _response = response ?? throw new ArgumentNullException(nameof(response));
 
-        public async Task<Success> SinkAsync(byte[] message, IActiveChannel channel) {
+        public async Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
             bytesProcessed = message;
             channelProcessed = channel.Channel;
-            channel.Send(new byte[] { 13, 1, 128 });
+            if (_response.Length > 0)
+                channel.Send(_response);
             await Task.Delay(100);
             return Success.Exit;
         }
+
+        private readonly byte[] _response;
     }
 }

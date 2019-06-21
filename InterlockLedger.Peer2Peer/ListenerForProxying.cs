@@ -30,9 +30,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using InterlockLedger.ILInt;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -42,21 +45,21 @@ namespace InterlockLedger.Peer2Peer
 {
     public class ListenerForProxying : ListenerCommon
     {
-        public ListenerForProxying(ListenerForPeer mainListener, ushort firstPort, ConnectionInitiatedByPeer connection, SocketFactory socketFactory, CancellationTokenSource source, ILogger logger)
-            : base(mainListener.Id, mainListener.MessageTag, source, logger, connection.ListeningBufferSize) {
-            _mainListener = mainListener ?? throw new ArgumentNullException(nameof(mainListener));
+        public ListenerForProxying(ListenerForPeer referenceListener, ushort firstPort, ConnectionInitiatedByPeer connection, SocketFactory socketFactory, CancellationTokenSource source, ILogger logger)
+            : base(referenceListener.Id, referenceListener.MessageTag, source, logger, connection.ListeningBufferSize) {
+            _referenceListener = referenceListener ?? throw new ArgumentNullException(nameof(referenceListener));
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
-            _socket = socketFactory.GetSocket(mainListener.ExternalAddress, firstPort);
+            _socket = socketFactory.GetSocket(referenceListener.ExternalAddress, firstPort);
             var port = (ushort)((IPEndPoint)_socket.LocalEndPoint).Port;
-            _route = $"{mainListener.ExternalAddress}:{port}!";
+            _route = $"{referenceListener.ExternalAddress}:{port}!";
             _channelMap = new ConcurrentDictionary<string, ChannelPairing>();
         }
 
-        public override Task<Success> SinkAsync(byte[] message, IActiveChannel channel) {
+        public override Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
             if (_channelMap.TryGetValue(channel.Id, out var pair)) {
                 pair.Send(message);
             } else {
-                var newPair = new ChannelPairing(channel, _connection);
+                var newPair = new ChannelPairing(channel, _connection, MessageTag);
                 _channelMap.TryAdd(channel.Id, newPair);
                 newPair.Send(message);
             }
@@ -64,7 +67,7 @@ namespace InterlockLedger.Peer2Peer
         }
 
         protected override string HeaderText
-            => $"proxying {_mainListener.NetworkProtocolName} protocol in {_mainListener.NetworkName} network at {_route}!";
+            => $"proxying {_referenceListener.NetworkProtocolName} protocol in {_referenceListener.NetworkName} network at {_route}!";
 
         protected override string IdPrefix => "Proxying";
 
@@ -72,26 +75,34 @@ namespace InterlockLedger.Peer2Peer
 
         private readonly ConcurrentDictionary<string, ChannelPairing> _channelMap;
         private readonly ConnectionInitiatedByPeer _connection;
-        private readonly ListenerForPeer _mainListener;
+        private readonly ListenerForPeer _referenceListener;
         private readonly string _route;
         private readonly Socket _socket;
 
-        private class ChannelPairing : IChannelSink
+        private class ChannelPairing : IChannelSink, ISender
         {
-            public ChannelPairing(IActiveChannel external, ConnectionInitiatedByPeer connection) {
+            public ChannelPairing(IActiveChannel external, ConnectionInitiatedByPeer connection, ulong tag) {
                 _external = external ?? throw new ArgumentNullException(nameof(external));
+                _tagAsILInt = tag.AsILInt();
                 _proxied = connection.AllocateChannel(this);
             }
 
-            public bool Send(byte[] message) => _proxied.Send(message);
+            public bool Send(IEnumerable<byte> message) => _proxied.Send(WithTagAndLength(message));
 
-            public Task<Success> SinkAsync(byte[] message, IActiveChannel channel) {
-                _external.Send(message);
+            public Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
+                _external.Send(WithTagAndLength(message));
                 return Task.FromResult(Success.Next);
             }
 
             private readonly IActiveChannel _external;
             private readonly IActiveChannel _proxied;
+            private readonly byte[] _tagAsILInt;
+
+            private static byte[] LengthAsILInt(IEnumerable<byte> message)
+                => ((ulong)message.LongCount()).AsILInt();
+
+            private IEnumerable<byte> WithTagAndLength(IEnumerable<byte> message)
+                => _tagAsILInt.Concat(LengthAsILInt(message)).Concat(message);
         }
     }
 }

@@ -53,7 +53,7 @@ namespace InterlockLedger.Peer2Peer
 
         public Task<ExternalAccess> DetermineExternalAccessAsync(string hostAtAddress, ushort hostAtPortNumber, string publishAtAddress, ushort? publishAtPortNumber) {
             var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            listenSocket.Bind(new IPEndPoint(IPAddress.Loopback, 32015));
+            listenSocket.Bind(new IPEndPoint(IPAddress.Loopback, hostAtPortNumber));
             return Task.FromResult(new ExternalAccess(listenSocket, hostAtAddress, hostAtPortNumber, publishAtAddress, publishAtPortNumber));
         }
 

@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using InterlockLedger.Peer2Peer;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -67,13 +68,13 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
         }
 
-        public override async Task<Success> SinkAsync(byte[] message, IActiveChannel activeChannel)
+        public override async Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel activeChannel)
             => Received(await Process(message, activeChannel.Channel));
 
-        private static async Task<Success> Process(byte[] message, ulong channel) {
+        private static async Task<Success> Process(IEnumerable<byte> message, ulong channel) {
             await Task.Delay(1);
-            if (message.Length > 1) {
-                var response = Encoding.UTF8.GetString(message, 1, message.Length - 1);
+            if (message.Any()) {
+                var response = Encoding.UTF8.GetString(message.Skip(1).ToArray());
                 Console.WriteLine($@"[{channel}] {response}");
                 return response[0] == 0 ? Success.Exit : Success.Next;
             }

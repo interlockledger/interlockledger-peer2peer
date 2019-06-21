@@ -31,7 +31,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
-using System.Net.Sockets;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
@@ -44,10 +45,10 @@ namespace InterlockLedger.Peer2Peer
 
         public string Id => $"{PeerConnection.Id}:{Channel}";
 
-        public bool Send(byte[] message)
-                    => Active && IsValid(message) ? PeerConnection.Send(new NetworkMessageSlice(Channel, message)) : true;
+        public bool Send(IEnumerable<byte> message)
+            => Active && IsValid(message) ? PeerConnection.Send(new NetworkMessageSlice(Channel, message)) : true;
 
-        public async Task<Success> SinkAsync(byte[] message) => await Sink.SinkAsync(message, this);
+        public async Task<Success> SinkAsync(IEnumerable<byte> message) => await Sink.SinkAsync(message, this);
 
         internal ActiveChannel(ulong channel, IChannelSink sink, ConnectionBase peerConnection) {
             Channel = channel;
@@ -58,6 +59,6 @@ namespace InterlockLedger.Peer2Peer
         internal ConnectionBase PeerConnection { get; }
         internal IChannelSink Sink { get; }
 
-        private static bool IsValid(byte[] message) => message != null && message.Length > 0;
+        private static bool IsValid(IEnumerable<byte> message) => message != null && message.Any();
     }
 }

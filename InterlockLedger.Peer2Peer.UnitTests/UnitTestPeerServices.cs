@@ -39,6 +39,8 @@ namespace InterlockLedger.Peer2Peer
     [TestClass]
     public class UnitTestPeerServices
     {
+        private const ulong _messageTag = '?';
+
         [TestMethod]
         public void TestPeerClientCreation() {
             var fakeLogger = new FakeLogging();
@@ -47,7 +49,7 @@ namespace InterlockLedger.Peer2Peer
             IPeerServices peerServices = new PeerServices(fakeLogger, fakeDiscoverer).WithCancellationTokenSource(source);
             Assert.IsNotNull(peerServices);
             Assert.IsNull(fakeLogger.LastLog);
-            INodeSink fakeNodeSink = new FakeNodeSink();
+            INodeSink fakeNodeSink = new FakeNodeSink(_messageTag, 2001);
             var peerClient = peerServices.GetClient(fakeNodeSink.MessageTag, "localhost", 80, 512);
             Assert.IsNotNull(peerClient);
             Assert.IsNull(fakeLogger.LastLog);
@@ -75,17 +77,18 @@ namespace InterlockLedger.Peer2Peer
             IPeerServices peerServices = new PeerServices(fakeLogger, fakeDiscoverer).WithCancellationTokenSource(source);
             Assert.IsNotNull(peerServices);
             Assert.IsNull(fakeLogger.LastLog);
-            INodeSink fakeNodeSink = new FakeNodeSink();
-            var peerListener = peerServices.CreateListenerFor(fakeNodeSink);
-            Assert.IsNotNull(peerListener);
-            Assert.IsNull(fakeLogger.LastLog);
+            INodeSink fakeNodeSink = new FakeNodeSink(_messageTag, 2002);
+            using (var peerListener = peerServices.CreateListenerFor(fakeNodeSink)) {
+                Assert.IsNotNull(peerListener);
+                Assert.IsNull(fakeLogger.LastLog);
+            }
         }
 
         [TestMethod]
         public void TestPeerServicesCreation() {
             var fakeLogger = new FakeLogging();
             var fakeDiscoverer = new FakeDiscoverer();
-            INodeSink fakeNodeSink = new FakeNodeSink();
+            INodeSink fakeNodeSink = new FakeNodeSink(_messageTag, 2003);
             Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(null, fakeDiscoverer));
             Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(fakeLogger, null));
             IPeerServices peerServices = new PeerServices(fakeLogger, fakeDiscoverer);
@@ -111,7 +114,7 @@ namespace InterlockLedger.Peer2Peer
             IPeerServices peerServices = new PeerServices(fakeLogger, fakeDiscoverer).WithCancellationTokenSource(source);
             Assert.IsNotNull(peerServices);
             Assert.IsNull(fakeLogger.LastLog);
-            INodeSink fakeNodeSink = new FakeNodeSink();
+            INodeSink fakeNodeSink = new FakeNodeSink(_messageTag, 2004);
             peerServices.KnownNodes.Add("nodeToForget", fakeNodeSink.MessageTag, "localhost", 80, 512);
             Assert.IsTrue(peerServices.KnownNodes.IsKnown("nodeToForget"));
             peerServices.Dispose();

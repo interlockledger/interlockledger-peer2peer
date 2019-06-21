@@ -48,7 +48,7 @@ namespace InterlockLedger.Peer2Peer
             var fakeLogger = new FakeLogging();
             var fakeDiscoverer = new FakeDiscoverer();
             var source = new CancellationTokenSource();
-            var fakeSocket = new TestSocket(source, 13, 1, 128, 2);
+            var fakeSocket = new TestSocket(13, 1, 128, 2);
             var fakeClient = new TestClient("FakeTestClient");
             async Task<Success> processor(NetworkMessageSlice channelBytes) {
                 bytesProcessed = channelBytes.AllBytes;

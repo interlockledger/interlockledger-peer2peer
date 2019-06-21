@@ -37,14 +37,21 @@ namespace InterlockLedger.Peer2Peer
 {
     internal class FakeNodeSink : INodeSink
     {
-        public readonly List<byte[]> MessagesReceived = new List<byte[]>();
+        public readonly List<IEnumerable<byte>> MessagesReceived = new List<IEnumerable<byte>>();
+
+        public FakeNodeSink(ulong messageTag, ushort port, params byte[] response) {
+            MessageTag = messageTag;
+            HostAtPortNumber = port;
+            _response = response;
+        }
+
         public ulong Channel { get; set; } = 0;
         public int DefaultListeningBufferSize => 1024;
         public int DefaultTimeoutInMilliseconds => 30_000;
         public string HostAtAddress => "localhost";
-        public ushort HostAtPortNumber => 9090;
+        public ushort HostAtPortNumber { get; }
         public IEnumerable<string> LocalResources { get; } = new string[] { "DummyDoc1", "DummyDoc2" };
-        public ulong MessageTag => '?';
+        public ulong MessageTag { get; }
         public string NetworkName => "UnitTesting";
         public string NetworkProtocolName => "UnitTest";
         public string NodeId => "DummyNode";
@@ -61,11 +68,14 @@ namespace InterlockLedger.Peer2Peer
             // Do nothing
         }
 
-        public async Task<Success> SinkAsync(byte[] message, IActiveChannel channel) {
+        public async Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
             MessagesReceived.Add(message);
             await Task.Delay(10);
-            //channel.Stop();
+            if (_response.Length > 0)
+                channel.Send(_response);
             return Success.Exit;
         }
+
+        private readonly byte[] _response;
     }
 }

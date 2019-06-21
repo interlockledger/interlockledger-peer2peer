@@ -48,10 +48,9 @@ namespace InterlockLedger.Peer2Peer
         [TestMethod]
         public void TestConnectionMinimally() {
             var fakeLogger = new FakeLogging();
-            var fakeDiscoverer = new FakeDiscoverer();
             var source = new CancellationTokenSource();
-            var fakeSocket = new TestSocket(source, 13, 1, 128, 2);
-            var fakeSink = new TestSink();
+            var fakeSocket = new TestSocket(13, 1, 128, 2);
+            var fakeSink = new TestSink(13, 1, 129);
             var connection = new TestConnection(fakeSocket, fakeSink, "TestConnection", 13, source, fakeLogger, 4096);
             Assert.IsNotNull(connection);
             Thread.Sleep(200);
@@ -59,10 +58,10 @@ namespace InterlockLedger.Peer2Peer
             Assert.IsNotNull(fakeLogger.LastLog);
             AssertHasSameItems<byte>(nameof(fakeSink.bytesProcessed), fakeSink.bytesProcessed, 128);
             Assert.IsNotNull(fakeSocket.BytesSent);
-            AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 13, 1, 128, 2);
+            AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 13, 1, 129, 2);
             connection.AllocateChannel(fakeSink);
             Assert.AreEqual(1, connection.LastChannelUsed);
-            Assert.AreEqual(1, connection.NumberOfActiveChannels);
+            Assert.AreEqual(2, connection.NumberOfActiveChannels);
             Assert.IsNotNull(connection.GetChannel(1));
             var ex = Assert.ThrowsException<ArgumentOutOfRangeException>(() => connection.GetChannel(10));
             Assert.AreEqual("channel", ex.ParamName);

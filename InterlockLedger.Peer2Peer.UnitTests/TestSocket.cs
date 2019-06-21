@@ -41,24 +41,16 @@ namespace InterlockLedger.Peer2Peer
 {
     public class TestSocket : ISocket
     {
-        public readonly Memory<byte> _bytesReceived;
-        public readonly CancellationTokenSource _source;
-        public readonly List<ArraySegment<byte>> bytesSent = new List<ArraySegment<byte>>();
-        public int _receivedCount;
-
-        public TestSocket(CancellationTokenSource source, params byte[] bytesReceived) {
-            _source = source;
-            _bytesReceived = bytesReceived ?? throw new ArgumentNullException(nameof(bytesReceived));
-            _holdYourHorses = false;
+        public TestSocket(params byte[] bytesReceived) : this(false, bytesReceived) {
         }
-        public TestSocket(CancellationTokenSource source, bool holdYourHorses, params byte[] bytesReceived) {
-            _source = source;
+
+        public TestSocket(bool holdYourHorses, params byte[] bytesReceived) {
             _bytesReceived = bytesReceived ?? throw new ArgumentNullException(nameof(bytesReceived));
             _holdYourHorses = holdYourHorses;
         }
 
-        public int Available => _bytesReceived.Length - _receivedCount;
-        public IList<ArraySegment<byte>> BytesSent => bytesSent;
+        public int Available => _holdYourHorses ? 0 : _bytesReceived.Length - _receivedCount;
+        public IList<ArraySegment<byte>> BytesSent => _bytesSent;
         public EndPoint RemoteEndPoint => new IPEndPoint(IPAddress.Loopback, 13013);
 
         public void Dispose() {
@@ -82,9 +74,7 @@ namespace InterlockLedger.Peer2Peer
         public void ReleaseYourHorses() => _holdYourHorses = false;
 
         public Task SendAsync(IList<ArraySegment<byte>> segment) {
-            bytesSent.AddRange(segment);
-            if (Available == 0)
-                _source.CancelAfter(100);
+            _bytesSent.AddRange(segment);
             return Task.CompletedTask;
         }
 
@@ -94,6 +84,9 @@ namespace InterlockLedger.Peer2Peer
 
         public void Stop() => throw new NotImplementedException();
 
+        private readonly Memory<byte> _bytesReceived;
+        private readonly List<ArraySegment<byte>> _bytesSent = new List<ArraySegment<byte>>();
         private bool _holdYourHorses;
+        private int _receivedCount;
     }
 }

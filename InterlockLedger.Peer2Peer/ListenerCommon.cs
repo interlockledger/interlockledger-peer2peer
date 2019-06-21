@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
@@ -43,7 +44,7 @@ namespace InterlockLedger.Peer2Peer
     {
         public bool Alive => _listenSocket != null;
 
-        public abstract Task<Success> SinkAsync(byte[] message, IActiveChannel channel);
+        public abstract Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel);
 
         public void Start() {
             if (_source.IsCancellationRequested)

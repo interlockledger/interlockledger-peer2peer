@@ -34,6 +34,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
@@ -44,6 +46,7 @@ namespace InterlockLedger.Peer2Peer
             Assert.IsTrue(expectedItems.SequenceEqual(ab), $"Sequence of {nameof(T)}s '{sequenceName}' doesn't match. Expected: {Joined(expectedItems)} - Actual {Joined(ab)}");
         }
 
+
         public static string Joined<T>(IEnumerable<T> items) => items.Any() ? string.Join(", ", items.Select(b => b.ToString())) : "-";
 
         public static IEnumerable<byte> ToBytes(IList<ArraySegment<byte>> bytesSent) {
@@ -52,6 +55,11 @@ namespace InterlockLedger.Peer2Peer
                     foreach (var b in segment)
                         yield return b;
             }
+        }
+
+        public static void WaitForOthers(int timeInMiliseconds) {
+            Thread.Yield();
+            Task.Delay(timeInMiliseconds).Wait();
         }
     }
 }

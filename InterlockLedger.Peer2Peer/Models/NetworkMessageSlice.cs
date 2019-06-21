@@ -42,6 +42,9 @@ namespace InterlockLedger.Peer2Peer
 {
     public struct NetworkMessageSlice
     {
+        public NetworkMessageSlice(ulong channel, IEnumerable<byte> bytes) : this(channel, bytes.ToArray()) {
+        }
+
         public NetworkMessageSlice(ulong channel, MemoryStream ms) : this(channel, ms.ToArray()) {
         }
 

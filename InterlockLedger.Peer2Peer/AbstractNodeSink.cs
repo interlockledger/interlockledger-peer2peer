@@ -55,6 +55,6 @@ namespace InterlockLedger.Peer2Peer
 
         public abstract void PublishedAt(string address, ushort port);
 
-        public abstract Task<Success> SinkAsync(byte[] message, IActiveChannel channel);
+        public abstract Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel);
     }
 }

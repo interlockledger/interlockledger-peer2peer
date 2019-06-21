@@ -1,4 +1,4 @@
-﻿/******************************************************************************************************************************
+/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -31,6 +31,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
@@ -55,17 +57,16 @@ namespace InterlockLedger.Peer2Peer
             return this;
         }
 
-        public bool Send(byte[] message) {
-            Pipeline?.Send(new NetworkMessageSlice(Channel, message));
+        public bool Send(IEnumerable<byte> message) {
+            if (message != null)
+                Pipeline?.Send(new NetworkMessageSlice(Channel, message));
             return true;
         }
 
-        public Task<Success> SinkAsync(byte[] message) => throw new NotImplementedException();
+        public Task<Success> SinkAsync(IEnumerable<byte> message) => throw new NotImplementedException();
 
         public void Stop() => Pipeline?.Stop();
 
         public void SwitchToProxy(IChannelSink sink) => throw new NotImplementedException();
     }
-
-
 }

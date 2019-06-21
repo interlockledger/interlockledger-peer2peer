@@ -65,12 +65,12 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
         }
 
-        public override Task<Success> SinkAsync(byte[] message, IActiveChannel channel) {
+        public override Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
             _queue.Enqueue((message, channel));
             return Task.FromResult(Success.Next);
         }
 
-        private readonly ConcurrentQueue<(byte[] message, IActiveChannel activeChannel)> _queue = new ConcurrentQueue<(byte[] message, IActiveChannel activeChannel)>();
+        private readonly ConcurrentQueue<(IEnumerable<byte> message, IActiveChannel activeChannel)> _queue = new ConcurrentQueue<(IEnumerable<byte> message, IActiveChannel activeChannel)>();
         private readonly ConcurrentQueue<(ulong channel, string key)> _queueKeys = new ConcurrentQueue<(ulong channel, string key)>();
 
         private IPeerServices _peerServices;
@@ -117,8 +117,8 @@ namespace Demo.InterlockLedger.Peer2Peer
             _peerServices.KnownNodes.Forget(key);
         }
 
-        private IEnumerable<byte[]> SinkAsServer(byte[] channelBytes, IActiveChannel activeChannel) {
-            byte[] buffer = channelBytes;
+        private IEnumerable<byte[]> SinkAsServer(IEnumerable<byte> channelBytes, IActiveChannel activeChannel) {
+            byte[] buffer = channelBytes.ToArray();
             var command = (buffer.Length > 1) ? (char)buffer[1] : '\0';
             IEnumerable<byte> text = buffer.Skip(2);
             var channel = activeChannel.Channel;
@@ -153,7 +153,7 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
         }
 
-        private async Task SinkAsServerWithDelayedResponsesAsync(byte[] message, IActiveChannel activeChannel) {
+        private async Task SinkAsServerWithDelayedResponsesAsync(IEnumerable<byte> message, IActiveChannel activeChannel) {
             var result = SinkAsServer(message, activeChannel);
             var channel = activeChannel.Channel;
             if (result.Count() <= 1)

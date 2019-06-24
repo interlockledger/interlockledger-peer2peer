@@ -20,7 +20,7 @@
 
   <ItemGroup>
     <PackageReference Include="InterlockLedger.ILInt" Version="1.1.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.1.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.2.0" />
     <PackageReference Include="System.IO.Pipelines" Version="4.5.3" />
   </ItemGroup>
 

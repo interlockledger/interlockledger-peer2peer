@@ -39,10 +39,11 @@ namespace InterlockLedger.Peer2Peer
 {
     public sealed class PeerServices : IPeerServices, IKnownNodesServices
     {
-        public PeerServices(ILoggerFactory loggerFactory, IExternalAccessDiscoverer discoverer) {
+        public PeerServices(ILoggerFactory loggerFactory, IExternalAccessDiscoverer discoverer, SocketFactory socketFactory) {
             _disposer = new Disposer();
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _discoverer = discoverer ?? throw new ArgumentNullException(nameof(discoverer));
+            _socketFactory = socketFactory ?? throw new ArgumentNullException(nameof(socketFactory));
             _knownNodes = new ConcurrentDictionary<string, (string address, int port, ulong messageTag, int defaultListeningBufferSize, bool retain)>();
             _clients = new ConcurrentDictionary<string, IConnection>();
             _logger = LoggerNamed(nameof(PeerServices));
@@ -53,6 +54,9 @@ namespace InterlockLedger.Peer2Peer
 
         public IListener CreateListenerFor(INodeSink nodeSink)
             => _disposer.Do(() => new ListenerForPeer(nodeSink, _discoverer, Source, LoggerNamed($"{nameof(ListenerForPeer)}#{nodeSink.MessageTag}")));
+
+        public ListenerForProxying CreateListenerForProxying(ListenerForPeer referenceListener, ushort firstPort, ConnectionInitiatedByPeer connection)
+            => _disposer.Do(() => new ListenerForProxying(referenceListener, firstPort, connection, _socketFactory, Source, LoggerNamed($"{nameof(ListenerForProxying)}#{referenceListener.MessageTag}")));
 
         public void Dispose()
             => _disposer.Dispose(() => {
@@ -117,7 +121,7 @@ namespace InterlockLedger.Peer2Peer
         private readonly ConcurrentDictionary<string, (string address, int port, ulong messageTag, int defaultListeningBufferSize, bool retain)> _knownNodes;
         private readonly ILogger _logger;
         private readonly ILoggerFactory _loggerFactory;
-
+        private readonly SocketFactory _socketFactory;
         private CancellationTokenSource _source;
 
         private static string Framed(string nodeId) => $"[{nodeId}]";

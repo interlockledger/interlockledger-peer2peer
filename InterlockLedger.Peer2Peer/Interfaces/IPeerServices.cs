@@ -42,6 +42,8 @@ namespace InterlockLedger.Peer2Peer
 
         IListener CreateListenerFor(INodeSink nodeSink);
 
+        ListenerForProxying CreateListenerForProxying(ListenerForPeer referenceListener, ushort firstPort, ConnectionInitiatedByPeer connection);
+
         IConnection GetClient(ulong messageTag, string address, int port, int defaultListeningBufferSize);
 
         IConnection GetClient(string id);

@@ -44,9 +44,10 @@ namespace InterlockLedger.Peer2Peer
         [TestMethod]
         public void TestPeerClientCreation() {
             var fakeLogger = new FakeLogging();
+            var socketFactory = new SocketFactory(fakeLogger, 10);
             var fakeDiscoverer = new FakeDiscoverer();
             var source = new CancellationTokenSource();
-            IPeerServices peerServices = new PeerServices(fakeLogger, fakeDiscoverer).WithCancellationTokenSource(source);
+            IPeerServices peerServices = new PeerServices(fakeLogger, fakeDiscoverer, socketFactory).WithCancellationTokenSource(source);
             Assert.IsNotNull(peerServices);
             Assert.IsNull(fakeLogger.LastLog);
             INodeSink fakeNodeSink = new FakeNodeSink(_messageTag, 2001);
@@ -72,9 +73,10 @@ namespace InterlockLedger.Peer2Peer
         [TestMethod]
         public void TestPeerListenerCreation() {
             var fakeLogger = new FakeLogging();
+            var socketFactory = new SocketFactory(fakeLogger, 10);
             var fakeDiscoverer = new FakeDiscoverer();
             var source = new CancellationTokenSource();
-            IPeerServices peerServices = new PeerServices(fakeLogger, fakeDiscoverer).WithCancellationTokenSource(source);
+            IPeerServices peerServices = new PeerServices(fakeLogger, fakeDiscoverer, socketFactory).WithCancellationTokenSource(source);
             Assert.IsNotNull(peerServices);
             Assert.IsNull(fakeLogger.LastLog);
             INodeSink fakeNodeSink = new FakeNodeSink(_messageTag, 2002);
@@ -87,11 +89,13 @@ namespace InterlockLedger.Peer2Peer
         [TestMethod]
         public void TestPeerServicesCreation() {
             var fakeLogger = new FakeLogging();
+            var socketFactory = new SocketFactory(fakeLogger, 10);
             var fakeDiscoverer = new FakeDiscoverer();
             INodeSink fakeNodeSink = new FakeNodeSink(_messageTag, 2003);
-            Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(null, fakeDiscoverer));
-            Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(fakeLogger, null));
-            IPeerServices peerServices = new PeerServices(fakeLogger, fakeDiscoverer);
+            Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(null, fakeDiscoverer, socketFactory));
+            Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(fakeLogger, null, socketFactory));
+            Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(fakeLogger, fakeDiscoverer, null));
+            IPeerServices peerServices = new PeerServices(fakeLogger, fakeDiscoverer, socketFactory);
             Assert.IsNotNull(peerServices);
             Assert.IsNull(fakeLogger.LastLog);
             Assert.IsNull(peerServices.GetClient(13, "localhost", 80, 512));
@@ -107,11 +111,10 @@ namespace InterlockLedger.Peer2Peer
         [TestMethod]
         public void TestPeerServicesDisposal() {
             var fakeLogger = new FakeLogging();
+            var socketFactory = new SocketFactory(fakeLogger, 10);
             var fakeDiscoverer = new FakeDiscoverer();
-            Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(null, fakeDiscoverer));
-            Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(fakeLogger, null));
             var source = new CancellationTokenSource();
-            IPeerServices peerServices = new PeerServices(fakeLogger, fakeDiscoverer).WithCancellationTokenSource(source);
+            IPeerServices peerServices = new PeerServices(fakeLogger, fakeDiscoverer, socketFactory).WithCancellationTokenSource(source);
             Assert.IsNotNull(peerServices);
             Assert.IsNull(fakeLogger.LastLog);
             INodeSink fakeNodeSink = new FakeNodeSink(_messageTag, 2004);

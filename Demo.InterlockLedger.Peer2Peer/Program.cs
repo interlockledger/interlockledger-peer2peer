@@ -68,7 +68,8 @@ namespace Demo.InterlockLedger.Peer2Peer
                 .AddSingleton(sp =>
                     new PeerServices(
                         sp.GetRequiredService<ILoggerFactory>(),
-                        sp.GetRequiredService<IExternalAccessDiscoverer>()).WithCancellationTokenSource(source))
+                        sp.GetRequiredService<IExternalAccessDiscoverer>(),
+                        sp.GetRequiredService<SocketFactory>()).WithCancellationTokenSource(source))
                 .BuildServiceProvider();
         }
     }

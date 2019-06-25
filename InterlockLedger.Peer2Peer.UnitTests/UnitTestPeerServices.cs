@@ -39,8 +39,6 @@ namespace InterlockLedger.Peer2Peer
     [TestClass]
     public class UnitTestPeerServices
     {
-        private const ulong _messageTag = '?';
-
         [TestMethod]
         public void TestPeerClientCreation() {
             var fakeLogger = new FakeLogging();
@@ -97,6 +95,8 @@ namespace InterlockLedger.Peer2Peer
             Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(fakeLogger, fakeDiscoverer, null));
             IPeerServices peerServices = new PeerServices(fakeLogger, fakeDiscoverer, socketFactory);
             Assert.IsNotNull(peerServices);
+            Assert.IsNotNull(peerServices.ProxyingServices);
+            Assert.IsNotNull(peerServices.KnownNodes);
             Assert.IsNull(fakeLogger.LastLog);
             Assert.IsNull(peerServices.GetClient(13, "localhost", 80, 512));
             Assert.IsNotNull(fakeLogger.LastLog);
@@ -134,5 +134,7 @@ namespace InterlockLedger.Peer2Peer
             Assert.IsNull(peerClient2);
             Assert.IsNull(fakeLogger.LastLog);
         }
+
+        private const ulong _messageTag = '?';
     }
 }

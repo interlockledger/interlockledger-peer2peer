@@ -38,11 +38,10 @@ namespace InterlockLedger.Peer2Peer
     public interface IPeerServices : IDisposable
     {
         IKnownNodesServices KnownNodes { get; }
+        IProxyingServices ProxyingServices { get; }
         CancellationTokenSource Source { get; }
 
         IListener CreateListenerFor(INodeSink nodeSink);
-
-        ListenerForProxying CreateListenerForProxying(ListenerForPeer referenceListener, ushort firstPort, ConnectionInitiatedByPeer connection);
 
         IConnection GetClient(ulong messageTag, string address, int port, int defaultListeningBufferSize);
 

@@ -41,7 +41,5 @@ namespace InterlockLedger.Peer2Peer
         IActiveChannel GetChannel(ulong channel);
 
         void Stop();
-
-        void SwitchToProxy(IChannelSink sink);
     }
 }

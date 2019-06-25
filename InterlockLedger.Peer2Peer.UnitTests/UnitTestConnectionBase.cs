@@ -66,15 +66,6 @@ namespace InterlockLedger.Peer2Peer
             var ex = Assert.ThrowsException<ArgumentOutOfRangeException>(() => connection.GetChannel(10));
             Assert.AreEqual("channel", ex.ParamName);
             Assert.AreEqual(string.Format(ConnectionBase.ExceptionChannelNotFoundFormat, 10) + Environment.NewLine + "Parameter name: channel", ex.Message);
-            var e = Assert.ThrowsException<InvalidOperationException>(() => connection.SwitchToProxy(fakeSink));
-            Assert.AreEqual(ConnectionBase.ExceptionCantProxyWithSinkMessage, e.Message);
-            connection.ResetSink();
-            connection.SwitchToProxy(fakeSink);
-            Assert.AreEqual(1, connection.LastChannelUsed);
-            Assert.AreEqual(0, connection.NumberOfActiveChannels);
-            connection.ResetSocket();
-            var e2 = Assert.ThrowsException<InvalidOperationException>(() => connection.SwitchToProxy(fakeSink));
-            Assert.AreEqual(ConnectionBase.ExceptionCantProxyNoSocketMessage, e2.Message);
         }
     }
 }

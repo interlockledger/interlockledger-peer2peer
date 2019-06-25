@@ -66,15 +66,6 @@ namespace InterlockLedger.Peer2Peer
 
         public override void Stop() => _pipeline?.Stop();
 
-        public void SwitchToProxy(IChannelSink sink) {
-            if (_socket == null)
-                throw new InvalidOperationException(ExceptionCantProxyNoSocketMessage);
-            if (_sink != null)
-                throw new InvalidOperationException(ExceptionCantProxyWithSinkMessage);
-            _channelSinks.Clear();
-            _sink = sink;
-        }
-
         internal bool Send(NetworkMessageSlice slice) {
             if (Abandon)
                 return false;

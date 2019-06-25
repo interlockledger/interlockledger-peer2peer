@@ -1,4 +1,4 @@
-/******************************************************************************************************************************
+﻿/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -30,20 +30,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.Extensions.Logging;
-using System.Threading;
-
 namespace InterlockLedger.Peer2Peer
 {
-    public class TestConnection : ConnectionBase
+    public interface IProxyingServices
     {
-        public TestConnection(ISocket socket, IChannelSink sink, string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
-            : base(id, tag, source, logger, defaultListeningBufferSize) {
-            _socket = socket;
-            _sink = sink;
-            StartPipeline();
-        }
+        IListener CreateListenerForProxying(ListenerForPeer referenceListener, ushort firstPort, ConnectionInitiatedByPeer connection);
 
-        protected override ISocket BuildSocket() => _socket;
+        IConnection GetClientForProxying(ulong messageTag, string address, int port, int defaultListeningBufferSize);
     }
 }

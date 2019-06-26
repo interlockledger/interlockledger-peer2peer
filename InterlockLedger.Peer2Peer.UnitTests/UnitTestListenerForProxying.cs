@@ -38,7 +38,6 @@ using static InterlockLedger.Peer2Peer.TestHelpers;
 
 namespace InterlockLedger.Peer2Peer
 {
-
     [TestClass]
     public class UnitTestListenerForProxying
     {
@@ -71,9 +70,9 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
+        private const byte _tag = 13;
+
         private static IEnumerable<byte> AllBytes(TestSocket fakeProxiedSocket)
             => fakeProxiedSocket.BytesSent.SelectMany(a => a);
-
-        private const byte _tag = 13;
     }
 }

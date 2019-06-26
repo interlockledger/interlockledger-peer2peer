@@ -41,9 +41,8 @@ namespace InterlockLedger.Peer2Peer
 
     public class DummyExternalAccessDiscoverer : IExternalAccessDiscoverer
     {
-        public DummyExternalAccessDiscoverer(SocketFactory socketFactory) {
-            _socketFactory = socketFactory ?? throw new ArgumentNullException(nameof(socketFactory));
-        }
+        public DummyExternalAccessDiscoverer(SocketFactory socketFactory)
+            => _socketFactory = socketFactory ?? throw new ArgumentNullException(nameof(socketFactory));
 
         public Task<ExternalAccess> DetermineExternalAccessAsync(INodeSink nodeSink)
             => DetermineExternalAccessAsync(nodeSink.HostAtAddress, nodeSink.HostAtPortNumber, nodeSink.PublishAtAddress, nodeSink.PublishAtPortNumber);

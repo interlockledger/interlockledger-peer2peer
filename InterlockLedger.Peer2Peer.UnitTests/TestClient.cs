@@ -66,7 +66,5 @@ namespace InterlockLedger.Peer2Peer
         public Task<Success> SinkAsync(IEnumerable<byte> message) => throw new NotImplementedException();
 
         public void Stop() => Pipeline?.Stop();
-
-        public void SwitchToProxy(IChannelSink sink) => throw new NotImplementedException();
     }
 }

@@ -51,8 +51,8 @@ namespace InterlockLedger.Peer2Peer
             var fakeSink = new TestSink(_tag, 1, 242);
             var fakeNodeSink = new FakeNodeSink(_tag, 2000);
             using (var referenceListener = new ListenerForPeer(fakeNodeSink, fakeDiscoverer, source, fakeLogger)) {
-                var connectionProxied = new ConnectionInitiatedByPeer("TLFPM", _tag, fakeProxiedSocket, fakeSink, source, fakeLogger, 16);
-                var lfp = new TestListenerForProxying(fakeRedirectedSocket, referenceListener, 333, connectionProxied, new SocketFactory(fakeLogger, 3), source, fakeLogger);
+                var connectionProxied = new ConnectionInitiatedByPeer("TLFPM", fakeNodeSink, fakeProxiedSocket, fakeSink, source, fakeLogger);
+                var lfp = new TestListenerForProxying(fakeRedirectedSocket, referenceListener.ExternalAddress, 333, connectionProxied, new SocketFactory(fakeLogger, 3), source, fakeLogger);
                 lfp.Start();
                 WaitForOthers(100);
                 fakeRedirectedSocket.ReleaseYourHorses();

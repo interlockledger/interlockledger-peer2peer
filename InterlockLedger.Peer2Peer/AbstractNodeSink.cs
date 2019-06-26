@@ -38,10 +38,11 @@ namespace InterlockLedger.Peer2Peer
 {
     public abstract class AbstractNodeSink : INodeSink
     {
-        public int DefaultListeningBufferSize { get; protected set; }
         public int DefaultTimeoutInMilliseconds { get; protected set; }
         public string HostAtAddress { get; protected set; }
         public ushort HostAtPortNumber { get; protected set; }
+        public string Id => NodeId;
+        public int ListeningBufferSize { get; protected set; }
         public abstract IEnumerable<string> LocalResources { get; }
         public ulong MessageTag { get; protected set; }
         public string NetworkName { get; protected set; }
@@ -50,6 +51,8 @@ namespace InterlockLedger.Peer2Peer
         public string PublishAtAddress { get; protected set; }
         public ushort? PublishAtPortNumber { get; protected set; }
         public abstract IEnumerable<string> SupportedNetworkProtocolFeatures { get; }
+
+        public void Dispose() { }
 
         public abstract void HostedAt(string address, ushort port);
 

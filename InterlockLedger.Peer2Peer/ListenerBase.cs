@@ -36,13 +36,18 @@ using System.Threading;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public abstract class ListenerBase
+    public abstract class ListenerBase : INetworkIdentity
     {
         public bool Disposed { get; private set; } = false;
         public string Id { get; }
 
-        public int ListeningBufferSize { get; }
-        public ulong MessageTag { get; }
+        public int ListeningBufferSize => _config.ListeningBufferSize;
+
+        public ulong MessageTag => _config.MessageTag;
+
+        public string NetworkName => _config.NetworkName;
+
+        public string NetworkProtocolName => _config.NetworkProtocolName;
 
         public void Dispose() {
             if (!Disposed) {
@@ -55,18 +60,18 @@ namespace InterlockLedger.Peer2Peer
 
         protected internal readonly ILogger _logger;
         protected internal readonly CancellationTokenSource _source;
-
         protected internal bool Abandon => _source.IsCancellationRequested || Disposed;
 
-        protected ListenerBase(string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize) {
+        protected ListenerBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger) {
             if (string.IsNullOrWhiteSpace(id))
                 throw new ArgumentNullException(nameof(id));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _source = source ?? throw new ArgumentNullException(nameof(source));
             Id = id;
-            MessageTag = tag;
+            _config = config ?? throw new ArgumentNullException(nameof(config));
             _source.Token.Register(Dispose);
-            ListeningBufferSize = Math.Max(512, defaultListeningBufferSize);
         }
+
+        private readonly INetworkConfig _config;
     }
 }

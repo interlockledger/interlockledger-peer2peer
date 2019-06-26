@@ -44,6 +44,10 @@ namespace InterlockLedger.Peer2Peer
     {
         public bool Alive => _listenSocket != null;
 
+        public string ExternalAddress { get; protected set; }
+
+        public ushort ExternalPortNumber { get; protected set; }
+
         public abstract Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel);
 
         public void Start() {
@@ -66,8 +70,8 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        protected ListenerCommon(string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
-            : base(id, tag, source, logger, defaultListeningBufferSize) { }
+        protected ListenerCommon(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger)
+            : base(id, config, source, logger) { }
 
         protected virtual Func<Socket, Task<ISocket>> AcceptSocket => async (socket) => new NetSocket(await socket.AcceptAsync());
         protected abstract string HeaderText { get; }
@@ -107,6 +111,6 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private void RunPeerClient(ISocket socket)
-           => new ConnectionInitiatedByPeer(BuildId(), MessageTag, socket, this, _source, _logger, ListeningBufferSize);
+           => new ConnectionInitiatedByPeer(BuildId(), this, socket, this, _source, _logger);
     }
 }

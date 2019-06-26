@@ -39,17 +39,25 @@ namespace InterlockLedger.Peer2Peer
 {
     public sealed class PeerServices : IPeerServices, IKnownNodesServices, IProxyingServices
     {
-        public PeerServices(ILoggerFactory loggerFactory, IExternalAccessDiscoverer discoverer, SocketFactory socketFactory) {
+        public PeerServices(ulong messageTag, string networkName, string networkProtocolName, int listeningBufferSize, ILoggerFactory loggerFactory, IExternalAccessDiscoverer discoverer, SocketFactory socketFactory) {
             _disposer = new Disposer();
+            MessageTag = messageTag;
+            NetworkName = networkName ?? throw new ArgumentNullException(nameof(networkName));
+            NetworkProtocolName = networkProtocolName ?? throw new ArgumentNullException(nameof(networkProtocolName));
+            ListeningBufferSize = Math.Max(512, listeningBufferSize);
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _discoverer = discoverer ?? throw new ArgumentNullException(nameof(discoverer));
             _socketFactory = socketFactory ?? throw new ArgumentNullException(nameof(socketFactory));
-            _knownNodes = new ConcurrentDictionary<string, (string address, int port, ulong messageTag, int defaultListeningBufferSize, bool retain)>();
+            _knownNodes = new ConcurrentDictionary<string, (string address, int port, bool retain)>();
             _clients = new ConcurrentDictionary<string, IConnection>();
             _logger = LoggerNamed(nameof(PeerServices));
         }
 
         public IKnownNodesServices KnownNodes => this;
+        public int ListeningBufferSize { get; }
+        public ulong MessageTag { get; }
+        public string NetworkName { get; }
+        public string NetworkProtocolName { get; }
         public IProxyingServices ProxyingServices => this;
         public CancellationTokenSource Source => _source ?? throw new InvalidOperationException("CancellationTokenSource was not set yet!");
 
@@ -66,13 +74,13 @@ namespace InterlockLedger.Peer2Peer
                 _clients.Clear();
             });
 
-        public IConnection GetClient(ulong messageTag, string address, int port, int defaultListeningBufferSize)
+        public IConnection GetClient(string address, int port)
             => _disposer.Do(() => {
-                var id = $"{address}:{port}#{messageTag}";
+                var id = $"{address}:{port}#{MessageTag}";
                 try {
                     if (_clients.TryGetValue(id, out var existingClient))
                         return existingClient;
-                    ConnectionToPeer client = BuildClient(messageTag, address, port, defaultListeningBufferSize, id);
+                    ConnectionToPeer client = BuildClient(address, port, id);
                     if (_clients.TryAdd(id, client))
                         return client;
                     client.Dispose();
@@ -90,39 +98,39 @@ namespace InterlockLedger.Peer2Peer
             return this;
         }
 
-        void IKnownNodesServices.Add(string nodeId, ulong messageTag, string address, int port, int defaultListeningBufferSize, bool retain)
+        void IKnownNodesServices.Add(string nodeId, string address, int port, bool retain)
             => _disposer.Do(() => {
                 if (string.IsNullOrWhiteSpace(nodeId))
                     throw new ArgumentNullException(nameof(nodeId));
                 if (string.IsNullOrWhiteSpace(address))
                     throw new ArgumentNullException(nameof(address));
-                _knownNodes[nodeId] = (address, port, messageTag, defaultListeningBufferSize, retain);
+                _knownNodes[nodeId] = (address, port, retain);
             });
 
         void IKnownNodesServices.Add(string nodeId, IConnection connection, bool retain)
             => _disposer.Do(() => {
                 if (string.IsNullOrWhiteSpace(nodeId))
                     throw new ArgumentNullException(nameof(nodeId));
-                _knownNodes[nodeId] = (nodeId, 0, 0, 0, retain);
+                _knownNodes[nodeId] = (nodeId, 0, retain);
                 _clients[Framed(nodeId)] = connection;
             });
 
-        IListener IProxyingServices.CreateListenerForProxying(ListenerForPeer referenceListener, ushort firstPort, ConnectionInitiatedByPeer connection)
-           => _disposer.Do(() => new ListenerForProxying(referenceListener, firstPort, connection, _socketFactory, Source, LoggerNamed($"{nameof(ListenerForProxying)}[{connection.Id}]#{referenceListener.MessageTag}")));
+        IListener IProxyingServices.CreateListenerForProxying(string externalAddress, ushort firstPort, IConnection connection)
+           => _disposer.Do(() => new ListenerForProxying(externalAddress, firstPort, connection, _socketFactory, Source, LoggerNamed($"{nameof(ListenerForProxying)}[{connection.Id}]#{connection.MessageTag}")));
 
         void IKnownNodesServices.Forget(string nodeId) => _disposer.Do(() => { _ = _knownNodes.TryRemove(nodeId, out _); });
 
         IConnection IKnownNodesServices.GetClient(string nodeId) => _disposer.Do(() => GetResponder(nodeId));
 
-        IConnection IProxyingServices.GetClientForProxying(ulong messageTag, string address, int port, int defaultListeningBufferSize)
-            => BuildClient(messageTag, address, port, defaultListeningBufferSize, $"{address}:{port}#{messageTag}/proxying");
+        IConnection IProxyingServices.GetClientForProxying(string address, int port)
+            => BuildClient(address, port, $"{address}:{port}#{MessageTag}/proxying");
 
         bool IKnownNodesServices.IsKnown(string nodeId) => _disposer.Do(() => _knownNodes.ContainsKey(nodeId));
 
         private readonly ConcurrentDictionary<string, IConnection> _clients;
         private readonly IExternalAccessDiscoverer _discoverer;
         private readonly Disposer _disposer;
-        private readonly ConcurrentDictionary<string, (string address, int port, ulong messageTag, int defaultListeningBufferSize, bool retain)> _knownNodes;
+        private readonly ConcurrentDictionary<string, (string address, int port, bool retain)> _knownNodes;
         private readonly ILogger _logger;
         private readonly ILoggerFactory _loggerFactory;
         private readonly SocketFactory _socketFactory;
@@ -130,12 +138,12 @@ namespace InterlockLedger.Peer2Peer
 
         private static string Framed(string nodeId) => $"[{nodeId}]";
 
-        private ConnectionToPeer BuildClient(ulong messageTag, string address, int port, int defaultListeningBufferSize, string id)
-            => new ConnectionToPeer(id, messageTag, address, port, Source, LoggerForClient(id), defaultListeningBufferSize);
+        private ConnectionToPeer BuildClient(string address, int port, string id)
+            => new ConnectionToPeer(id, this, address, port, Source, LoggerForClient(id));
 
         private IConnection GetResponder(string nodeId)
-            => _knownNodes.TryGetValue(nodeId, out (string address, int port, ulong messageTag, int defaultListeningBufferSize, bool retain) n)
-                ? n.port != 0 ? GetClient(n.messageTag, n.address, n.port, n.defaultListeningBufferSize) : GetClient(nodeId)
+            => _knownNodes.TryGetValue(nodeId, out (string address, int port, bool retain) n)
+                ? n.port != 0 ? GetClient(n.address, n.port) : GetClient(nodeId)
                 : null;
 
         private ILogger LoggerForClient(string id) => LoggerNamed($"{nameof(ConnectionToPeer)}@{id}");

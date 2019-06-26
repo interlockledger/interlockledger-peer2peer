@@ -37,8 +37,8 @@ namespace InterlockLedger.Peer2Peer
 {
     public class TestConnection : ConnectionBase
     {
-        public TestConnection(ISocket socket, IChannelSink sink, string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
-            : base(id, tag, source, logger, defaultListeningBufferSize) {
+        public TestConnection(ISocket socket, IChannelSink sink, string id, INetworkConfig config, CancellationTokenSource source, ILogger logger)
+            : base(id, config, source, logger) {
             _socket = socket;
             _sink = sink;
             StartPipeline();

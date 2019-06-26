@@ -47,6 +47,10 @@ namespace InterlockLedger.Peer2Peer
         public ulong Channel { get; private set; }
         public IConnection Connection => this;
         public string Id { get; }
+        public int ListeningBufferSize => 1024;
+        public ulong MessageTag { get; }
+        public string NetworkName { get; }
+        public string NetworkProtocolName { get; }
 
         public IActiveChannel AllocateChannel(IChannelSink channelSink) => this;
 
@@ -62,6 +66,8 @@ namespace InterlockLedger.Peer2Peer
                 Pipeline?.Send(new NetworkMessageSlice(Channel, message));
             return true;
         }
+
+        public void SetDefaultSink(IChannelSink sink) => throw new NotImplementedException();
 
         public Task<Success> SinkAsync(IEnumerable<byte> message) => throw new NotImplementedException();
 

@@ -1,4 +1,4 @@
-﻿/******************************************************************************************************************************
+/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -40,7 +40,7 @@ namespace InterlockLedger.Peer2Peer
 {
     public class TestListenerForProxying : ListenerForProxying
     {
-        public TestListenerForProxying(TestSocket overridingSocket, ListenerForPeer referenceListener, ushort firstPort, ConnectionInitiatedByPeer connection, SocketFactory socketFactory, CancellationTokenSource source, ILogger logger) : base(referenceListener, firstPort, connection, socketFactory, source, logger)
+        public TestListenerForProxying(TestSocket overridingSocket, string externalAddress, ushort firstPort, ConnectionInitiatedByPeer connection, SocketFactory socketFactory, CancellationTokenSource source, ILogger logger) : base(externalAddress, firstPort, connection, socketFactory, source, logger)
             => _testSocket = new SingleUseSocket(overridingSocket, _source);
 
         protected override Func<Socket, Task<ISocket>> AcceptSocket => _testSocket.AcceptSocketOnce;

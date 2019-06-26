@@ -42,6 +42,7 @@ using static InterlockLedger.Peer2Peer.TestHelpers;
 
 namespace InterlockLedger.Peer2Peer
 {
+
     [TestClass]
     public class UnitTestConnectionBase
     {
@@ -51,7 +52,8 @@ namespace InterlockLedger.Peer2Peer
             var source = new CancellationTokenSource();
             var fakeSocket = new TestSocket(13, 1, 128, 2);
             var fakeSink = new TestSink(13, 1, 129);
-            var connection = new TestConnection(fakeSocket, fakeSink, "TestConnection", 13, source, fakeLogger, 4096);
+            var fakeConfig = new FakeConfig(13, "UnitTest", "unit", 4096);
+            var connection = new TestConnection(fakeSocket, fakeSink, "TestConnection", fakeConfig, source, fakeLogger);
             Assert.IsNotNull(connection);
             Thread.Sleep(200);
             Assert.IsNotNull(fakeSink.bytesProcessed);

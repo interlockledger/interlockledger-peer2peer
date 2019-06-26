@@ -42,7 +42,7 @@ namespace Demo.InterlockLedger.Peer2Peer
 {
     internal class DemoClient : DemoBaseSink
     {
-        public DemoClient(CancellationTokenSource source) : base("Client", source) {
+        public DemoClient() : base("Client") {
         }
 
         public bool DoneReceiving { get; set; } = false;
@@ -54,8 +54,11 @@ namespace Demo.InterlockLedger.Peer2Peer
     3... to echo ... 3 times,
     4... to echo ... 4 times from stored responder): ";
 
-        public override void Run(IPeerServices peerServices) {
-            using (var client = peerServices.GetClient(MessageTag, "localhost", 8080, 512)) {
+        public override async Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel activeChannel)
+            => Received(await Process(message, activeChannel.Channel));
+
+        protected override void Run(IPeerServices peerServices) {
+            using (var client = peerServices.GetClient("localhost", 8080)) {
                 while (!_source.IsCancellationRequested) {
                     Console.WriteLine();
                     Console.Write(Prompt);
@@ -67,9 +70,6 @@ namespace Demo.InterlockLedger.Peer2Peer
                 }
             }
         }
-
-        public override async Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel activeChannel)
-            => Received(await Process(message, activeChannel.Channel));
 
         private static async Task<Success> Process(IEnumerable<byte> message, ulong channel) {
             await Task.Delay(1);

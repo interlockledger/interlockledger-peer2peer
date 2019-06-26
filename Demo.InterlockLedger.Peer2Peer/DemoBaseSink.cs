@@ -32,6 +32,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using InterlockLedger.ILInt;
 using InterlockLedger.Peer2Peer;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -44,20 +46,20 @@ namespace Demo.InterlockLedger.Peer2Peer
 {
     internal abstract class DemoBaseSink : AbstractNodeSink, IChannelSink
     {
-        public DemoBaseSink(string message, CancellationTokenSource source) {
-            _source = PrepareConsole(message, source);
+        public DemoBaseSink(string message) {
             PublishAtAddress = HostAtAddress = "localhost";
             PublishAtPortNumber = HostAtPortNumber = 8080;
-            DefaultListeningBufferSize = 512;
+            ListeningBufferSize = 512;
             DefaultTimeoutInMilliseconds = 30_000;
             MessageTag = _messageTagCode;
             NetworkName = "Demo";
             NetworkProtocolName = "DemoPeer2Peer";
             NodeId = "Local Node";
+            _message = message ?? throw new ArgumentNullException(nameof(message));
+            _source = new CancellationTokenSource();
         }
 
         public override IEnumerable<string> LocalResources { get; } = new string[] { "Document" };
-
         public override IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "Echo", "Who", "TripleEcho" };
 
         public static string AsString(IEnumerable<byte> text) => Encoding.UTF8.GetString(text.ToArray());
@@ -74,9 +76,14 @@ namespace Demo.InterlockLedger.Peer2Peer
             PublishAtPortNumber = port;
         }
 
-        public abstract void Run(IPeerServices peerServices);
+        public void Run() {
+            PrepareConsole(_message);
+            var serviceProvider = Configure(_source, portDelta: 4, this);
+            using (var peerServices = serviceProvider.GetRequiredService<IPeerServices>()) {
+                Run(peerServices);
+            }
+        }
 
-        protected const ulong _messageTagCode = ':';
         protected static readonly byte[] _encodedMessageTag = _messageTagCode.ILIntEncode();
         protected static readonly IEnumerable<byte> _haveMoreMarker = new byte[] { 1 };
         protected static readonly IEnumerable<byte> _isLastMarker = new byte[] { 0 };
@@ -91,15 +98,39 @@ namespace Demo.InterlockLedger.Peer2Peer
             return messagebytes;
         }
 
-        private CancellationTokenSource PrepareConsole(string message, CancellationTokenSource source) {
+        protected abstract void Run(IPeerServices peerServices);
+
+        private const ulong _messageTagCode = ':';
+        private readonly string _message;
+
+        private static ServiceProvider Configure(CancellationTokenSource source, ushort portDelta, INetworkConfig config) {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            return new ServiceCollection()
+                .AddLogging(builder =>
+                    builder
+                        .AddConsole(c => c.DisableColors = false)
+                        .SetMinimumLevel(LogLevel.Information))
+                .AddSingleton(sp => new SocketFactory(sp.GetRequiredService<ILoggerFactory>(), portDelta))
+                .AddSingleton<IExternalAccessDiscoverer, DummyExternalAccessDiscoverer>()
+                .AddSingleton(sp =>
+                    new PeerServices(
+                        config.MessageTag, config.NetworkName, config.NetworkProtocolName, config.ListeningBufferSize,
+                        sp.GetRequiredService<ILoggerFactory>(),
+                        sp.GetRequiredService<IExternalAccessDiscoverer>(),
+                        sp.GetRequiredService<SocketFactory>()).WithCancellationTokenSource(source))
+                .BuildServiceProvider();
+        }
+
+        private CancellationTokenSource PrepareConsole(string message) {
             void Cancel(object sender, ConsoleCancelEventArgs e) {
                 Console.WriteLine("Exiting...");
-                source.Cancel();
+                _source.Cancel();
             }
             Console.WriteLine(message);
             Console.TreatControlCAsInput = false;
             Console.CancelKeyPress += Cancel;
-            return source;
+            return _source;
         }
     }
 }

@@ -46,10 +46,11 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public ulong Channel { get; set; } = 0;
-        public int DefaultListeningBufferSize => 1024;
         public int DefaultTimeoutInMilliseconds => 30_000;
         public string HostAtAddress => "localhost";
         public ushort HostAtPortNumber { get; }
+        public string Id => NodeId;
+        public int ListeningBufferSize => 1024;
         public IEnumerable<string> LocalResources { get; } = new string[] { "DummyDoc1", "DummyDoc2" };
         public ulong MessageTag { get; }
         public string NetworkName => "UnitTesting";
@@ -59,6 +60,8 @@ namespace InterlockLedger.Peer2Peer
         public ushort? PublishAtPortNumber => HostAtPortNumber;
         public IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "None" };
         public bool UseChannel => false;
+
+        public void Dispose() { }
 
         public void HostedAt(string address, ushort port) {
             // Do nothing

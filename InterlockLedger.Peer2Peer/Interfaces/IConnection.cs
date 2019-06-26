@@ -34,11 +34,13 @@ using System;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public interface IConnection : IDisposable
+    public interface IConnection : INetworkIdentity
     {
         IActiveChannel AllocateChannel(IChannelSink channelSink);
 
         IActiveChannel GetChannel(ulong channel);
+
+        void SetDefaultSink(IChannelSink sink);
 
         void Stop();
     }

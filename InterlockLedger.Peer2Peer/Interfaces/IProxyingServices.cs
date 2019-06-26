@@ -1,4 +1,4 @@
-﻿/******************************************************************************************************************************
+/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -34,8 +34,8 @@ namespace InterlockLedger.Peer2Peer
 {
     public interface IProxyingServices
     {
-        IListener CreateListenerForProxying(ListenerForPeer referenceListener, ushort firstPort, ConnectionInitiatedByPeer connection);
+        IListener CreateListenerForProxying(string externalAddress, ushort firstPort, IConnection connection);
 
-        IConnection GetClientForProxying(ulong messageTag, string address, int port, int defaultListeningBufferSize);
+        IConnection GetClientForProxying(string address, int port);
     }
 }

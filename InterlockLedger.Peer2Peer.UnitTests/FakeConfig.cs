@@ -1,4 +1,4 @@
-/******************************************************************************************************************************
+﻿/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -30,25 +30,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using InterlockLedger.Peer2Peer;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using System;
-using System.Linq;
-using System.Text;
-using System.Threading;
 
-namespace Demo.InterlockLedger.Peer2Peer
+namespace InterlockLedger.Peer2Peer
 {
-    public static class Program
+    public class FakeConfig : INetworkConfig
     {
-        public static void Main(string[] args) {
-            Console.WriteLine("Demo.InterlockLedger.Peer2Peer!");
-            if (args.Length > 0 && args[0].Equals("server", StringComparison.OrdinalIgnoreCase))
-                new DemoServer().Run();
-            else
-                new DemoClient().Run();
-            Console.WriteLine("-- Done!");
+        public FakeConfig(ulong messageTag, string networkName, string networkProtocolName, int listeningBufferSize) {
+            MessageTag = messageTag;
+            NetworkName = networkName ?? throw new ArgumentNullException(nameof(networkName));
+            NetworkProtocolName = networkProtocolName ?? throw new ArgumentNullException(nameof(networkProtocolName));
+            ListeningBufferSize = listeningBufferSize;
         }
+
+        public int ListeningBufferSize { get; }
+        public ulong MessageTag { get; }
+        public string NetworkName { get; }
+        public string NetworkProtocolName { get; }
+
+        public void Dispose() { }
     }
 }

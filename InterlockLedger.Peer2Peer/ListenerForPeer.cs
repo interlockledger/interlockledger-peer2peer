@@ -42,14 +42,10 @@ namespace InterlockLedger.Peer2Peer
     public class ListenerForPeer : ListenerCommon
     {
         public ListenerForPeer(INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger)
-            : base(nodeSink.NodeId, nodeSink.MessageTag, source, logger, nodeSink.DefaultListeningBufferSize)
+            : base(nodeSink.NodeId, nodeSink, source, logger)
             => (_nodeSink, _socket, _route) = DetermineExternalAccess(
                     nodeSink ?? throw new ArgumentNullException(nameof(nodeSink)),
                     discoverer ?? throw new ArgumentNullException(nameof(discoverer)));
-
-        public string ExternalAddress { get; private set; }
-        public string NetworkName => _nodeSink.NetworkName;
-        public string NetworkProtocolName => _nodeSink.NetworkProtocolName;
 
         public override Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel)
             => _nodeSink.SinkAsync(message, channel);
@@ -70,6 +66,7 @@ namespace InterlockLedger.Peer2Peer
             nodeSink.HostedAt(externalAccess.InternalAddress, externalAccess.InternalPort);
             nodeSink.PublishedAt(externalAccess.ExternalAddress, externalAccess.ExternalPort);
             ExternalAddress = externalAccess.ExternalAddress;
+            ExternalPortNumber = externalAccess.ExternalPort;
             return (nodeSink, externalAccess.Socket, externalAccess.Route);
         }
     }

@@ -64,6 +64,8 @@ namespace InterlockLedger.Peer2Peer
             _channelSinks.Clear();
         }
 
+        public void SetDefaultSink(IChannelSink sink) => _sink = sink ?? throw new ArgumentNullException(nameof(sink));
+
         public override void Stop() => _pipeline?.Stop();
 
         internal bool Send(NetworkMessageSlice slice) {
@@ -90,8 +92,8 @@ namespace InterlockLedger.Peer2Peer
         protected IChannelSink _sink;
         protected ISocket _socket;
 
-        protected ConnectionBase(string id, ulong tag, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
-            : base(id, tag, source, logger, defaultListeningBufferSize) => _pipeline = null;
+        protected ConnectionBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger)
+            : base(id, config, source, logger) => _pipeline = null;
 
         protected string NetworkAddress { get; set; }
         protected int NetworkPort { get; set; }

@@ -33,16 +33,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using Microsoft.Extensions.Logging;
 using System;
 using System.Net;
-using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
     public sealed class ConnectionInitiatedByPeer : ConnectionBase
     {
-        public ConnectionInitiatedByPeer(string id, ulong tag, ISocket socket, IChannelSink sink, CancellationTokenSource source, ILogger logger, int defaultListeningBufferSize)
-            : base(id, tag, source, logger, defaultListeningBufferSize) {
+        public ConnectionInitiatedByPeer(string id, INetworkConfig config, ISocket socket, IChannelSink sink, CancellationTokenSource source, ILogger logger)
+            : base(id, config, source, logger) {
             if (socket is null)
                 throw new ArgumentNullException(nameof(socket));
             var ipEndPoint = (IPEndPoint)socket.RemoteEndPoint;

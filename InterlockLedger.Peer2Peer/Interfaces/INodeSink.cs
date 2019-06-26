@@ -35,15 +35,12 @@ using System.Collections.Generic;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public interface INodeSink : IChannelSink
+    public interface INodeSink : IChannelSink, INetworkIdentity
     {
-        int DefaultListeningBufferSize { get; }
+        int ListeningBufferSize { get; }
         string HostAtAddress { get; }
         ushort HostAtPortNumber { get; }
         IEnumerable<string> LocalResources { get; }
-        ulong MessageTag { get; }
-        string NetworkName { get; }
-        string NetworkProtocolName { get; }
         string NodeId { get; }
         string PublishAtAddress { get; }
         ushort? PublishAtPortNumber { get; }

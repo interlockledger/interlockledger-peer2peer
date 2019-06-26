@@ -35,7 +35,7 @@ using System.Threading;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public interface IPeerServices : IDisposable
+    public interface IPeerServices : INetworkConfig
     {
         IKnownNodesServices KnownNodes { get; }
         IProxyingServices ProxyingServices { get; }
@@ -43,7 +43,7 @@ namespace InterlockLedger.Peer2Peer
 
         IListener CreateListenerFor(INodeSink nodeSink);
 
-        IConnection GetClient(ulong messageTag, string address, int port, int defaultListeningBufferSize);
+        IConnection GetClient(string address, int port);
 
         IConnection GetClient(string id);
 

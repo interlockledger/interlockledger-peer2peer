@@ -34,7 +34,7 @@ namespace InterlockLedger.Peer2Peer
 {
     public interface IKnownNodesServices
     {
-        void Add(string nodeId, ulong messageTag, string address, int port, int defaultListeningBufferSize, bool retain = false);
+        void Add(string nodeId, string address, int port, bool retain = false);
 
         void Add(string nodeId, IConnection responder, bool retain = false);
 

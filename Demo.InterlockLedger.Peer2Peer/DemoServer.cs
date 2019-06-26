@@ -44,12 +44,17 @@ namespace Demo.InterlockLedger.Peer2Peer
 {
     internal class DemoServer : DemoBaseSink
     {
-        public DemoServer(CancellationTokenSource source) : base("Server", source) {
+        public DemoServer() : base("Server") {
         }
 
         public string Url => $"demo://{PublishAtAddress}:{PublishAtPortNumber}/";
 
-        public override void Run(IPeerServices peerServices) {
+        public override Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
+            _queue.Enqueue((message, channel));
+            return Task.FromResult(Success.Next);
+        }
+
+        protected override void Run(IPeerServices peerServices) {
             _peerServices = peerServices ?? throw new ArgumentNullException(nameof(peerServices));
             using (var listener = peerServices.CreateListenerFor(this)) {
                 try {
@@ -63,11 +68,6 @@ namespace Demo.InterlockLedger.Peer2Peer
                     _stop = true;
                 }
             }
-        }
-
-        public override Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
-            _queue.Enqueue((message, channel));
-            return Task.FromResult(Success.Next);
         }
 
         private readonly ConcurrentQueue<(IEnumerable<byte> message, IActiveChannel activeChannel)> _queue = new ConcurrentQueue<(IEnumerable<byte> message, IActiveChannel activeChannel)>();

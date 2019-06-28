@@ -37,7 +37,6 @@ namespace InterlockLedger.Peer2Peer
 {
     public interface INodeSink : IChannelSink, INetworkIdentity
     {
-        int ListeningBufferSize { get; }
         string HostAtAddress { get; }
         ushort HostAtPortNumber { get; }
         IEnumerable<string> LocalResources { get; }

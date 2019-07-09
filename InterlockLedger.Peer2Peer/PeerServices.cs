@@ -115,7 +115,7 @@ namespace InterlockLedger.Peer2Peer
                 _clients[Framed(nodeId)] = connection;
             });
 
-        IListener IProxyingServices.CreateListenerForProxying(string externalAddress, ushort firstPort, IConnection connection)
+        IListenerForProxying IProxyingServices.CreateListenerForProxying(string externalAddress, ushort firstPort, IConnection connection)
            => _disposer.Do(() => new ListenerForProxying(externalAddress, firstPort, connection, _socketFactory, Source, LoggerNamed($"{nameof(ListenerForProxying)}[{connection.Id}]#{connection.MessageTag}")));
 
         void IKnownNodesServices.Forget(string nodeId) => _disposer.Do(() => { _ = _knownNodes.TryRemove(nodeId, out _); });

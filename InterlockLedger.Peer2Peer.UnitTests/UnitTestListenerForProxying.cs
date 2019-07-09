@@ -30,7 +30,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
@@ -111,11 +110,14 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
+        private const byte _tag = 13;
+
+        private static IEnumerable<byte> AllBytes(TestSocket fakeProxiedSocket)
+            => fakeProxiedSocket.BytesSent.SelectMany(a => a);
+
         private class ProxyNodeSink : FakeNodeSink
         {
             public static readonly byte[] ProxyRequest = new byte[] { _tag, 2, 128, 129 };
-            private readonly FakeLogging _fakeLogger;
-            private readonly CancellationTokenSource _source;
 
             public ProxyNodeSink(ulong messageTag, ushort port, FakeLogging fakeLogger, CancellationTokenSource source) : base(messageTag, port) {
                 _fakeLogger = fakeLogger ?? throw new ArgumentNullException(nameof(fakeLogger));
@@ -131,11 +133,10 @@ namespace InterlockLedger.Peer2Peer
                 }
                 return base.SinkAsync(message, channel);
             }
-        }
-        private const byte _tag = 13;
 
-        private static IEnumerable<byte> AllBytes(TestSocket fakeProxiedSocket)
-            => fakeProxiedSocket.BytesSent.SelectMany(a => a);
+            private readonly FakeLogging _fakeLogger;
+            private readonly CancellationTokenSource _source;
+        }
 
         private class TestChannel : IActiveChannel
         {

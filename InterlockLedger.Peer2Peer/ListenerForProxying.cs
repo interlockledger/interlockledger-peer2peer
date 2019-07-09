@@ -43,7 +43,7 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class ListenerForProxying : ListenerCommon
+    public class ListenerForProxying : ListenerCommon, IListenerForProxying
     {
         public ListenerForProxying(string externalAddress, ushort firstPort, IConnection connection, SocketFactory socketFactory, CancellationTokenSource source, ILogger logger)
             : base(connection.Id, connection, source, logger) {
@@ -54,15 +54,31 @@ namespace InterlockLedger.Peer2Peer
             ExternalPortNumber = (ushort)((IPEndPoint)_socket.LocalEndPoint).Port;
             ExternalAddress = externalAddress;
             _channelMap = new ConcurrentDictionary<string, ChannelPairing>();
+            Sinked = LogSinked;
+            Responded = LogResponded;
+        }
+
+        public Action<IEnumerable<byte>, IActiveChannel, ulong, bool> Responded { get; set; }
+        public string Route => $"{ExternalAddress}:{ExternalPortNumber}";
+        public Action<IEnumerable<byte>, IActiveChannel, bool, ulong, bool> Sinked { get; set; }
+
+        public void LogResponded(IEnumerable<byte> message, IActiveChannel channel, ulong externalChannelId, bool sent) {
+            _logger.LogDebug("Responded with Message {0} from Channel {1} to External Channel {2}. Sent: {3}", message.ToUrlSafeBase64(), channel, externalChannelId, sent);
+        }
+
+        public void LogSinked(IEnumerable<byte> message, IActiveChannel channel, bool newPair, ulong proxiedChannelId, bool sent) {
+            _logger.LogDebug("Sinked Message {0} from Channel {1} using {2} pair to Proxied Channel {3}. Sent: {4}", message.ToUrlSafeBase64(), channel, newPair ? "new" : "existing", proxiedChannelId, sent);
         }
 
         public override Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
             if (_channelMap.TryGetValue(channel.Id, out var pair)) {
-                pair.Send(message);
+                var sent = pair.Send(message);
+                Sinked(message, channel, false, pair.ProxiedChannelId, sent);
             } else {
-                var newPair = new ChannelPairing(channel, _connection);
+                var newPair = new ChannelPairing(channel, _connection, this);
                 _channelMap.TryAdd(channel.Id, newPair);
-                newPair.Send(message);
+                var sent = newPair.Send(message);
+                Sinked(message, channel, true, newPair.ProxiedChannelId, sent);
             }
             return Task.FromResult(Success.Next);
         }
@@ -77,25 +93,29 @@ namespace InterlockLedger.Peer2Peer
         private readonly ConcurrentDictionary<string, ChannelPairing> _channelMap;
         private readonly IConnection _connection;
         private readonly Socket _socket;
-        private string Route => $"{ExternalAddress}:{ExternalPortNumber}!";
 
         private class ChannelPairing : IChannelSink, ISender
         {
-            public ChannelPairing(IActiveChannel external, IConnection connection)
-            {
+            public ChannelPairing(IActiveChannel external, IConnection connection, ListenerForProxying parent) {
                 _external = external ?? throw new ArgumentNullException(nameof(external));
+                _parent = parent ?? throw new ArgumentNullException(nameof(parent));
                 _tagAsILInt = connection.MessageTag.AsILInt();
                 _proxied = connection.AllocateChannel(this);
             }
 
+            public ulong ProxiedChannelId => _proxied.Channel;
+
             public bool Send(IEnumerable<byte> message) => _proxied.Send(WithTagAndLength(message));
 
             public Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
-                _external.Send(WithTagAndLength(message));
+                var fullMessage = WithTagAndLength(message);
+                var sent = _external.Send(fullMessage);
+                _parent.Responded(fullMessage, channel, _external.Channel, sent);
                 return Task.FromResult(Success.Next);
             }
 
             private readonly IActiveChannel _external;
+            private readonly ListenerForProxying _parent;
             private readonly IActiveChannel _proxied;
             private readonly byte[] _tagAsILInt;
 

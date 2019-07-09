@@ -30,12 +30,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using System;
+using System.Collections.Generic;
+
 namespace InterlockLedger.Peer2Peer
 {
-    public interface IProxyingServices
+    public interface IListenerForProxying : IListener
     {
-        IListenerForProxying CreateListenerForProxying(string externalAddress, ushort firstPort, IConnection connection);
-
-        IConnection GetClientForProxying(string address, int port);
+        Action<IEnumerable<byte>, IActiveChannel, ulong, bool> Responded { get; set; }
+        string Route { get; }
+        Action<IEnumerable<byte>, IActiveChannel, bool, ulong, bool> Sinked { get; set; }
     }
 }

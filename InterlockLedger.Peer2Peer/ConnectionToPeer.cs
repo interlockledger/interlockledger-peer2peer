@@ -39,7 +39,7 @@ using System.Threading;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal sealed class ConnectionToPeer : ConnectionBase
+    public sealed class ConnectionToPeer : ConnectionBase
     {
         public ConnectionToPeer(string id, INetworkConfig config, string networkAddress, int port, CancellationTokenSource source, ILogger logger)
             : base(id, config, source, logger) {

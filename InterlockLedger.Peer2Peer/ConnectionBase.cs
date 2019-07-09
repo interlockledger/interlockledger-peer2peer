@@ -64,7 +64,10 @@ namespace InterlockLedger.Peer2Peer
             _channelSinks.Clear();
         }
 
-        public void SetDefaultSink(IChannelSink sink) => _sink = sink ?? throw new ArgumentNullException(nameof(sink));
+        public void SetDefaultSink(IChannelSink sink) {
+            _sink = sink ?? throw new ArgumentNullException(nameof(sink));
+            _channelSinks.Clear();
+        }
 
         public override void Stop() => _pipeline?.Stop();
 

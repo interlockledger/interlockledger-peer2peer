@@ -38,19 +38,24 @@ namespace InterlockLedger.Peer2Peer
 {
     public class TestSink : IChannelSink
     {
-        public IEnumerable<byte> bytesProcessed = null;
-        public ulong channelProcessed = 0;
+        public IEnumerable<byte> BytesProcessed = null;
+        public ulong ChannelProcessed = 0;
 
         public TestSink(params byte[] response)
             => _response = response ?? throw new ArgumentNullException(nameof(response));
 
+        public void Reset() {
+            BytesProcessed = null;
+            ChannelProcessed = 0;
+        }
+
         public async Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
-            bytesProcessed = message;
-            channelProcessed = channel.Channel;
+            BytesProcessed = message;
+            ChannelProcessed = channel.Channel;
             if (_response.Length > 0)
                 channel.Send(_response);
             await Task.Delay(100);
-            return Success.Exit;
+            return Success.Next;
         }
 
         private readonly byte[] _response;

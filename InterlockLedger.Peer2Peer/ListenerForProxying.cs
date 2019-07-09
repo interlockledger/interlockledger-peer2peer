@@ -56,29 +56,36 @@ namespace InterlockLedger.Peer2Peer
             _channelMap = new ConcurrentDictionary<string, ChannelPairing>();
             Sinked = LogSinked;
             Responded = LogResponded;
+            Errored = LogError;
         }
 
+        public Action<IEnumerable<byte>, IActiveChannel, Exception> Errored { get; set; }
         public Action<IEnumerable<byte>, IActiveChannel, ulong, bool> Responded { get; set; }
         public string Route => $"{ExternalAddress}:{ExternalPortNumber}";
         public Action<IEnumerable<byte>, IActiveChannel, bool, ulong, bool> Sinked { get; set; }
 
-        public void LogResponded(IEnumerable<byte> message, IActiveChannel channel, ulong externalChannelId, bool sent) {
-            _logger.LogDebug("Responded with Message {0} from Channel {1} to External Channel {2}. Sent: {3}", message.ToUrlSafeBase64(), channel, externalChannelId, sent);
-        }
+        public void LogError(IEnumerable<byte> message, IActiveChannel channel, Exception e)
+            => _logger.LogError(e, "Error processing Message '{0}' from Channel {1}:{2}", message?.ToUrlSafeBase64(), channel?.ToString() ?? "?", e.Message);
 
-        public void LogSinked(IEnumerable<byte> message, IActiveChannel channel, bool newPair, ulong proxiedChannelId, bool sent) {
-            _logger.LogDebug("Sinked Message {0} from Channel {1} using {2} pair to Proxied Channel {3}. Sent: {4}", message.ToUrlSafeBase64(), channel, newPair ? "new" : "existing", proxiedChannelId, sent);
-        }
+        public void LogResponded(IEnumerable<byte> message, IActiveChannel channel, ulong externalChannelId, bool sent)
+            => _logger.LogDebug("Responded with Message '{0}' from Channel {1} to External Channel {2}. Sent: {3}", message.ToUrlSafeBase64(), channel, externalChannelId, sent);
+
+        public void LogSinked(IEnumerable<byte> message, IActiveChannel channel, bool newPair, ulong proxiedChannelId, bool sent)
+            => _logger.LogDebug("Sinked Message '{0}' from Channel {1} using {2} pair to Proxied Channel {3}. Sent: {4}", message.ToUrlSafeBase64(), channel, newPair ? "new" : "existing", proxiedChannelId, sent);
 
         public override Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
-            if (_channelMap.TryGetValue(channel.Id, out var pair)) {
-                var sent = pair.Send(message);
-                Sinked(message, channel, false, pair.ProxiedChannelId, sent);
-            } else {
-                var newPair = new ChannelPairing(channel, _connection, this);
-                _channelMap.TryAdd(channel.Id, newPair);
-                var sent = newPair.Send(message);
-                Sinked(message, channel, true, newPair.ProxiedChannelId, sent);
+            try {
+                if (_channelMap.TryGetValue(channel.Id, out var pair)) {
+                    var sent = pair.Send(message);
+                    Sinked(message, channel, false, pair.ProxiedChannelId, sent);
+                } else {
+                    var newPair = new ChannelPairing(channel, _connection, this);
+                    _channelMap.TryAdd(channel.Id, newPair);
+                    var sent = newPair.Send(message);
+                    Sinked(message, channel, true, newPair.ProxiedChannelId, sent);
+                }
+            } catch (Exception e) {
+                Errored(message, channel, e);
             }
             return Task.FromResult(Success.Next);
         }
@@ -105,12 +112,23 @@ namespace InterlockLedger.Peer2Peer
 
             public ulong ProxiedChannelId => _proxied.Channel;
 
-            public bool Send(IEnumerable<byte> message) => _proxied.Send(WithTagAndLength(message));
+            public bool Send(IEnumerable<byte> message) {
+                try {
+                    return _proxied.Send(WithTagAndLength(message));
+                } catch (Exception e) {
+                    _parent.Errored(message, _proxied, e);
+                    return false;
+                }
+            }
 
             public Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
-                var fullMessage = WithTagAndLength(message);
-                var sent = _external.Send(fullMessage);
-                _parent.Responded(fullMessage, channel, _external.Channel, sent);
+                try {
+                    var fullMessage = WithTagAndLength(message);
+                    var sent = _external.Send(fullMessage);
+                    _parent.Responded(fullMessage, channel, _external.Channel, sent);
+                } catch (Exception e) {
+                    _parent.Errored(message, channel, e);
+                }
                 return Task.FromResult(Success.Next);
             }
 

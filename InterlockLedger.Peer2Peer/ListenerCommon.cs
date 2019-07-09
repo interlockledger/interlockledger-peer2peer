@@ -86,7 +86,7 @@ namespace InterlockLedger.Peer2Peer
 
         private string BuildId() {
             var id = (ulong)Interlocked.Increment(ref _lastIdUsed);
-            return $"{IdPrefix}Client{id}";
+            return $"{IdPrefix}Client#{id}";
         }
 
         private async Task Listen() {

@@ -32,6 +32,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 #pragma warning disable S3881 // "IDisposable" should be implemented correctly
 
@@ -39,7 +41,9 @@ namespace InterlockLedger.Peer2Peer
 {
     public class FakeLogging : ILoggerFactory, ILogger
     {
-        public string LastLog { get; private set; }
+        public readonly List<string> Logs = new List<string>();
+
+        public string LastLog => Logs.LastOrDefault();
 
         void ILoggerFactory.AddProvider(ILoggerProvider provider) {
             // Nothing to emulate here
@@ -56,6 +60,6 @@ namespace InterlockLedger.Peer2Peer
         bool ILogger.IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Information;
 
         void ILogger.Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
-            => LastLog = $"{logLevel}: {formatter(state, exception)}";
+            => Logs.Add($"{logLevel}: {formatter(state, exception)}");
     }
 }

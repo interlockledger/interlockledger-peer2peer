@@ -41,11 +41,13 @@ namespace InterlockLedger.Peer2Peer
 {
     public static class TestHelpers
     {
+        public static void AssertHasLogLine(FakeLogging logger, string logLine)
+            => Assert.IsTrue(logger.Logs.Contains(logLine), $"Logs doesn't contain '{logLine}'");
+
         public static void AssertHasSameItems<T>(string sequenceName, IEnumerable<T> actualItems, params T[] expectedItems) {
             var ab = actualItems ?? Enumerable.Empty<T>();
             Assert.IsTrue(expectedItems.SequenceEqual(ab), $"Sequence of {nameof(T)}s '{sequenceName}' doesn't match. Expected: {Joined(expectedItems)} - Actual {Joined(ab)}");
         }
-
 
         public static string Joined<T>(IEnumerable<T> items) => items.Any() ? string.Join(", ", items.Select(b => b.ToString())) : "-";
 

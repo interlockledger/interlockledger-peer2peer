@@ -30,54 +30,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.Extensions.Logging;
 using System;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class SocketFactory
+    public class InterlockLedgerIOException : InterlockLedgerException
     {
-        public SocketFactory(ILoggerFactory loggerFactory, ushort portDelta) {
-            _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<SocketFactory>();
-            PortDelta = portDelta;
+        public InterlockLedgerIOException(string message)
+            : base(message) {
         }
 
-        public ushort PortDelta { get; }
-
-        public static IPAddress GetAddress(string name) {
-            if (IPAddress.TryParse(name, out IPAddress address))
-                return address;
-            IPAddress[] addressList = Dns.GetHostEntry(name).AddressList;
-            return addressList.FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork) ?? addressList.First();
+        public InterlockLedgerIOException(string message, Exception innerException)
+            : base(message, innerException) {
         }
-
-        public Socket GetSocket(string name, ushort portNumber) => GetSocket(GetAddress(name), portNumber);
-
-        public Socket GetSocket(IPAddress localaddr, ushort portNumber) {
-            Socket InnerGetSocket(ushort port) {
-                try {
-                    var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                    listenSocket.Bind(new IPEndPoint(localaddr, port));
-                    listenSocket.Listen(120);
-                    return listenSocket;
-                } catch (Exception e) {
-                    _logger.LogError(e, $"-- Error while trying to bind a socket to listen at {localaddr}:{portNumber}");
-                    return null;
-                }
-            }
-
-            for (ushort tries = 5; tries > 0; tries--) {
-                var socket = InnerGetSocket(portNumber);
-                if (socket != null)
-                    return socket;
-                portNumber -= PortDelta;
-            }
-            return InnerGetSocket(0);
-        }
-
-        protected readonly ILogger _logger;
     }
+
 }

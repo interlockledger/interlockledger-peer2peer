@@ -51,6 +51,8 @@ namespace InterlockLedger.Peer2Peer
                 throw new ArgumentException("message", nameof(externalAddress));
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
             _socket = socketFactory.GetSocket(externalAddress, firstPort);
+            if (_socket is null)
+                throw new InterlockLedgerIOException($"Could not open a listening socket for proxying at {externalAddress}:{firstPort}");
             ExternalPortNumber = (ushort)((IPEndPoint)_socket.LocalEndPoint).Port;
             ExternalAddress = externalAddress;
             _channelMap = new ConcurrentDictionary<string, ChannelPairing>();

@@ -52,6 +52,8 @@ namespace InterlockLedger.Peer2Peer
                 return Task.FromResult<ExternalAccess>(null);
             string hostingAddress = hostAtAddress ?? "localhost";
             var listener = _socketFactory.GetSocket(hostingAddress, hostAtPortNumber);
+            if (listener is null)
+                throw new InterlockLedgerIOException($"Could not open a listening socket for {hostingAddress}:{hostAtPortNumber}");
             var port = (ushort)((IPEndPoint)listener.LocalEndPoint).Port;
             return Task.FromResult(new ExternalAccess(listener, hostingAddress, port, publishAtAddress, publishAtPortNumber));
         }

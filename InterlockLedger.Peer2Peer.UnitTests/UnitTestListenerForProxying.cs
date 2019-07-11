@@ -55,7 +55,7 @@ namespace InterlockLedger.Peer2Peer
             using (var referenceListener = new ListenerForPeer(fakeNodeSink, fakeDiscoverer, source, fakeLogger)) {
                 var internalConnection = new ConnectionInitiatedByPeer("TLFPM", fakeNodeSink, fakeInternalSocket, fakeSink, source, fakeLogger);
                 internalConnection.SetDefaultSink(fakeNodeSink);
-                var lfp = new TestListenerForProxying(fakeExternalSocket, referenceListener.ExternalAddress, 333, internalConnection, new SocketFactory(fakeLogger, 3), source, fakeLogger);
+                var lfp = new TestListenerForProxying(fakeExternalSocket, referenceListener.ExternalAddress, referenceListener.ExternalAddress, 333, internalConnection, new SocketFactory(fakeLogger, 3), source, fakeLogger);
                 lfp.Start();
                 WaitForOthers(100);
                 fakeExternalSocket.ReleaseYourHorses();
@@ -138,7 +138,7 @@ namespace InterlockLedger.Peer2Peer
 
             public override Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
                 if (message.SequenceEqual(ProxyRequest.Skip(2))) {
-                    ListenerForProxying = new ListenerForProxying(HostAtAddress, (ushort)(HostAtPortNumber - 1), channel.Connection, new SocketFactory(_fakeLogger, 3), _source, _fakeLogger);
+                    ListenerForProxying = new ListenerForProxying(HostAtAddress, HostAtAddress, (ushort)(HostAtPortNumber - 1), channel.Connection, new SocketFactory(_fakeLogger, 3), _source, _fakeLogger);
                     return Task.FromResult(Success.Next);
                 }
                 return base.SinkAsync(message, channel);

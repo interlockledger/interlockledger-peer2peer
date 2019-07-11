@@ -34,7 +34,7 @@ namespace InterlockLedger.Peer2Peer
 {
     public interface IProxyingServices
     {
-        IListenerForProxying CreateListenerForProxying(string externalAddress, ushort firstPort, IConnection connection);
+        IListenerForProxying CreateListenerForProxying(string externalAddress, string hostedAddress, ushort firstPort, IConnection connection);
 
         IConnection GetClientForProxying(string address, int port);
     }

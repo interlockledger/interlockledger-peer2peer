@@ -135,6 +135,24 @@ namespace InterlockLedger.Peer2Peer
             Assert.IsNull(fakeLogger.LastLog);
         }
 
+        [TestMethod]
+        public void TestProxyListenerCreation() {
+            var fakeLogger = new FakeLogging();
+            var socketFactory = new SocketFactory(fakeLogger, 10);
+            var fakeDiscoverer = new FakeDiscoverer();
+            var source = new CancellationTokenSource();
+            IPeerServices peerServices = new PeerServices(_messageTag, "UnitTest", "unit", 4096, fakeLogger, fakeDiscoverer, socketFactory).WithCancellationTokenSource(source);
+            Assert.IsNotNull(peerServices);
+            Assert.IsNull(fakeLogger.LastLog);
+            INodeSink fakeNodeSink = new FakeNodeSink(_messageTag, 8002);
+            IConnection connection = new ConnectionToPeer("Test", fakeNodeSink, "localhost", 8003, source, fakeLogger);
+            using (var peerListener = peerServices.ProxyingServices.CreateListenerForProxying("rafael.interlockledger.network", "localhost", 9000, connection)) {
+                Assert.IsNotNull(peerListener);
+                Assert.IsNull(fakeLogger.LastLog);
+                Assert.AreEqual("rafael.interlockledger.network", peerListener.ExternalAddress);
+            }
+        }
+
         private const ulong _messageTag = '?';
     }
 }

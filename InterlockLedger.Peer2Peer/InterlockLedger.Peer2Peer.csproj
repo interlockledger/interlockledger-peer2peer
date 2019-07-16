@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
-        <Version>0.23.0</Version>
+        <Version>0.24.0</Version>
         <Authors>Rafael Teixeira</Authors>
         <Company>InterlockLedger Network</Company>
         <Product>InterlockLedger</Product>
@@ -13,7 +13,9 @@
         <RepositoryUrl>https://github.com/interlockledger/peer2peer.git</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageReleaseNotes>Is Proxying now really going to work?</PackageReleaseNotes>
+        <PackageReleaseNotes>Propagate socket Connected state up in the aggregations (Pipeline, Connection, ActiveChannel)
+Liveness Checking in DemoClient/DemoServer
+Fixes on the Demo Server, removing multiple processing of commands (Iterator with side effects being iterated multiple times)</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
     </PropertyGroup>

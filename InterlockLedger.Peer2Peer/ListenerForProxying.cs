@@ -62,6 +62,7 @@ namespace InterlockLedger.Peer2Peer
             Errored = LogError;
         }
 
+        public IConnection Connection => _connection;
         public Action<IEnumerable<byte>, IActiveChannel, Exception> Errored { get; set; }
         public string HostedAddress { get; }
         public Action<IEnumerable<byte>, IActiveChannel, ulong, bool> Responded { get; set; }

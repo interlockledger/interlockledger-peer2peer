@@ -57,6 +57,8 @@ namespace InterlockLedger.Peer2Peer
             _stopProcessor = stopProcessor ?? throw new ArgumentNullException(nameof(stopProcessor));
         }
 
+        public bool Connected => _socket.Connected;
+
         public async Task ListenAsync() {
             try {
                 await UsePipes(_socket.RemoteEndPoint);

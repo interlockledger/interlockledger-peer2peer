@@ -124,7 +124,6 @@ namespace InterlockLedger.Peer2Peer
         private static IEnumerable<byte> AllBytes(TestSocket fakeProxiedSocket)
             => fakeProxiedSocket.BytesSent.SelectMany(a => a).ToArray();
 
- 
         private class ProxyNodeSink : FakeNodeSink
         {
             public static readonly byte[] ProxyRequest = new byte[] { _tag, 2, 128, 129 };
@@ -154,6 +153,7 @@ namespace InterlockLedger.Peer2Peer
 
             public bool Active { get; } = true;
             public ulong Channel { get; }
+            public bool Connected { get; } = true;
             public IConnection Connection { get; }
             public string Id { get; }
 

@@ -43,6 +43,7 @@ namespace InterlockLedger.Peer2Peer
     {
         int Available { get; }
         EndPoint RemoteEndPoint { get; }
+        bool Connected { get; }
 
         Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token);
 

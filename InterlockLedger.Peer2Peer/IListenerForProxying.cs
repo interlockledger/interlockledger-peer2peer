@@ -37,6 +37,7 @@ namespace InterlockLedger.Peer2Peer
 {
     public interface IListenerForProxying : IListener
     {
+        IConnection Connection { get; }
         Action<IEnumerable<byte>, IActiveChannel, Exception> Errored { get; set; }
         Action<IEnumerable<byte>, IActiveChannel, ulong, bool> Responded { get; set; }
         string Route { get; }

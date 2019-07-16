@@ -51,6 +51,7 @@ namespace InterlockLedger.Peer2Peer
         public ulong MessageTag { get; }
         public string NetworkName { get; }
         public string NetworkProtocolName { get; }
+        public bool Connected => Pipeline?.Connected ?? false;
 
         public IActiveChannel AllocateChannel(IChannelSink channelSink) => this;
 

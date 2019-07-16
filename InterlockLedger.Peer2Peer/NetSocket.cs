@@ -47,6 +47,7 @@ namespace InterlockLedger.Peer2Peer
             RemoteEndPoint = _socket.RemoteEndPoint;
         }
 
+        public bool Connected => _disposer.Do(() => _socket.Connected);
         public EndPoint RemoteEndPoint { get; }
         public int Available => _disposer.Do(() => _socket.Available);
         public bool Disposed => _disposer.Disposed;

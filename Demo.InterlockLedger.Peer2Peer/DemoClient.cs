@@ -59,9 +59,19 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         protected override void Run(IPeerServices peerServices) {
             using (var client = peerServices.GetClient("localhost", 8080)) {
+                var liveness = new LivenessListener(client);
                 while (!_source.IsCancellationRequested) {
                     Console.WriteLine();
                     Console.Write(Prompt);
+                    while (!Console.KeyAvailable) {
+                        if (!liveness.Alive) {
+                            Console.WriteLine();
+                            Console.WriteLine();
+                            Console.WriteLine("Lost connection with server! Abandoning...");
+                            Console.WriteLine();
+                            return;
+                        }
+                    }
                     var command = Console.ReadLine();
                     if (command == null || command.FirstOrDefault() == 'x')
                         break;
@@ -84,6 +94,28 @@ namespace Demo.InterlockLedger.Peer2Peer
         private Success Received(Success success) {
             DoneReceiving = success == Success.Exit;
             return success;
+        }
+
+        private class LivenessListener : IChannelSink
+        {
+            public LivenessListener(IConnection client) => Start(client.AllocateChannel(this));
+
+            public bool Alive { get; private set; } = true;
+
+            public Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) => Task.FromResult(Success.Next);
+
+            private void Start(IActiveChannel channel)
+                => Task.Run(() => {
+                    try {
+                        while (channel.Connected) {
+                            channel.Send(ToMessage(AsUTF8Bytes("l"), isLast: true).AllBytes);
+                            Task.Delay(1000).Wait();
+                        }
+                    } catch {
+                    } finally {
+                        Alive = false;
+                    }
+                }).RunOnThread("Liveness");
         }
     }
 }

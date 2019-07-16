@@ -42,13 +42,15 @@ namespace InterlockLedger.Peer2Peer
         public bool Active => !PeerConnection.Abandon;
         public ulong Channel { get; }
         public IConnection Connection => PeerConnection;
-
         public string Id => $"{PeerConnection.Id}@{Channel}";
+        public bool Connected => PeerConnection.Connected;
 
         public bool Send(IEnumerable<byte> message)
             => Active && IsValid(message) ? PeerConnection.Send(new NetworkMessageSlice(Channel, message)) : true;
 
         public async Task<Success> SinkAsync(IEnumerable<byte> message) => await Sink.SinkAsync(message, this);
+
+        public override string ToString() => Id;
 
         internal ActiveChannel(ulong channel, IChannelSink sink, ConnectionBase peerConnection) {
             Channel = channel;
@@ -60,6 +62,5 @@ namespace InterlockLedger.Peer2Peer
         internal IChannelSink Sink { get; }
 
         private static bool IsValid(IEnumerable<byte> message) => message != null && message.Any();
-        public override string ToString() => Id;
     }
 }

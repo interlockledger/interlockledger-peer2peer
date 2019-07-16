@@ -39,6 +39,7 @@ namespace InterlockLedger.Peer2Peer
     {
         bool Active { get; }
         ulong Channel { get; }
+        bool Connected { get; }
         IConnection Connection { get; }
         string Id { get; }
 

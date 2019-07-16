@@ -47,6 +47,7 @@ namespace InterlockLedger.Peer2Peer
         public const string ExceptionChannelNotFoundFormat = "Channel {0} not found!!!";
         public long LastChannelUsed => _lastChannelUsed;
         public int NumberOfActiveChannels => _channelSinks.Count;
+        public bool Connected => Pipeline.Connected;
 
         public IActiveChannel AllocateChannel(IChannelSink channelSink) {
             var channel = (ulong)Interlocked.Increment(ref _lastChannelUsed);

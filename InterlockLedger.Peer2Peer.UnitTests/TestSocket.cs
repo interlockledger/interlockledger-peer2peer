@@ -51,6 +51,7 @@ namespace InterlockLedger.Peer2Peer
 
         public int Available => _holdYourHorses ? 0 : _bytesReceived.Length - _receivedCount;
         public IList<ArraySegment<byte>> BytesSent => _bytesSent;
+        public bool Connected => _holdYourHorses || Available > 0;
         public EndPoint RemoteEndPoint => new IPEndPoint(IPAddress.Loopback, 13013);
 
         public void Dispose() {

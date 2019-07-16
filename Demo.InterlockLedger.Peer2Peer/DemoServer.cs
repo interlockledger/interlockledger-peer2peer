@@ -79,7 +79,7 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         private static void Send(IActiveChannel channel, byte[] bytes) {
             try {
-                channel.Send(bytes.ToArray());
+                channel.Send(bytes);
             } catch (SocketException) {
                 // Do Nothing
             }
@@ -117,13 +117,14 @@ namespace Demo.InterlockLedger.Peer2Peer
             _peerServices.KnownNodes.Forget(key);
         }
 
-        private IEnumerable<byte[]> SinkAsServer(IEnumerable<byte> channelBytes, IActiveChannel activeChannel) {
-            byte[] buffer = channelBytes.ToArray();
-            var command = (buffer.Length > 1) ? (char)buffer[1] : '\0';
-            IEnumerable<byte> text = buffer.Skip(2);
-            var channel = activeChannel.Channel;
-            Console.WriteLine($"Received command '{command}' on channel {channel}");
+        private IEnumerable<byte[]> ProcessCommand(char command, IEnumerable<byte> text, ulong channel, bool silent) {
+            if (!silent)
+                Console.WriteLine($"Received command '{command}' on channel {channel}");
             switch (command) {
+            case 'l': // liveness ping
+                yield return FormatTextResponse("Alive", isLast: true);
+                break;
+
             case 'e':  // is echo message?
                 yield return FormatResponse(text, isLast: true);
                 break;
@@ -153,8 +154,15 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
         }
 
+        private IEnumerable<byte[]> SinkAsServer(IEnumerable<byte> channelBytes, ulong channel, out bool silent) {
+            byte[] buffer = channelBytes.ToArray();
+            var command = (buffer.Length > 1) ? (char)buffer[1] : '\0';
+            silent = command == 'l';
+            return ProcessCommand(command, buffer.Skip(2), channel, silent).ToArray();
+        }
+
         private async Task SinkAsServerWithDelayedResponsesAsync(IEnumerable<byte> message, IActiveChannel activeChannel) {
-            var result = SinkAsServer(message, activeChannel);
+            var result = SinkAsServer(message, activeChannel.Channel, out bool silent);
             var channel = activeChannel.Channel;
             if (result.Count() <= 1)
                 Send(activeChannel, result.First());
@@ -164,7 +172,8 @@ namespace Demo.InterlockLedger.Peer2Peer
                     await Task.Delay(2_000);
                 }
             }
-            Console.WriteLine($"Done processing on channel {channel}");
+            if (!silent)
+                Console.WriteLine($"Done processing on channel {channel}");
         }
     }
 }

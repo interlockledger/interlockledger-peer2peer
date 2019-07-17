@@ -40,7 +40,8 @@ namespace InterlockLedger.Peer2Peer
     {
         public SendingQueue() => _shouldExit = false;
 
-        public bool Exit => _responses.IsEmpty && _shouldExit;
+        public bool Exit => IsEmpty && _shouldExit;
+        public bool IsEmpty => _responses.IsEmpty;
 
         public async Task<NetworkMessageSlice> DequeueAsync(CancellationToken token) {
             NetworkMessageSlice slice;

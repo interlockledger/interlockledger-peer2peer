@@ -49,7 +49,7 @@ namespace InterlockLedger.Peer2Peer
             : base(connection.Id, connection, source, logger) {
             if (string.IsNullOrWhiteSpace(externalAddress))
                 throw new ArgumentException("message", nameof(externalAddress));
-            _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+            Connection = connection ?? throw new ArgumentNullException(nameof(connection));
             _socket = socketFactory.GetSocket(hostedAddress, firstPort);
             if (_socket is null)
                 throw new InterlockLedgerIOException($"Could not open a listening socket for proxying at {hostedAddress}:{firstPort}");
@@ -62,7 +62,7 @@ namespace InterlockLedger.Peer2Peer
             Errored = LogError;
         }
 
-        public IConnection Connection => _connection;
+        public IConnection Connection { get; }
         public Action<IEnumerable<byte>, IActiveChannel, Exception> Errored { get; set; }
         public string HostedAddress { get; }
         public Action<IEnumerable<byte>, IActiveChannel, ulong, bool> Responded { get; set; }
@@ -84,7 +84,7 @@ namespace InterlockLedger.Peer2Peer
                     var sent = pair.Send(message);
                     Sinked(message, channel, false, pair.ProxiedChannelId, sent);
                 } else {
-                    var newPair = new ChannelPairing(channel, _connection, this);
+                    var newPair = new ChannelPairing(channel, Connection, this);
                     _channelMap.TryAdd(channel.Id, newPair);
                     var sent = newPair.Send(message);
                     Sinked(message, channel, true, newPair.ProxiedChannelId, sent);
@@ -95,7 +95,16 @@ namespace InterlockLedger.Peer2Peer
             return Task.FromResult(Success.Next);
         }
 
-        public override string ToString() => $"{nameof(ListenerForProxying)} {HeaderText} to connection {_connection.Id}";
+        public override void Stop() {
+            try {
+                base.Stop();
+                Connection.Stop();
+            } catch { } finally {
+                _channelMap.Clear();
+            }
+        }
+
+        public override string ToString() => $"{nameof(ListenerForProxying)} {HeaderText} to connection {Connection.Id}";
 
         protected override string HeaderText => $"proxying {NetworkProtocolName} protocol in {NetworkName} network at {Route} hosted at {HostedAddress}";
 
@@ -104,7 +113,6 @@ namespace InterlockLedger.Peer2Peer
         protected override Socket BuildSocket() => _socket;
 
         private readonly ConcurrentDictionary<string, ChannelPairing> _channelMap;
-        private readonly IConnection _connection;
         private readonly Socket _socket;
 
         private class ChannelPairing : IChannelSink, ISender

@@ -52,10 +52,11 @@ namespace InterlockLedger.Peer2Peer
         public int Available => _holdYourHorses ? 0 : _bytesReceived.Length - _receivedCount;
         public IList<ArraySegment<byte>> BytesSent => _bytesSent;
         public bool Connected => _holdYourHorses || Available > 0;
+        public bool Disposed { get; private set; } = false;
         public EndPoint RemoteEndPoint => new IPEndPoint(IPAddress.Loopback, 13013);
 
         public void Dispose() {
-            // Do nothing
+            Disposed = true;
         }
 
         public async Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token) {
@@ -83,7 +84,9 @@ namespace InterlockLedger.Peer2Peer
             // Do nothing
         }
 
-        public void Stop() => throw new NotImplementedException();
+        public void Stop() {
+            // Do nothing
+        }
 
         private readonly Memory<byte> _bytesReceived;
         private readonly List<ArraySegment<byte>> _bytesSent = new List<ArraySegment<byte>>();

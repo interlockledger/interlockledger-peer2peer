@@ -52,6 +52,8 @@ namespace InterlockLedger.Peer2Peer
         public string NetworkName { get; }
         public string NetworkProtocolName { get; }
         public bool Connected => Pipeline?.Connected ?? false;
+        public bool NothingToSend => Pipeline?.NothingToSend ?? false;
+        public bool Stopped => Pipeline?.Stopped ?? false;
 
         public IActiveChannel AllocateChannel(IChannelSink channelSink) => this;
 

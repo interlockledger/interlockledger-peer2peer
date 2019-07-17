@@ -148,7 +148,7 @@ namespace InterlockLedger.Peer2Peer
 
         private void Step_CheckTag(ulong tag) {
             if (tag != _expectedTag) {
-                _logger.LogWarning($"Ignoring bad tag {tag}");
+                _logger.LogTrace($"Ignoring bad tag {tag}");
                 _state = State.Init;
             } else {
                 _logger.LogTrace("Receiving new message");

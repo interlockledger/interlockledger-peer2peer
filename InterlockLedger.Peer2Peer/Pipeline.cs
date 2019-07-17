@@ -57,7 +57,9 @@ namespace InterlockLedger.Peer2Peer
             _stopProcessor = stopProcessor ?? throw new ArgumentNullException(nameof(stopProcessor));
         }
 
+        public bool Stopped { get; private set; } = false;
         public bool Connected => _socket.Connected;
+        public bool NothingToSend => _queue.IsEmpty;
 
         public async Task ListenAsync() {
             try {
@@ -65,7 +67,10 @@ namespace InterlockLedger.Peer2Peer
                 await Task.Delay(10);
             } finally {
                 _socket.Dispose();
-                _stopProcessor();
+                try {
+                    _stopProcessor();
+                } catch { }
+                Stopped = true;
             }
         }
 
@@ -79,7 +84,10 @@ namespace InterlockLedger.Peer2Peer
             return this;
         }
 
-        public void Stop() => _queue.Stop();
+        public void Stop() {
+            _queue.Stop();
+            _localSource.Cancel(false);
+        }
 
         private readonly CancellationToken _linkedToken;
         private readonly CancellationTokenSource _localSource;

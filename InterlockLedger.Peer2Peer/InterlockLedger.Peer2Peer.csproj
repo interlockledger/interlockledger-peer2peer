@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
-        <Version>0.24.1</Version>
+        <Version>0.25.0</Version>
         <Authors>Rafael Teixeira</Authors>
         <Company>InterlockLedger Network</Company>
         <Product>InterlockLedger</Product>
@@ -13,8 +13,7 @@
         <RepositoryUrl>https://github.com/interlockledger/peer2peer.git</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageReleaseNotes>Override Stop() in ListenerForProxying to clean up more things
-Pipeline.Stop() now cancels the inner tasks</PackageReleaseNotes>
+        <PackageReleaseNotes>Untie CancellationTokenSource for ListenerForProxying from the main Listener's one</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
     </PropertyGroup>

@@ -115,6 +115,11 @@ namespace InterlockLedger.Peer2Peer
                     AssertHasSameItems<byte>(nameof(externalNodeSink.MessagesReceived), externalNodeSink.MessagesReceived.SelectMany(l => l), 242);
                     AssertHasLogLine(fakeLogger, "Debug: Sinked Message 'Ag' from Channel ProxyingClient#1@2 using new pair to Proxied Channel 1. Sent: True");
                     AssertHasLogLine(fakeLogger, "Debug: Responded with Message 'DQHy' from Channel ListenerClient#1@1 to External Channel 2. Sent: True");
+                    lfp.Stop();
+                    while (lfp.Alive)
+                        WaitForOthers(100);
+                    WaitForOthers(300);
+                    Assert.IsTrue(referenceListener.Alive, "External listener should stay alive after lfp having stopped");
                 }
             }
         }

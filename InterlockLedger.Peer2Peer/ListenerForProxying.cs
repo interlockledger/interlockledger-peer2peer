@@ -46,7 +46,7 @@ namespace InterlockLedger.Peer2Peer
     public class ListenerForProxying : ListenerCommon, IListenerForProxying
     {
         public ListenerForProxying(string externalAddress, string hostedAddress, ushort firstPort, IConnection connection, SocketFactory socketFactory, CancellationTokenSource source, ILogger logger)
-            : base(connection.Id, connection, source, logger) {
+            : base(connection.Id, connection, CreateKindOfLinkedSource(source), logger) {
             if (string.IsNullOrWhiteSpace(externalAddress))
                 throw new ArgumentException("message", nameof(externalAddress));
             Connection = connection ?? throw new ArgumentNullException(nameof(connection));
@@ -63,10 +63,15 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public IConnection Connection { get; }
+
         public Action<IEnumerable<byte>, IActiveChannel, Exception> Errored { get; set; }
+
         public string HostedAddress { get; }
+
         public Action<IEnumerable<byte>, IActiveChannel, ulong, bool> Responded { get; set; }
+
         public string Route => $"{ExternalAddress}:{ExternalPortNumber}";
+
         public Action<IEnumerable<byte>, IActiveChannel, bool, ulong, bool> Sinked { get; set; }
 
         public void LogError(IEnumerable<byte> message, IActiveChannel channel, Exception e)
@@ -113,7 +118,14 @@ namespace InterlockLedger.Peer2Peer
         protected override Socket BuildSocket() => _socket;
 
         private readonly ConcurrentDictionary<string, ChannelPairing> _channelMap;
+
         private readonly Socket _socket;
+
+        private static CancellationTokenSource CreateKindOfLinkedSource(CancellationTokenSource source) {
+            var kindOfLinkedSource = new CancellationTokenSource();
+            source.Token.Register(() => kindOfLinkedSource.Cancel(false));
+            return kindOfLinkedSource;
+        }
 
         private class ChannelPairing : IChannelSink, ISender
         {

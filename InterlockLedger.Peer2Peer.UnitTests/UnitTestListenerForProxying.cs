@@ -46,39 +46,41 @@ namespace InterlockLedger.Peer2Peer
         [TestMethod]
         public void TestListenerForProxyingMinimally() {
             var fakeLogger = new FakeLogging();
-            var fakeDiscoverer = new FakeDiscoverer();
-            var source = new CancellationTokenSource();
-            var fakeExternalSocket = new TestSocket(holdYourHorses: true, _tag, 1, 240, 128);
-            var fakeInternalSocket = new TestSocket(holdYourHorses: true, _tag, 1, 241, 1);
-            var fakeSink = new TestSink(_tag, 1, 242);
-            var fakeNodeSink = new FakeNodeSink(_tag, 2000);
-            using (var referenceListener = new ListenerForPeer(fakeNodeSink, fakeDiscoverer, source, fakeLogger)) {
-                var internalConnection = new ConnectionInitiatedByPeer("TLFPM", fakeNodeSink, fakeInternalSocket, fakeSink, source, fakeLogger);
-                internalConnection.SetDefaultSink(fakeNodeSink);
-                var lfp = new TestListenerForProxying(fakeExternalSocket, referenceListener.ExternalAddress, referenceListener.ExternalAddress, 333, internalConnection, new SocketFactory(fakeLogger, 3), source, fakeLogger);
-                lfp.Start();
-                WaitForOthers(100);
-                fakeExternalSocket.ReleaseYourHorses();
-                var max = 5;
-                while (AllBytes(fakeInternalSocket).Count() < 4 && max-- > 0)
-                    WaitForOthers(100);
-                IEnumerable<byte> allInternalBytes = AllBytes(fakeInternalSocket);
-                Assert.IsNotNull(fakeLogger.LastLog);
-                AssertHasSameItems<byte>(nameof(fakeInternalSocket.BytesSent), allInternalBytes, _tag, 1, 240, 1);
-                fakeInternalSocket.ReleaseYourHorses();
-                max = 5;
-                while (AllBytes(fakeExternalSocket).Count() < 4 && max-- > 0)
-                    WaitForOthers(100);
-                AssertHasSameItems<byte>(nameof(fakeExternalSocket.BytesSent), AllBytes(fakeExternalSocket), _tag, 1, 241, 128);
-                fakeSink.Reset();
-                fakeSink.SinkAsync(allInternalBytes.SkipLast(1), new TestChannel(allInternalBytes.Last())).Wait();
-                max = 7;
-                while (fakeSink.ChannelProcessed == 0ul && max-- > 0)
-                    WaitForOthers(100);
-                AssertHasSameItems<byte>(nameof(fakeSink.BytesProcessed), fakeSink.BytesProcessed, _tag, 1, 240);
-                Assert.AreEqual((ulong)1, fakeSink.ChannelProcessed);
-                AssertHasLogLine(fakeLogger, "Debug: Sinked Message '8A' from Channel ProxyingClient#1@128 using new pair to Proxied Channel 1. Sent: True");
-                AssertHasLogLine(fakeLogger, "Debug: Responded with Message 'DQHx' from Channel TLFPM@1 to External Channel 128. Sent: True");
+            using (var fakeDiscoverer = new FakeDiscoverer()) {
+                var source = new CancellationTokenSource();
+                var fakeExternalSocket = new TestSocket(holdYourHorses: true, _tag, 1, 240, 128);
+                var fakeInternalSocket = new TestSocket(holdYourHorses: true, _tag, 1, 241, 1);
+                var fakeSink = new TestSink(_tag, 1, 242);
+                var fakeNodeSink = new FakeNodeSink(_tag, 2000);
+                using (var referenceListener = new ListenerForPeer(fakeNodeSink, fakeDiscoverer, source, fakeLogger)) {
+                    var internalConnection = new ConnectionInitiatedByPeer("TLFPM", fakeNodeSink, fakeInternalSocket, fakeSink, source, fakeLogger);
+                    internalConnection.SetDefaultSink(fakeNodeSink);
+                    using (var lfp = new TestListenerForProxying(fakeExternalSocket, referenceListener.ExternalAddress, referenceListener.ExternalAddress, 333, internalConnection, new SocketFactory(fakeLogger, 3), source, fakeLogger)) {
+                        lfp.Start();
+                        WaitForOthers(100);
+                        fakeExternalSocket.ReleaseYourHorses();
+                        var max = 5;
+                        while (AllBytes(fakeInternalSocket).Count() < 4 && max-- > 0)
+                            WaitForOthers(100);
+                        IEnumerable<byte> allInternalBytes = AllBytes(fakeInternalSocket);
+                        Assert.IsNotNull(fakeLogger.LastLog);
+                        AssertHasSameItems<byte>(nameof(fakeInternalSocket.BytesSent), allInternalBytes, _tag, 1, 240, 1);
+                        fakeInternalSocket.ReleaseYourHorses();
+                        max = 5;
+                        while (AllBytes(fakeExternalSocket).Count() < 4 && max-- > 0)
+                            WaitForOthers(100);
+                        AssertHasSameItems<byte>(nameof(fakeExternalSocket.BytesSent), AllBytes(fakeExternalSocket), _tag, 1, 241, 128);
+                        fakeSink.Reset();
+                        fakeSink.SinkAsync(allInternalBytes.SkipLast(1), new TestChannel(allInternalBytes.Last())).Wait();
+                        max = 7;
+                        while (fakeSink.ChannelProcessed == 0ul && max-- > 0)
+                            WaitForOthers(100);
+                        AssertHasSameItems<byte>(nameof(fakeSink.BytesProcessed), fakeSink.BytesProcessed, _tag, 1, 240);
+                        Assert.AreEqual((ulong)1, fakeSink.ChannelProcessed);
+                        AssertHasLogLine(fakeLogger, "Debug: Sinked Message '8A' from Channel ProxyingClient#1@128 using new pair to Proxied Channel 1. Sent: True");
+                        AssertHasLogLine(fakeLogger, "Debug: Responded with Message 'DQHx' from Channel TLFPM@1 to External Channel 128. Sent: True");
+                    }
+                }
             }
         }
 
@@ -94,32 +96,34 @@ namespace InterlockLedger.Peer2Peer
                 using (var internalListener = new ListenerForPeer(internalNodeSink, fakeDiscoverer, source, fakeLogger)) {
                     referenceListener.Start();
                     internalListener.Start();
-                    var internalConnection = new ConnectionToPeer("RequestProxying", internalNodeSink, referenceListener.ExternalAddress, referenceListener.ExternalPortNumber, source, fakeLogger);
-                    internalConnection.AllocateChannel(internalNodeSink).Send(ProxyNodeSink.ProxyRequest);
-                    while (externalNodeSink.ListenerForProxying == null)
-                        WaitForOthers(100);
-                    var lfp = externalNodeSink.ListenerForProxying;
-                    lfp.Start();
-                    WaitForOthers(300);
-                    internalConnection.SetDefaultSink(fakeSink);
-                    var externalConnection = new ConnectionToPeer("ExternalMessage", internalNodeSink, lfp.ExternalAddress, lfp.ExternalPortNumber, source, fakeLogger);
-                    externalConnection.AllocateChannel(externalNodeSink); // just to bump channel
-                    IActiveChannel outsideChannel = externalConnection.AllocateChannel(externalNodeSink);
-                    outsideChannel.Send(new byte[] { _tag, 1, 2 });
-                    while (fakeSink.ChannelProcessed == 0)
-                        WaitForOthers(100);
-                    AssertHasSameItems<byte>(nameof(fakeSink.BytesProcessed), fakeSink.BytesProcessed, 2);
-                    Assert.AreEqual(1ul, fakeSink.ChannelProcessed);
-                    while (externalNodeSink.MessagesReceived.Count == 0)
-                        WaitForOthers(100);
-                    AssertHasSameItems<byte>(nameof(externalNodeSink.MessagesReceived), externalNodeSink.MessagesReceived.SelectMany(l => l), 242);
-                    AssertHasLogLine(fakeLogger, "Debug: Sinked Message 'Ag' from Channel ProxyingClient#1@2 using new pair to Proxied Channel 1. Sent: True");
-                    AssertHasLogLine(fakeLogger, "Debug: Responded with Message 'DQHy' from Channel ListenerClient#1@1 to External Channel 2. Sent: True");
-                    lfp.Stop();
-                    while (lfp.Alive)
-                        WaitForOthers(100);
-                    WaitForOthers(300);
-                    Assert.IsTrue(referenceListener.Alive, "External listener should stay alive after lfp having stopped");
+                    using (var internalConnection = new ConnectionToPeer("RequestProxying", internalNodeSink, referenceListener.ExternalAddress, referenceListener.ExternalPortNumber, source, fakeLogger)) {
+                        internalConnection.AllocateChannel(internalNodeSink).Send(ProxyNodeSink.ProxyRequest);
+                        while (externalNodeSink.ListenerForProxying == null)
+                            WaitForOthers(100);
+                        var lfp = externalNodeSink.ListenerForProxying;
+                        lfp.Start();
+                        WaitForOthers(300);
+                        internalConnection.SetDefaultSink(fakeSink);
+                        using (var externalConnection = new ConnectionToPeer("ExternalMessage", internalNodeSink, lfp.ExternalAddress, lfp.ExternalPortNumber, source, fakeLogger)) {
+                            externalConnection.AllocateChannel(externalNodeSink); // just to bump channel
+                            IActiveChannel outsideChannel = externalConnection.AllocateChannel(externalNodeSink);
+                            outsideChannel.Send(new byte[] { _tag, 1, 2 });
+                            while (fakeSink.ChannelProcessed == 0)
+                                WaitForOthers(100);
+                            AssertHasSameItems<byte>(nameof(fakeSink.BytesProcessed), fakeSink.BytesProcessed, 2);
+                            Assert.AreEqual(1ul, fakeSink.ChannelProcessed);
+                            while (externalNodeSink.MessagesReceived.Count == 0)
+                                WaitForOthers(100);
+                            AssertHasSameItems<byte>(nameof(externalNodeSink.MessagesReceived), externalNodeSink.MessagesReceived.SelectMany(l => l), 242);
+                            AssertHasLogLine(fakeLogger, "Debug: Sinked Message 'Ag' from Channel ProxyingClient#1@2 using new pair to Proxied Channel 1. Sent: True");
+                            AssertHasLogLine(fakeLogger, "Debug: Responded with Message 'DQHy' from Channel ListenerClient#1@1 to External Channel 2. Sent: True");
+                            lfp.Stop();
+                            while (lfp.Alive)
+                                WaitForOthers(100);
+                            WaitForOthers(300);
+                            Assert.IsTrue(referenceListener.Alive, "External listener should stay alive after lfp having stopped");
+                        }
+                    }
                 }
             }
         }

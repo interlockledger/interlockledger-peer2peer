@@ -42,7 +42,6 @@ using static InterlockLedger.Peer2Peer.TestHelpers;
 
 namespace InterlockLedger.Peer2Peer
 {
-
     [TestClass]
     public class UnitTestConnectionBase
     {

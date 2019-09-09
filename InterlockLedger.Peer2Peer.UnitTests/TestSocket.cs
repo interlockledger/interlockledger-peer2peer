@@ -55,9 +55,7 @@ namespace InterlockLedger.Peer2Peer
         public bool Disposed { get; private set; } = false;
         public EndPoint RemoteEndPoint => new IPEndPoint(IPAddress.Loopback, 13013);
 
-        public void Dispose() {
-            Disposed = true;
-        }
+        public void Dispose() => Disposed = true;
 
         public async Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token) {
             while (_holdYourHorses)

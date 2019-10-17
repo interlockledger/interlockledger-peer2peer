@@ -36,3 +36,7 @@ dotnet_style_require_accessibility_modifiers=always:silent
 
 [*.xml]
 indent_style = space
+[*.cs]
+
+# CA1819: Properties should not return arrays
+dotnet_diagnostic.CA1819.severity = none

@@ -40,7 +40,7 @@ using System.Linq;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public struct NetworkMessageSlice
+    public struct NetworkMessageSlice : IEquatable<NetworkMessageSlice>
     {
         public NetworkMessageSlice(ulong channel, IEnumerable<byte> bytes) : this(channel, bytes.ToArray()) {
         }
@@ -79,6 +79,10 @@ namespace InterlockLedger.Peer2Peer
 
         public bool IsEmpty => !DataList.Any(s => s.Count > 0);
 
+        public static bool operator !=(NetworkMessageSlice left, NetworkMessageSlice right) => !(left == right);
+
+        public static bool operator ==(NetworkMessageSlice left, NetworkMessageSlice right) => left.Equals(right);
+
         public NetworkMessageSlice Add(byte[] array) => Add(new ArraySegment<byte>(array));
 
         public NetworkMessageSlice Add(byte[] array, int start, int length) => Add(new ArraySegment<byte>(array, start, length));
@@ -87,6 +91,17 @@ namespace InterlockLedger.Peer2Peer
             if (_dataList == null)
                 _segmentList.Add(data);
             return this;
+        }
+
+        public override bool Equals(object obj) => Equals((NetworkMessageSlice)obj);
+
+        public bool Equals(NetworkMessageSlice other) => EqualityComparer<byte[]>.Default.Equals(AllBytes, other.AllBytes) && Channel == other.Channel;
+
+        public override int GetHashCode() {
+            var hashCode = -596340573;
+            hashCode = hashCode * -1521134295 + EqualityComparer<byte[]>.Default.GetHashCode(AllBytes);
+            hashCode = hashCode * -1521134295 + Channel.GetHashCode();
+            return hashCode;
         }
 
         public NetworkMessageSlice WithChannel(ulong channel) => new NetworkMessageSlice(channel, DataList);

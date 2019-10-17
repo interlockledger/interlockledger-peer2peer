@@ -58,26 +58,25 @@ namespace Demo.InterlockLedger.Peer2Peer
             => Received(await Process(message, activeChannel.Channel));
 
         protected override void Run(IPeerServices peerServices) {
-            using (var client = peerServices.GetClient("localhost", 8080)) {
-                var liveness = new LivenessListener(client);
-                while (!_source.IsCancellationRequested) {
-                    Console.WriteLine();
-                    Console.Write(Prompt);
-                    while (!Console.KeyAvailable) {
-                        if (!liveness.Alive) {
-                            Console.WriteLine();
-                            Console.WriteLine();
-                            Console.WriteLine("Lost connection with server! Abandoning...");
-                            Console.WriteLine();
-                            return;
-                        }
+            using var client = peerServices.GetClient("localhost", 8080);
+            var liveness = new LivenessListener(client);
+            while (!_source.IsCancellationRequested) {
+                Console.WriteLine();
+                Console.Write(Prompt);
+                while (!Console.KeyAvailable) {
+                    if (!liveness.Alive) {
+                        Console.WriteLine();
+                        Console.WriteLine();
+                        Console.WriteLine("Lost connection with server! Abandoning...");
+                        Console.WriteLine();
+                        return;
                     }
-                    var command = Console.ReadLine();
-                    if (command == null || command.FirstOrDefault() == 'x')
-                        break;
-                    var channel = client.AllocateChannel(this);
-                    channel.Send(ToMessage(AsUTF8Bytes(command), isLast: true).AllBytes);
                 }
+                var command = Console.ReadLine();
+                if (command == null || command.FirstOrDefault() == 'x')
+                    break;
+                var channel = client.AllocateChannel(this);
+                channel.Send(ToMessage(AsUTF8Bytes(command), isLast: true).AllBytes);
             }
         }
 

@@ -79,9 +79,8 @@ namespace Demo.InterlockLedger.Peer2Peer
         public void Run() {
             PrepareConsole(_message);
             var serviceProvider = Configure(_source, portDelta: 4, this);
-            using (var peerServices = serviceProvider.GetRequiredService<IPeerServices>()) {
-                Run(peerServices);
-            }
+            using var peerServices = serviceProvider.GetRequiredService<IPeerServices>();
+            Run(peerServices);
         }
 
         protected static readonly byte[] _encodedMessageTag = _messageTagCode.ILIntEncode();

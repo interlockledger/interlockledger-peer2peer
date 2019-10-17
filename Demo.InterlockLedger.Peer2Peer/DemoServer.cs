@@ -56,17 +56,16 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         protected override void Run(IPeerServices peerServices) {
             _peerServices = peerServices ?? throw new ArgumentNullException(nameof(peerServices));
-            using (var listener = peerServices.CreateListenerFor(this)) {
-                try {
-                    listener.Start();
-                    Dequeue().RunOnThread("DemoServer-DelayedResponses");
-                    DequeueKey().RunOnThread("Keys");
-                    while (listener.Alive) {
-                        Thread.Sleep(1);
-                    }
-                } finally {
-                    _stop = true;
+            using var listener = peerServices.CreateListenerFor(this);
+            try {
+                listener.Start();
+                Dequeue().RunOnThread("DemoServer-DelayedResponses");
+                DequeueKey().RunOnThread("Keys");
+                while (listener.Alive) {
+                    Thread.Sleep(1);
                 }
+            } finally {
+                _stop = true;
             }
         }
 

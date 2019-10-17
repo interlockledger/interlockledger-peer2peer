@@ -44,5 +44,4 @@ namespace InterlockLedger.Peer2Peer
             : base(message, innerException) {
         }
     }
-
 }

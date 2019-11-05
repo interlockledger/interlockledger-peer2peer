@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -39,7 +40,7 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class TestSocket : ISocket
+    public class TestSocket : AbstractDisposable, ISocket
     {
         public TestSocket(params byte[] bytesReceived) : this(false, bytesReceived) {
         }
@@ -52,10 +53,7 @@ namespace InterlockLedger.Peer2Peer
         public int Available => _holdYourHorses ? 0 : _bytesReceived.Length - _receivedCount;
         public IList<ArraySegment<byte>> BytesSent => _bytesSent;
         public bool Connected => _holdYourHorses || Available > 0;
-        public bool Disposed { get; private set; } = false;
         public EndPoint RemoteEndPoint => new IPEndPoint(IPAddress.Loopback, 13013);
-
-        public void Dispose() => Disposed = true;
 
         public async Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token) {
             while (_holdYourHorses)
@@ -78,13 +76,7 @@ namespace InterlockLedger.Peer2Peer
             return Task.CompletedTask;
         }
 
-        public void Shutdown(SocketShutdown how) {
-            // Do nothing
-        }
-
-        public void Stop() {
-            // Do nothing
-        }
+        protected override void DisposeManagedResources() { }
 
         private readonly Memory<byte> _bytesReceived;
         private readonly List<ArraySegment<byte>> _bytesSent = new List<ArraySegment<byte>>();

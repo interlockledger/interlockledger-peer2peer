@@ -47,7 +47,7 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         public bool DoneReceiving { get; set; } = false;
 
-        public string Prompt => @"Command (
+        public static string Prompt => @"Command (
     x to exit,
     w to get who is answering,
     e... to echo ...,

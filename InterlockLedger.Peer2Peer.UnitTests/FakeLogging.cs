@@ -30,16 +30,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
-#pragma warning disable S3881 // "IDisposable" should be implemented correctly
+using Microsoft.Extensions.Logging;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class FakeLogging : ILoggerFactory, ILogger
+    public class FakeLogging : AbstractDisposable, ILoggerFactory, ILogger
     {
         public readonly List<string> Logs = new List<string>();
 
@@ -53,13 +51,11 @@ namespace InterlockLedger.Peer2Peer
 
         ILogger ILoggerFactory.CreateLogger(string categoryName) => this;
 
-        void IDisposable.Dispose() {
-            // Nothing to dispose.
-        }
-
         bool ILogger.IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Information;
 
         void ILogger.Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
             => Logs.Add($"{logLevel}: {formatter(state, exception)}");
+
+        protected override void DisposeManagedResources() { }
     }
 }

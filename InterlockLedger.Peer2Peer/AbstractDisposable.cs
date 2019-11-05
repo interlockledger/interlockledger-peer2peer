@@ -31,20 +31,52 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class InterlockLedgerIOException : InterlockLedgerException
+    public abstract class AbstractDisposable : IDisposable
     {
-        public InterlockLedgerIOException(string message)
-            : base(message) {
+        public bool Disposed => _disposed != 0;
+
+        public void Dispose() {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
-        public InterlockLedgerIOException(string message, Exception innerException)
-            : base(message, innerException) {
+        protected abstract void DisposeManagedResources();
+
+        protected virtual void DisposeUnmanagedResources() { }
+
+        protected T Do<T>(Func<T> function, T @default = default) => !Disposed ? function() : @default;
+
+        protected void Do(Action action) {
+            if (!Disposed) action();
         }
 
-        public InterlockLedgerIOException() : base("IO Problem") {
+        protected async Task<T> DoAsync<T>(Func<Task<T>> function, T @default = default) => !Disposed ? await function() : @default;
+
+        protected async Task DoAsync<T>(Func<Task> function) {
+            if (!Disposed)
+                await function();
+        }
+
+        private int _disposed = 0;
+
+        ~AbstractDisposable() {
+            Dispose(false);
+        }
+
+        [SuppressMessage("Design", "CA1063:Implement IDisposable Correctly", Justification = "Implemented another way")]
+        private void Dispose(bool disposing) {
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0) {
+                if (disposing) {
+                    DisposeManagedResources();
+                }
+                DisposeUnmanagedResources();
+            }
         }
     }
 }

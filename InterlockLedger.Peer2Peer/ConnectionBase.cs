@@ -62,12 +62,12 @@ namespace InterlockLedger.Peer2Peer
 
         public virtual void PipelineStopped() {
             _logger.LogTrace($"Stopping pipeline on client {Id}");
-            _channelSinks.Clear();
+            Dispose();
         }
 
         public void SetDefaultSink(IChannelSink sink) {
             _sink = sink ?? throw new ArgumentNullException(nameof(sink));
-            _channelSinks.Clear();
+            StopAllChannelSinks();
         }
 
         public override void Stop() => _pipeline?.Stop();
@@ -103,6 +103,12 @@ namespace InterlockLedger.Peer2Peer
         protected int NetworkPort { get; set; }
 
         protected abstract ISocket BuildSocket();
+
+        protected override void DisposeManagedResources() {
+            base.DisposeManagedResources();
+            StopAllChannelSinks();
+            _socket.Dispose();
+        }
 
         protected void LogError(string message) {
             if (!(_errors.TryGetValue(message, out var dateTime) && (DateTimeOffset.Now - dateTime).Hours < _hoursOfSilencedDuplicateErrors)) {
@@ -149,6 +155,12 @@ namespace InterlockLedger.Peer2Peer
                 return await newChannel.SinkAsync(slice.AllBytes);
             }
             return Success.Next;
+        }
+
+        private void StopAllChannelSinks() {
+            foreach (var cs in _channelSinks.Values)
+                cs.Stop();
+            _channelSinks.Clear();
         }
     }
 }

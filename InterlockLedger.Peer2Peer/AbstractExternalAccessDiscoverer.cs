@@ -1,4 +1,4 @@
-/******************************************************************************************************************************
+﻿/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -30,21 +30,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using System;
+using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class InterlockLedgerIOException : InterlockLedgerException
+    public abstract class AbstractExternalAccessDiscoverer : AbstractDisposable, IExternalAccessDiscoverer
     {
-        public InterlockLedgerIOException(string message)
-            : base(message) {
-        }
+        public Task<ExternalAccess> DetermineExternalAccessAsync(INodeSink nodeSink)
+            => DetermineExternalAccessAsync(nodeSink.HostAtAddress, nodeSink.HostAtPortNumber, nodeSink.PublishAtAddress, nodeSink.PublishAtPortNumber);
 
-        public InterlockLedgerIOException(string message, Exception innerException)
-            : base(message, innerException) {
-        }
+        public abstract Task<ExternalAccess> DetermineExternalAccessAsync(string hostAtAddress, ushort hostAtPortNumber, string publishAtAddress, ushort? publishAtPortNumber);
 
-        public InterlockLedgerIOException() : base("IO Problem") {
-        }
     }
 }

@@ -30,15 +30,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
+using Microsoft.Extensions.Logging;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public abstract class ListenerBase : INetworkIdentity
+    public abstract class ListenerBase : AbstractDisposable, INetworkIdentity
     {
-        public bool Disposed { get; private set; } = false;
         public string Id { get; }
 
         public int ListeningBufferSize => _config.ListeningBufferSize;
@@ -48,13 +47,6 @@ namespace InterlockLedger.Peer2Peer
         public string NetworkName => _config.NetworkName;
 
         public string NetworkProtocolName => _config.NetworkProtocolName;
-
-        public void Dispose() {
-            if (!Disposed) {
-                Stop();
-                Disposed = true;
-            }
-        }
 
         public abstract void Stop();
 
@@ -71,6 +63,8 @@ namespace InterlockLedger.Peer2Peer
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _source.Token.Register(Dispose);
         }
+
+        protected override void DisposeManagedResources() => Stop();
 
         private readonly INetworkConfig _config;
     }

@@ -44,6 +44,7 @@ namespace InterlockLedger.Peer2Peer
         string Id { get; }
 
         Task<Success> SinkAsync(IEnumerable<byte> message);
+        void Stop();
     }
 
     public interface ISender

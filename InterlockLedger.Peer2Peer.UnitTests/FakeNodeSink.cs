@@ -35,7 +35,7 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal class FakeNodeSink : INodeSink
+    internal class FakeNodeSink : AbstractDisposable, INodeSink
     {
         public readonly List<IEnumerable<byte>> MessagesReceived = new List<IEnumerable<byte>>();
 
@@ -46,7 +46,6 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public ulong Channel { get; set; } = 0;
-        public int DefaultTimeoutInMilliseconds => 30_000;
         public string HostAtAddress => "localhost";
         public ushort HostAtPortNumber { get; }
         public string Id => NodeId;
@@ -59,9 +58,6 @@ namespace InterlockLedger.Peer2Peer
         public string PublishAtAddress => HostAtAddress;
         public ushort? PublishAtPortNumber => HostAtPortNumber;
         public IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "None" };
-        public bool UseChannel => false;
-
-        public void Dispose() { }
 
         public void HostedAt(string address, ushort port) {
             // Do nothing
@@ -78,6 +74,8 @@ namespace InterlockLedger.Peer2Peer
                 channel.Send(_response);
             return Success.Exit;
         }
+
+        protected override void DisposeManagedResources() => throw new System.NotImplementedException();
 
         private readonly byte[] _response;
     }

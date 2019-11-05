@@ -37,7 +37,7 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class TestClient : IConnection, IActiveChannel
+    public class TestClient : AbstractDisposable, IConnection, IActiveChannel
     {
         public Pipeline Pipeline;
 
@@ -57,8 +57,6 @@ namespace InterlockLedger.Peer2Peer
 
         public IActiveChannel AllocateChannel(IChannelSink channelSink) => this;
 
-        public void Dispose() => Stop();
-
         public IActiveChannel GetChannel(ulong channel) {
             Channel = channel;
             return this;
@@ -75,5 +73,7 @@ namespace InterlockLedger.Peer2Peer
         public Task<Success> SinkAsync(IEnumerable<byte> message) => throw new NotImplementedException();
 
         public void Stop() => Pipeline?.Stop();
+
+        protected override void DisposeManagedResources() => Stop();
     }
 }

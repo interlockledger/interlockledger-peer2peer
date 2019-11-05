@@ -39,7 +39,7 @@ using System.Net.Sockets;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class SocketFactory
+    public sealed class SocketFactory : IDisposable
     {
         public SocketFactory(ILoggerFactory loggerFactory, ushort portDelta, ushort howManyPortsToTry = 5) {
             _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<SocketFactory>();
@@ -55,6 +55,8 @@ namespace InterlockLedger.Peer2Peer
                 ? (new IPAddress[] { address })
                 : Dns.GetHostEntry(name).AddressList.Where(ip => IsIPV4(ip.AddressFamily));
 
+        public void Dispose() { }
+
         public Socket GetSocket(string name, ushort portNumber) {
             var localaddrs = GetAddresses(name);
             return ScanForSocket(localaddrs, portNumber) ?? ScanForSocket(localaddrs, 0);
@@ -65,12 +67,19 @@ namespace InterlockLedger.Peer2Peer
         private static bool IsIPV4(AddressFamily family) => family == AddressFamily.InterNetwork;
 
         private Socket BindSocket(IPAddress localaddr, ushort port) {
+            if (localaddr is null) {
+                _logger.LogError($"-- No address provided while trying to bind a socket to listen at :{port}");
+                return null;
+            }
             try {
                 var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
                 listenSocket.Bind(new IPEndPoint(localaddr, port));
                 listenSocket.Listen(120);
                 return listenSocket;
-            } catch (Exception e) {
+            } catch (ArgumentOutOfRangeException aore) {
+                _logger.LogError(aore, $"-- Bad port number while trying to bind a socket to listen at {localaddr}:{port}");
+                return null;
+            } catch (SocketException e) {
                 _logger.LogError(e, $"-- Error while trying to bind a socket to listen at {localaddr}:{port}");
                 return null;
             }

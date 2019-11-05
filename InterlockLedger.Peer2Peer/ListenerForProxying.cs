@@ -35,6 +35,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -117,8 +118,11 @@ namespace InterlockLedger.Peer2Peer
 
         protected override Socket BuildSocket() => _socket;
 
+        protected override void DisposeManagedResources() => _socket.Dispose();
+
         private readonly ConcurrentDictionary<string, ChannelPairing> _channelMap;
 
+        [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "Disposed at DisposeManagedResources")]
         private readonly Socket _socket;
 
         private static CancellationTokenSource CreateKindOfLinkedSource(CancellationTokenSource source) {

@@ -100,10 +100,10 @@ namespace Demo.InterlockLedger.Peer2Peer
             } while (!_stop);
         }
 
-        private byte[] FormatResponse(IEnumerable<byte> buffer, bool isLast)
+        private static byte[] FormatResponse(IEnumerable<byte> buffer, bool isLast)
             => ToMessageBytes(buffer.ToArray(), isLast);
 
-        private byte[] FormatTextResponse(string text, bool isLast) => FormatResponse(AsUTF8Bytes(text), isLast);
+        private static byte[] FormatTextResponse(string text, bool isLast) => FormatResponse(AsUTF8Bytes(text), isLast);
 
         private async Task KeyedSend(ulong channel, string key) {
             int i = 0;

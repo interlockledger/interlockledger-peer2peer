@@ -39,30 +39,27 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class NetSocket : ISocket
+    public class NetSocket : AbstractDisposable, ISocket
     {
         public NetSocket(Socket socket) {
-            _disposer = new Disposer();
             _socket = socket ?? throw new ArgumentNullException(nameof(socket));
             RemoteEndPoint = _socket.RemoteEndPoint;
         }
 
-        public bool Connected => _disposer.Do(() => _socket.Connected);
         public EndPoint RemoteEndPoint { get; }
-        public int Available => _disposer.Do(() => _socket.Available);
-        public bool Disposed => _disposer.Disposed;
-
-        public void Dispose() => _disposer.Dispose(() => {
-            _socket.Shutdown(SocketShutdown.Both);
-            _socket.Dispose();
-        });
+        public int Available => Do(() => _socket.Available);
+        public bool Connected => Do(() => _socket.Connected);
 
         public Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token)
-            => _disposer.DoAsync(async () => token.IsCancellationRequested ? 0 : await _socket.ReceiveAsync(memory, socketFlags));
+            => DoAsync(async () => token.IsCancellationRequested ? 0 : await _socket.ReceiveAsync(memory, socketFlags));
 
-        public Task SendAsync(IList<ArraySegment<byte>> buffers) => _disposer.DoAsync(() => _socket.SendAsync(buffers));
+        public Task SendAsync(IList<ArraySegment<byte>> buffers) => DoAsync(() => _socket.SendAsync(buffers));
 
-        private readonly Disposer _disposer;
+        protected override void DisposeManagedResources() {
+            _socket.Shutdown(SocketShutdown.Both);
+            _socket.Dispose();
+        }
+
         private readonly Socket _socket;
     }
 }

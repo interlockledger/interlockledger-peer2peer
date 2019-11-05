@@ -1,4 +1,4 @@
-﻿/******************************************************************************************************************************
+/******************************************************************************************************************************
 
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
@@ -34,7 +34,7 @@ using System;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class FakeConfig : INetworkConfig
+    public class FakeConfig : AbstractDisposable, INetworkConfig
     {
         public FakeConfig(ulong messageTag, string networkName, string networkProtocolName, int listeningBufferSize) {
             MessageTag = messageTag;
@@ -48,6 +48,6 @@ namespace InterlockLedger.Peer2Peer
         public string NetworkName { get; }
         public string NetworkProtocolName { get; }
 
-        public void Dispose() { }
+        protected override void DisposeManagedResources() { }
     }
 }

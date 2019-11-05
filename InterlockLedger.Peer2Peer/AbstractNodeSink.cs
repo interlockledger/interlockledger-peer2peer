@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
@@ -39,6 +40,7 @@ namespace InterlockLedger.Peer2Peer
     public abstract class AbstractNodeSink : INodeSink
     {
         public int DefaultTimeoutInMilliseconds { get; protected set; }
+        public bool Disposed { get; set; } = false;
         public string HostAtAddress { get; protected set; }
         public ushort HostAtPortNumber { get; protected set; }
         public string Id => NodeId;
@@ -52,12 +54,34 @@ namespace InterlockLedger.Peer2Peer
         public ushort? PublishAtPortNumber { get; protected set; }
         public abstract IEnumerable<string> SupportedNetworkProtocolFeatures { get; }
 
-        public void Dispose() { }
+        public void Dispose() {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
 
         public abstract void HostedAt(string address, ushort port);
 
         public abstract void PublishedAt(string address, ushort port);
 
         public abstract Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel);
+
+        protected abstract void DisposeManagedResources();
+
+        protected abstract void DisposeUnmanagedResources();
+
+        ~AbstractNodeSink() {
+            Dispose(false);
+        }
+
+        [SuppressMessage("Design", "CA1063:Implement IDisposable Correctly", Justification = "Implemented another way")]
+        private void Dispose(bool disposing) {
+            if (!Disposed) {
+                if (disposing) {
+                    DisposeManagedResources();
+                }
+                DisposeUnmanagedResources();
+                Disposed = true;
+            }
+        }
     }
 }

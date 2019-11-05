@@ -37,6 +37,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -86,6 +87,8 @@ namespace Demo.InterlockLedger.Peer2Peer
         protected static readonly byte[] _encodedMessageTag = _messageTagCode.ILIntEncode();
         protected static readonly IEnumerable<byte> _haveMoreMarker = new byte[] { 1 };
         protected static readonly IEnumerable<byte> _isLastMarker = new byte[] { 0 };
+
+        [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "Disposed at DisposeManagedResources")]
         protected readonly CancellationTokenSource _source;
 
         protected static NetworkMessageSlice ToMessage(IEnumerable<byte> bytes, bool isLast)
@@ -96,6 +99,10 @@ namespace Demo.InterlockLedger.Peer2Peer
             var messagebytes = _encodedMessageTag.Concat(((ulong)prefixedBytes.Count()).ILIntEncode()).Concat(prefixedBytes).ToArray();
             return messagebytes;
         }
+
+        protected override void DisposeManagedResources() => _source.Dispose();
+
+        protected override void DisposeUnmanagedResources() { }
 
         protected abstract void Run(IPeerServices peerServices);
 

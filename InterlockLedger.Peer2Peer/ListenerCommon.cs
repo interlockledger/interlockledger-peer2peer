@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
@@ -59,15 +60,6 @@ namespace InterlockLedger.Peer2Peer
         public override void Stop() {
             if (!_source.IsCancellationRequested)
                 _source.Cancel();
-            if (Alive) {
-                LogHeader("Stopped");
-                try {
-                    _listenSocket.Close(10);
-                } catch (ObjectDisposedException e) {
-                    _logger.LogTrace(e, "ObjectDisposedException");
-                }
-                _listenSocket = null;
-            }
         }
 
         protected ListenerCommon(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger)
@@ -79,9 +71,17 @@ namespace InterlockLedger.Peer2Peer
 
         protected abstract Socket BuildSocket();
 
+        protected override void DisposeManagedResources() {
+            base.DisposeManagedResources();
+            StopListening();
+        }
+
         protected void LogHeader(string verb) => _logger.LogInformation($"-- {verb} " + HeaderText);
 
+        private readonly List<ConnectionInitiatedByPeer> _connections = new List<ConnectionInitiatedByPeer>();
         private long _lastIdUsed = 0;
+
+        [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "It is being disposed")]
         private Socket _listenSocket;
 
         private string BuildId() {
@@ -92,25 +92,42 @@ namespace InterlockLedger.Peer2Peer
         private async Task Listen() {
             LogHeader("Started");
             _listenSocket = BuildSocket();
-            do {
-                try {
-                    while (!_source.IsCancellationRequested) {
-                        RunPeerClient(await AcceptSocket(_listenSocket));
+            try {
+                do {
+                    try {
+                        while (!_source.IsCancellationRequested) {
+                            _connections.Add(RunPeerClient(await AcceptSocket(_listenSocket)));
+                        }
+                    } catch (AggregateException e) when (e.InnerExceptions.Any(ex => ex is ObjectDisposedException)) {
+                        _logger.LogTrace(e, "ObjectDisposedException");
+                    } catch (ObjectDisposedException e) {
+                        _logger.LogTrace(e, "ObjectDisposedException");
+                    } catch (SocketException e) {
+                        _logger.LogTrace(e, $"-- Socket was killed");
+                        break;
+                    } catch (Exception e) {
+                        _logger.LogError(e, $"-- Error while trying to listen.");
                     }
-                } catch (AggregateException e) when (e.InnerExceptions.Any(ex => ex is ObjectDisposedException)) {
-                    _logger.LogTrace(e, "ObjectDisposedException");
-                } catch (ObjectDisposedException e) {
-                    _logger.LogTrace(e, "ObjectDisposedException");
-                } catch (SocketException e) {
-                    _logger.LogTrace(e, $"-- Socket was killed");
-                    break;
-                } catch (Exception e) {
-                    _logger.LogError(e, $"-- Error while trying to listen.");
-                }
-            } while (!_source.IsCancellationRequested);
+                } while (!_source.IsCancellationRequested);
+            } finally {
+                LogHeader("Stopped");
+                StopListening();
+            }
         }
 
-        private void RunPeerClient(ISocket socket)
-           => new ConnectionInitiatedByPeer(BuildId(), this, socket, this, _source, _logger);
+        private ConnectionInitiatedByPeer RunPeerClient(ISocket socket) => new ConnectionInitiatedByPeer(BuildId(), this, socket, this, _source, _logger);
+
+        private void StopListening() {
+            try {
+                _listenSocket?.Close(10);
+            } catch (ObjectDisposedException e) {
+                _logger.LogTrace(e, "ObjectDisposedException");
+            }
+            _listenSocket?.Dispose();
+            _listenSocket = null;
+            foreach (var conn in _connections)
+                conn?.Dispose();
+            _connections.Clear();
+        }
     }
 }

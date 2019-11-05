@@ -36,19 +36,15 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-    // TODO1: to be replaced by some implementation that deals with NAT/UPnP/Whatever to really give the node a public address and port
-#pragma warning disable S3881 // "IDisposable" should be implemented correctly
 
-    public class DummyExternalAccessDiscoverer : IExternalAccessDiscoverer
+    // TODO1: to be replaced by some implementation that deals with NAT/UPnP/Whatever to really give the node a public address and port
+    public class DummyExternalAccessDiscoverer : AbstractExternalAccessDiscoverer
     {
         public DummyExternalAccessDiscoverer(SocketFactory socketFactory)
             => _socketFactory = socketFactory ?? throw new ArgumentNullException(nameof(socketFactory));
 
-        public Task<ExternalAccess> DetermineExternalAccessAsync(INodeSink nodeSink)
-            => DetermineExternalAccessAsync(nodeSink.HostAtAddress, nodeSink.HostAtPortNumber, nodeSink.PublishAtAddress, nodeSink.PublishAtPortNumber);
-
-        public Task<ExternalAccess> DetermineExternalAccessAsync(string hostAtAddress, ushort hostAtPortNumber, string publishAtAddress, ushort? publishAtPortNumber) {
-            if (_disposedValue)
+        public override Task<ExternalAccess> DetermineExternalAccessAsync(string hostAtAddress, ushort hostAtPortNumber, string publishAtAddress, ushort? publishAtPortNumber) {
+            if (Disposed)
                 return Task.FromResult<ExternalAccess>(null);
             string hostingAddress = hostAtAddress ?? "localhost";
             var listener = _socketFactory.GetSocket(hostingAddress, hostAtPortNumber);
@@ -58,19 +54,8 @@ namespace InterlockLedger.Peer2Peer
             return Task.FromResult(new ExternalAccess(listener, hostingAddress, port, publishAtAddress, publishAtPortNumber));
         }
 
-        public void Dispose() => Dispose(true);
-
-        protected virtual void Dispose(bool disposing) {
-            if (!_disposedValue) {
-                // really nothing to do in this dumb implementation
-                if (disposing) {
-                    // dispose managed state
-                }
-                _disposedValue = true;
-            }
-        }
+        protected override void DisposeManagedResources() => _socketFactory.Dispose();
 
         private readonly SocketFactory _socketFactory;
-        private bool _disposedValue = false;
     }
 }

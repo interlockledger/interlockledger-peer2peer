@@ -76,7 +76,7 @@ namespace InterlockLedger.Peer2Peer
 
         IDisposable ILogger.BeginScope<TState>(TState state) => this;
 
-        void IDisposable.Dispose() {
+        public void Dispose() {
             // DO NOTHING
         }
 

@@ -169,6 +169,8 @@ namespace InterlockLedger.Peer2Peer
             public bool Send(IEnumerable<byte> message) => true;
 
             public Task<Success> SinkAsync(IEnumerable<byte> message) => Task.FromResult(Success.Next);
+
+            public void Stop() { }
         }
     }
 }

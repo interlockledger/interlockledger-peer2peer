@@ -125,7 +125,7 @@ namespace InterlockLedger.Peer2Peer
             }
             _listenSocket?.Dispose();
             _listenSocket = null;
-            foreach (var conn in _connections)
+            foreach (var conn in _connections.ToArray())
                 conn?.Dispose();
             _connections.Clear();
         }

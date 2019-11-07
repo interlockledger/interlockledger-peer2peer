@@ -39,6 +39,8 @@ namespace InterlockLedger.Peer2Peer
 {
     public abstract class AbstractDisposable : IDisposable
     {
+        public const string DisposedJustification = "Disposed by overriding AbstractDisposable.DisposeManagedResources";
+
         public bool Disposed => _disposed != 0;
 
         public void Dispose() {

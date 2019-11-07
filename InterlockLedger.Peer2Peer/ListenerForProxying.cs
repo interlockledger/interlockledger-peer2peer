@@ -84,28 +84,30 @@ namespace InterlockLedger.Peer2Peer
         public void LogSinked(IEnumerable<byte> message, IActiveChannel channel, bool newPair, ulong proxiedChannelId, bool sent)
             => _logger.LogDebug("Sinked Message '{0}' from Channel {1} using {2} pair to Proxied Channel {3}. Sent: {4}", message.ToUrlSafeBase64(), channel, newPair ? "new" : "existing", proxiedChannelId, sent);
 
-        public override Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
-            try {
-                if (_channelMap.TryGetValue(channel.Id, out var pair)) {
-                    var sent = pair.Send(message);
-                    Sinked(message, channel, false, pair.ProxiedChannelId, sent);
-                } else {
-                    var newPair = new ChannelPairing(channel, Connection, this);
-                    _channelMap.TryAdd(channel.Id, newPair);
-                    var sent = newPair.Send(message);
-                    Sinked(message, channel, true, newPair.ProxiedChannelId, sent);
+        public override Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel)
+            => DoAsync(() => {
+                try {
+                    if (_channelMap.TryGetValue(channel.Id, out var pair)) {
+                        var sent = pair.Send(message);
+                        Sinked(message, channel, false, pair.ProxiedChannelId, sent);
+                    } else {
+                        var newPair = new ChannelPairing(channel, Connection, this);
+                        _channelMap.TryAdd(channel.Id, newPair);
+                        var sent = newPair.Send(message);
+                        Sinked(message, channel, true, newPair.ProxiedChannelId, sent);
+                    }
+                } catch (Exception e) {
+                    Errored(message, channel, e);
                 }
-            } catch (Exception e) {
-                Errored(message, channel, e);
-            }
-            return Task.FromResult(Success.Next);
-        }
+                return Task.FromResult(Success.Next);
+            }, Success.Exit);
 
         public override void Stop() {
             try {
-                base.Stop();
                 Connection.Stop();
-            } catch { } finally {
+                base.Stop();
+            } catch {
+            } finally {
                 _channelMap.Clear();
             }
         }
@@ -118,11 +120,15 @@ namespace InterlockLedger.Peer2Peer
 
         protected override Socket BuildSocket() => _socket;
 
-        protected override void DisposeManagedResources() => _socket.Dispose();
+        protected override void DisposeManagedResources() {
+            _channelMap.Clear();
+            _socket.Dispose();
+            base.DisposeManagedResources();
+        }
 
         private readonly ConcurrentDictionary<string, ChannelPairing> _channelMap;
 
-        [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "Disposed at DisposeManagedResources")]
+        [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = DisposedJustification)]
         private readonly Socket _socket;
 
         private static CancellationTokenSource CreateKindOfLinkedSource(CancellationTokenSource source) {

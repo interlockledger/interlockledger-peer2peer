@@ -130,6 +130,7 @@ namespace InterlockLedger.Peer2Peer
 
         [TestMethod]
         public void TestListenerForProxyingWithSomeRealSocketsWithBrokenConnections() {
+            //TODO use event to reinstate proxying
             var fakeLogger = new FakeLogging();
             var fakeDiscoverer = new FakeDiscoverer();
             var source = new CancellationTokenSource();

@@ -60,7 +60,7 @@ namespace InterlockLedger.Peer2Peer
 
         protected async Task<T> DoAsync<T>(Func<Task<T>> function, T @default = default) => !Disposed ? await function() : @default;
 
-        protected async Task DoAsync<T>(Func<Task> function) {
+        protected async Task DoAsync(Func<Task> function) {
             if (!Disposed)
                 await function();
         }

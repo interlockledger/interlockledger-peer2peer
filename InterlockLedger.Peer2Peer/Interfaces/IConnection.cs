@@ -37,6 +37,8 @@ namespace InterlockLedger.Peer2Peer
     {
         bool Connected { get; }
 
+        event System.Action<INetworkIdentity> ConnectionStopped;
+
         IActiveChannel AllocateChannel(IChannelSink channelSink);
 
         IActiveChannel GetChannel(ulong channel);

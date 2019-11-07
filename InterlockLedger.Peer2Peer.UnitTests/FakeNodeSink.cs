@@ -75,7 +75,7 @@ namespace InterlockLedger.Peer2Peer
             return Success.Exit;
         }
 
-        protected override void DisposeManagedResources() => throw new System.NotImplementedException();
+        protected override void DisposeManagedResources() { }
 
         private readonly byte[] _response;
     }

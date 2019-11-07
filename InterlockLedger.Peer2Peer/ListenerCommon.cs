@@ -72,8 +72,19 @@ namespace InterlockLedger.Peer2Peer
         protected abstract Socket BuildSocket();
 
         protected override void DisposeManagedResources() {
+            if (_listenSocket != null) {
+                try {
+                    _listenSocket.Close(10);
+                } catch (ObjectDisposedException e) {
+                    _logger.LogTrace(e, "ObjectDisposedException");
+                }
+                _listenSocket.Dispose();
+                _listenSocket = null;
+            }
+            foreach (var conn in _connections.ToArray())
+                conn?.Dispose();
+            _connections.Clear();
             base.DisposeManagedResources();
-            StopListening();
         }
 
         protected void LogHeader(string verb) => _logger.LogInformation($"-- {verb} " + HeaderText);
@@ -81,13 +92,10 @@ namespace InterlockLedger.Peer2Peer
         private readonly List<ConnectionInitiatedByPeer> _connections = new List<ConnectionInitiatedByPeer>();
         private long _lastIdUsed = 0;
 
-        [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "It is being disposed")]
+        [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = DisposedJustification)]
         private Socket _listenSocket;
 
-        private string BuildId() {
-            var id = (ulong)Interlocked.Increment(ref _lastIdUsed);
-            return $"{IdPrefix}Client#{id}";
-        }
+        private string BuildId() => $"{IdPrefix}Client#{(ulong)Interlocked.Increment(ref _lastIdUsed)}";
 
         private async Task Listen() {
             LogHeader("Started");
@@ -111,23 +119,10 @@ namespace InterlockLedger.Peer2Peer
                 } while (!_source.IsCancellationRequested);
             } finally {
                 LogHeader("Stopped");
-                StopListening();
+                Dispose();
             }
         }
 
         private ConnectionInitiatedByPeer RunPeerClient(ISocket socket) => new ConnectionInitiatedByPeer(BuildId(), this, socket, this, _source, _logger);
-
-        private void StopListening() {
-            try {
-                _listenSocket?.Close(10);
-            } catch (ObjectDisposedException e) {
-                _logger.LogTrace(e, "ObjectDisposedException");
-            }
-            _listenSocket?.Dispose();
-            _listenSocket = null;
-            foreach (var conn in _connections.ToArray())
-                conn?.Dispose();
-            _connections.Clear();
-        }
     }
 }

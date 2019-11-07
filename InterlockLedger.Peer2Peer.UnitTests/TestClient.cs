@@ -32,7 +32,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
@@ -55,6 +54,8 @@ namespace InterlockLedger.Peer2Peer
         public bool NothingToSend => Pipeline?.NothingToSend ?? false;
         public bool Stopped => Pipeline?.Stopped ?? false;
 
+        public event Action<INetworkIdentity> ConnectionStopped;
+
         public IActiveChannel AllocateChannel(IChannelSink channelSink) => this;
 
         public IActiveChannel GetChannel(ulong channel) {
@@ -68,6 +69,7 @@ namespace InterlockLedger.Peer2Peer
             return true;
         }
 
+        internal void OnPipelineStopped() => ConnectionStopped?.Invoke(this);
         public void SetDefaultSink(IChannelSink sink) => throw new NotImplementedException();
 
         public Task<Success> SinkAsync(IEnumerable<byte> message) => throw new NotImplementedException();

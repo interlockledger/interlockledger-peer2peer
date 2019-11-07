@@ -45,6 +45,9 @@ namespace InterlockLedger.Peer2Peer
         public const string ExceptionCantProxyNoSocketMessage = "Can't proxy a connection without an active underliying socket";
         public const string ExceptionCantProxyWithSinkMessage = "Can't proxy a connection already with a default sink";
         public const string ExceptionChannelNotFoundFormat = "Channel {0} not found!!!";
+
+        public event Action<INetworkIdentity> ConnectionStopped;
+
         public long LastChannelUsed => _lastChannelUsed;
         public int NumberOfActiveChannels => _channelSinks.Count;
         public bool Connected => Pipeline.Connected;
@@ -60,8 +63,9 @@ namespace InterlockLedger.Peer2Peer
             throw new ArgumentOutOfRangeException(nameof(channel), string.Format(ExceptionChannelNotFoundFormat, channel));
         }
 
-        public virtual void PipelineStopped() {
+        public virtual void OnPipelineStopped() {
             _logger.LogTrace($"Stopping pipeline on client {Id}");
+            ConnectionStopped?.Invoke(this);
             Dispose();
         }
 
@@ -72,25 +76,9 @@ namespace InterlockLedger.Peer2Peer
 
         public override void Stop() => _pipeline?.Stop();
 
-        internal bool Send(NetworkMessageSlice slice) {
-            if (Abandon)
-                return false;
-            try {
-                if (!slice.IsEmpty) {
-                    Pipeline.Send(slice);
-                }
-                return true;
-            } catch (PeerException pe) {
-                LogError(pe.Message);
-            } catch (SocketException se) {
-                LogError($"Client could not communicate with address {NetworkAddress}:{NetworkPort}.{Environment.NewLine}{se.Message}");
-            } catch (TaskCanceledException) {
-                // just ignore
-            } catch (Exception e) {
-                LogError($"Unexpected exception : {e}");
-            }
-            return false;
-        }
+        internal bool Send(NetworkMessageSlice slice) => Do(() => InnerSend(slice));
+
+        internal Task<Success> SinkAsync(NetworkMessageSlice slice) => DoAsync(() => InnerSinkAsync(slice));
 
         protected readonly ConcurrentDictionary<ulong, IActiveChannel> _channelSinks = new ConcurrentDictionary<ulong, IActiveChannel>();
         protected IChannelSink _sink;
@@ -100,6 +88,7 @@ namespace InterlockLedger.Peer2Peer
             : base(id, config, source, logger) => _pipeline = null;
 
         protected string NetworkAddress { get; set; }
+
         protected int NetworkPort { get; set; }
 
         protected abstract ISocket BuildSocket();
@@ -107,7 +96,7 @@ namespace InterlockLedger.Peer2Peer
         protected override void DisposeManagedResources() {
             base.DisposeManagedResources();
             StopAllChannelSinks();
-            _socket.Dispose();
+            _socket?.Dispose();
         }
 
         protected void LogError(string message) {
@@ -137,11 +126,27 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        private Pipeline RunPipeline(ISocket socket)
-            => new Pipeline(socket, _source, MessageTag, ListeningBufferSize, SinkAsync, PipelineStopped, _logger)
-                .Start($"Pipeline {Id} to {socket.RemoteEndPoint}");
+        private bool InnerSend(NetworkMessageSlice slice) {
+            if (Abandon)
+                return false;
+            try {
+                if (!slice.IsEmpty) {
+                    Pipeline.Send(slice);
+                }
+                return true;
+            } catch (PeerException pe) {
+                LogError(pe.Message);
+            } catch (SocketException se) {
+                LogError($"Client could not communicate with address {NetworkAddress}:{NetworkPort}.{Environment.NewLine}{se.Message}");
+            } catch (TaskCanceledException) {
+                // just ignore
+            } catch (Exception e) {
+                LogError($"Unexpected exception : {e}");
+            }
+            return false;
+        }
 
-        private async Task<Success> SinkAsync(NetworkMessageSlice slice) {
+        private async Task<Success> InnerSinkAsync(NetworkMessageSlice slice) {
             if (_channelSinks.TryGetValue(slice.Channel, out var channelSink)) {
                 var result = await channelSink.SinkAsync(slice.AllBytes);
                 if (result == Success.Exit) {
@@ -156,6 +161,10 @@ namespace InterlockLedger.Peer2Peer
             }
             return Success.Next;
         }
+
+        private Pipeline RunPipeline(ISocket socket)
+            => new Pipeline(socket, _source, MessageTag, ListeningBufferSize, SinkAsync, OnPipelineStopped, _logger)
+                .Start($"Pipeline {Id} to {socket.RemoteEndPoint}");
 
         private void StopAllChannelSinks() {
             foreach (var cs in _channelSinks.Values)

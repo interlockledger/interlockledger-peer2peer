@@ -43,6 +43,7 @@ namespace InterlockLedger.Peer2Peer
         [TestMethod]
         public void TestPipelineMinimally() {
             bool stopped = false;
+            string stoppedId = null;
             byte[] bytesProcessed = null;
             ulong channelProcessed = 0;
             var fakeLogger = new FakeLogging();
@@ -60,7 +61,9 @@ namespace InterlockLedger.Peer2Peer
                     }
                     void stopProcessor() {
                         stopped = true;
+                        fakeClient.OnPipelineStopped();
                     }
+                    fakeClient.ConnectionStopped += (i) => { stoppedId = i.Id; };
                     var pipeline = new Pipeline(fakeSocket, source, 13, 4096, processor, stopProcessor, fakeLogger);
                     Assert.IsNotNull(pipeline);
                     fakeClient.Pipeline = pipeline;
@@ -76,11 +79,15 @@ namespace InterlockLedger.Peer2Peer
                     Assert.AreEqual(2ul, channelProcessed);
                     AssertHasSameItems<byte>(nameof(bytesProcessed), bytesProcessed, 128);
                     Assert.IsTrue(stopped, "StopProcessor should have been called");
+                    Assert.IsNotNull(stoppedId);
+                    Assert.AreEqual(fakeClient.Id, stoppedId);
                     Assert.IsNotNull(fakeSocket.BytesSent);
                     AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 13, 1, 128, 2);
                     Assert.IsTrue(fakeSocket.Disposed, "Socket should have been disposed");
                 }
             }
         }
+
+        private void FakeClient_ConnectionStopped(INetworkIdentity obj) => throw new System.NotImplementedException();
     }
 }

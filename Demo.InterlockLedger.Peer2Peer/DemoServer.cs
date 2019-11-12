@@ -58,7 +58,7 @@ namespace Demo.InterlockLedger.Peer2Peer
             _peerServices = peerServices ?? throw new ArgumentNullException(nameof(peerServices));
             using var listener = peerServices.CreateListenerFor(this);
             try {
-                listener.Start();
+                _ = listener.Start();
                 Dequeue().RunOnThread("DemoServer-DelayedResponses");
                 DequeueKey().RunOnThread("Keys");
                 while (listener.Alive) {

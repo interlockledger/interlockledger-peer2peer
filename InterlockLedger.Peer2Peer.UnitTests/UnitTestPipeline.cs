@@ -87,7 +87,5 @@ namespace InterlockLedger.Peer2Peer
                 }
             }
         }
-
-        private void FakeClient_ConnectionStopped(INetworkIdentity obj) => throw new System.NotImplementedException();
     }
 }

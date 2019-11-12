@@ -40,7 +40,7 @@ namespace InterlockLedger.Peer2Peer
     public sealed class PeerServices : IPeerServices, IKnownNodesServices, IProxyingServices
     {
         public PeerServices(ulong messageTag, string networkName, string networkProtocolName, int listeningBufferSize, ILoggerFactory loggerFactory, IExternalAccessDiscoverer discoverer, SocketFactory socketFactory) {
-            _disposer = new Disposer();
+            _disposer = new Disposer(); // TODO: change to use AbstractDisposable
             MessageTag = messageTag;
             NetworkName = networkName ?? throw new ArgumentNullException(nameof(networkName));
             NetworkProtocolName = networkProtocolName ?? throw new ArgumentNullException(nameof(networkProtocolName));

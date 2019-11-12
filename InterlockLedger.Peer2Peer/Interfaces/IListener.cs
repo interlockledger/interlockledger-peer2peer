@@ -30,6 +30,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using System.Threading.Tasks;
+
 namespace InterlockLedger.Peer2Peer
 {
     public interface IListener : INetworkIdentity
@@ -38,7 +40,9 @@ namespace InterlockLedger.Peer2Peer
         string ExternalAddress { get; }
         ushort ExternalPortNumber { get; }
 
-        void Start();
+        IListener Start();
+
+        Task<IListener> StartAsync();
 
         void Stop();
     }

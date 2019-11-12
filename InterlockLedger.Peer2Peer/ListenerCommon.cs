@@ -51,12 +51,16 @@ namespace InterlockLedger.Peer2Peer
 
         public abstract Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel);
 
-        public IListener Start() => StartAsync().Result;
+        public IListener Start() {
+            StartListeningAsync().Wait();
+            return this;
+        }
 
-        public Task<IListener> StartAsync() {
+        protected async Task StartListeningAsync() {
             if (!_source.IsCancellationRequested)
                 Listen().RunOnThread(GetType().FullName);
-            return Task.FromResult<IListener>(this);
+            while (!Alive)
+                await Task.Yield();
         }
 
         public override void Stop() {

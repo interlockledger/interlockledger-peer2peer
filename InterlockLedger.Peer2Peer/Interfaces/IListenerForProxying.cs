@@ -32,15 +32,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
     public interface IListenerForProxying : IListener
     {
         IConnection Connection { get; }
+
         Action<IEnumerable<byte>, IActiveChannel, Exception> Errored { get; set; }
+
         Action<IEnumerable<byte>, IActiveChannel, ulong, bool> Responded { get; set; }
+
         string Route { get; }
+
         Action<IEnumerable<byte>, IActiveChannel, bool, ulong, bool> Sinked { get; set; }
+
+        Task<IListenerForProxying> StartAsync();
     }
 }

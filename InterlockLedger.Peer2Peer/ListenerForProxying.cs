@@ -102,6 +102,11 @@ namespace InterlockLedger.Peer2Peer
                 return Task.FromResult(Success.Next);
             }, Success.Exit);
 
+        public async Task<IListenerForProxying> StartAsync() {
+            await StartListeningAsync();
+            return this;
+        }
+
         public override void Stop() {
             try {
                 Connection.Stop();

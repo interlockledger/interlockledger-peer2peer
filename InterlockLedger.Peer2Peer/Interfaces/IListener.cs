@@ -42,8 +42,6 @@ namespace InterlockLedger.Peer2Peer
 
         IListener Start();
 
-        Task<IListener> StartAsync();
-
         void Stop();
     }
 }

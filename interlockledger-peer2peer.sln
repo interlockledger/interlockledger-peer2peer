@@ -15,7 +15,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "General", "General", "{5485
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
 		copyright.template = copyright.template
+		.github\workflows\dotnetcore.yml = .github\workflows\dotnetcore.yml
 		LICENSE = LICENSE
+		.github\workflows\pushnuget.yml = .github\workflows\pushnuget.yml
 		README.md = README.md
 	EndProjectSection
 EndProject

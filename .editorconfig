@@ -1,15 +1,23 @@
+[*.xml]
+indent_style = space
+indent_size = 2
+
 [*]
 charset = utf-8
 end_of_line = lf
 indent_size = 4
 indent_style = space
 trim_trailing_whitespace = true
+
+
+[*.cs]
 csharp_indent_switch_labels=false
 csharp_new_line_before_catch=false
 csharp_new_line_before_else=false
 csharp_new_line_before_finally=false
 csharp_new_line_before_open_brace=types
 csharp_prefer_simple_default_expression=true:silent
+csharp_preferred_modifier_order = public,private,protected,internal,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,volatile,async:suggestion
 csharp_space_between_method_call_parameter_list_parentheses = false
 csharp_style_expression_bodied_accessors=true:suggestion
 csharp_style_expression_bodied_constructors=true:suggestion
@@ -17,9 +25,11 @@ csharp_style_expression_bodied_indexers=true:suggestion
 csharp_style_expression_bodied_methods=true:suggestion
 csharp_style_expression_bodied_operators=true:suggestion
 csharp_style_expression_bodied_properties=true:suggestion
-csharp_style_inlined_variable_declaration=true:silent
+csharp_style_inlined_variable_declaration=true:suggestion
 csharp_style_pattern_matching_over_as_with_null_check=true:warning
-csharp_style_var_when_type_is_apparent=true:suggestion
+csharp_style_var_elsewhere = true:suggestion
+csharp_style_var_for_built_in_types = false:none
+csharp_style_var_when_type_is_apparent = true:suggestion
 dotnet_separate_import_directive_groups=false
 dotnet_sort_system_directives_first=true
 dotnet_style_coalesce_expression=true:suggestion
@@ -33,13 +43,49 @@ dotnet_style_prefer_conditional_expression_over_return=true
 dotnet_style_prefer_is_null_check_over_reference_equality_method=true:suggestion
 dotnet_style_readonly_field=true:warning
 dotnet_style_require_accessibility_modifiers=always:silent
+dotnet_style_predefined_type_for_member_access = true:error
 
-[*.xml]
-indent_style = space
-[*.cs]
+# Style Definitions
+dotnet_naming_style.underscored_style.capitalization             = camel_case
+dotnet_naming_style.underscored_style.required_prefix            = _
 
-# CA1819: Properties should not return arrays
-dotnet_diagnostic.CA1819.severity = none
+# Use CamelCase for private fields
+dotnet_naming_rule.private_fields_should_be_camel_case.severity = suggestion
+dotnet_naming_rule.private_fields_should_be_camel_case.symbols  = private_fields
+dotnet_naming_rule.private_fields_should_be_camel_case.style    = underscored_style
+dotnet_naming_symbols.private_fields.applicable_kinds            = field,property
+dotnet_naming_symbols.private_fields.applicable_accessibilities  = private
 
+dotnet_code_quality_unused_parameters = non_public:suggestion
+
+# CA1028: Enum Storage should be Int32
 # CA1031: Do not catch general exception types
-dotnet_diagnostic.CA1031.severity = silent
+# CA1032: Implement standard exception constructors
+# CA1034: Do not nest type
+# CA1051: Do not declare visible instance fields
+# CA1054: URI strings
+# CA1063: Implement IDisposable Correctly
+# CA1303: Do not pass literals as localized parameters
+# CA1308: no ToLowercase
+# CA1707: Identifiers should not contain underscores
+# CA1815: Override equals and operator equals on value types
+# CA1819: Properties should not return arrays
+# CA2007: Consider calling ConfigureAwait on the awaited task
+# CA2225: op_implicit
+# CA2227: Enum Storage should be Int32
+dotnet_diagnostic.CA1028.severity = none
+dotnet_diagnostic.CA1031.severity = none
+dotnet_diagnostic.CA1032.severity = none
+dotnet_diagnostic.CA1034.severity = none
+dotnet_diagnostic.CA1051.severity = none
+dotnet_diagnostic.CA1054.severity = none
+dotnet_diagnostic.CA1063.severity = none
+dotnet_diagnostic.CA1303.severity = none
+dotnet_diagnostic.CA1308.severity = none
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1710.severity = none
+dotnet_diagnostic.CA1815.severity = none
+dotnet_diagnostic.CA1819.severity = none
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA2225.severity = none
+dotnet_diagnostic.CA2227.severity = none

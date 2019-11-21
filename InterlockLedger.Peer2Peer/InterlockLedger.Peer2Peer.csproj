@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
-        <Version>0.26.4</Version>
+        <Version>0.27.0</Version>
         <Authors>Rafael Teixeira</Authors>
         <Company>InterlockLedger Network</Company>
         <Product>InterlockLedger</Product>
@@ -10,16 +10,16 @@
         <Copyright>Copyright (c) 2017-2019 InterlockLedger Network</Copyright>
         <PackageLicenseUrl></PackageLicenseUrl>
         <PackageProjectUrl>https://interlockledger.network/</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/interlockledger/peer2peer.git</RepositoryUrl>
+        <RepositoryUrl>https://github.com/interlockledger/interlockledger-peer2peer.git</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageReleaseNotes>Some method signature changes in public interfaces</PackageReleaseNotes>
+        <PackageReleaseNotes>Use new repackaged InterlockLedger.Tags.ILInt</PackageReleaseNotes>
         <LangVersion>latest</LangVersion>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="InterlockLedger.ILInt" Version="1.1.1" />
+        <PackageReference Include="InterlockLedger.Tags.ILInt" Version="1.1.3" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.2.0" />
         <PackageReference Include="System.IO.Pipelines" Version="4.5.3" />
     </ItemGroup>

@@ -97,7 +97,7 @@ namespace InterlockLedger.Peer2Peer
                 }
             }
 
-            private readonly static Task _completed = Task.FromResult(true);
+            private static readonly Task _completed = Task.FromResult(true);
             private readonly Queue<TaskCompletionSource<bool>> _waiters = new Queue<TaskCompletionSource<bool>>();
             private int _currentCount;
         }

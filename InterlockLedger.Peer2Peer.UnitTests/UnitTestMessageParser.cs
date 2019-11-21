@@ -45,7 +45,7 @@ namespace InterlockLedger.Peer2Peer
     {
         [TestMethod]
         public void Creation() {
-            Task<Success> messageProcessor(NetworkMessageSlice channelBytes) {
+            static Task<Success> messageProcessor(NetworkMessageSlice channelBytes) {
                 return Task.FromResult(Success.Exit);
             }
 

@@ -47,45 +47,44 @@ namespace InterlockLedger.Peer2Peer
             byte[] bytesProcessed = null;
             ulong channelProcessed = 0;
             var fakeLogger = new FakeLogging();
-            using (var fakeDiscoverer = new FakeDiscoverer()) {
-                var source = new CancellationTokenSource();
-                var fakeSocket = new TestSocket(13, 1, 128, 2);
-                using (var fakeClient = new TestClient("FakeTestClient")) {
-                    async Task<Success> processor(NetworkMessageSlice channelBytes) {
-                        bytesProcessed = channelBytes.AllBytes;
-                        channelProcessed = channelBytes.Channel;
-                        var activeChannel = fakeClient.GetChannel(channelProcessed);
-                        activeChannel.Send(new byte[] { 13, 1, 128 });
-                        await Task.Delay(1);
-                        return Success.Exit;
-                    }
-                    void stopProcessor() {
-                        stopped = true;
-                        fakeClient.OnPipelineStopped();
-                    }
-                    fakeClient.ConnectionStopped += (i) => { stoppedId = i.Id; };
-                    var pipeline = new Pipeline(fakeSocket, source, 13, 4096, processor, stopProcessor, fakeLogger);
-                    Assert.IsNotNull(pipeline);
-                    fakeClient.Pipeline = pipeline;
-                    Assert.IsNull(fakeLogger.LastLog);
-                    pipeline.Start("UnitTestPipeline");
-                    while (!(pipeline.NothingToSend && fakeSocket.Available == 0))
-                        Thread.Sleep(1);
-                    pipeline.Stop();
-                    while (!pipeline.Stopped)
-                        Thread.Sleep(1);
-                    Assert.IsNotNull(bytesProcessed);
-                    Assert.IsNotNull(fakeLogger.LastLog);
-                    Assert.AreEqual(2ul, channelProcessed);
-                    AssertHasSameItems<byte>(nameof(bytesProcessed), bytesProcessed, 128);
-                    Assert.IsTrue(stopped, "StopProcessor should have been called");
-                    Assert.IsNotNull(stoppedId);
-                    Assert.AreEqual(fakeClient.Id, stoppedId);
-                    Assert.IsNotNull(fakeSocket.BytesSent);
-                    AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 13, 1, 128, 2);
-                    Assert.IsTrue(fakeSocket.Disposed, "Socket should have been disposed");
-                }
+            using var fakeDiscoverer = new FakeDiscoverer();
+            var source = new CancellationTokenSource();
+            var fakeSocket = new TestSocket(13, 1, 128, 2);
+            using var fakeClient = new TestClient("FakeTestClient");
+
+            async Task<Success> processor(NetworkMessageSlice channelBytes) {
+                bytesProcessed = channelBytes.AllBytes;
+                channelProcessed = channelBytes.Channel;
+                var activeChannel = fakeClient.GetChannel(channelProcessed);
+                activeChannel.Send(new byte[] { 13, 1, 128 });
+                await Task.Delay(1);
+                return Success.Exit;
             }
+            void stopProcessor() {
+                stopped = true;
+                fakeClient.OnPipelineStopped();
+            }
+            fakeClient.ConnectionStopped += (i) => { stoppedId = i.Id; };
+            var pipeline = new Pipeline(fakeSocket, source, 13, 4096, processor, stopProcessor, fakeLogger);
+            Assert.IsNotNull(pipeline);
+            fakeClient.Pipeline = pipeline;
+            Assert.IsNull(fakeLogger.LastLog);
+            pipeline.Start("UnitTestPipeline");
+            while (!(pipeline.NothingToSend && fakeSocket.Available == 0))
+                Thread.Sleep(1);
+            pipeline.Stop();
+            while (!pipeline.Stopped)
+                Thread.Sleep(1);
+            Assert.IsNotNull(bytesProcessed);
+            Assert.IsNotNull(fakeLogger.LastLog);
+            Assert.AreEqual(2ul, channelProcessed);
+            AssertHasSameItems<byte>(nameof(bytesProcessed), bytesProcessed, 128);
+            Assert.IsTrue(stopped, "StopProcessor should have been called");
+            Assert.IsNotNull(stoppedId);
+            Assert.AreEqual(fakeClient.Id, stoppedId);
+            Assert.IsNotNull(fakeSocket.BytesSent);
+            AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 13, 1, 128, 2);
+            Assert.IsTrue(fakeSocket.Disposed, "Socket should have been disposed");
         }
     }
 }

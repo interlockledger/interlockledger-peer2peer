@@ -127,9 +127,6 @@ namespace InterlockLedger.Peer2Peer
                     case State.SkipChannel:
                         AfterReadingILintDo(buffer, ref current, _channelReader, (_) => _state = State.Init);
                         break;
-
-                    default:
-                        break;
                     }
                 }
             return buffer.End;
@@ -168,7 +165,7 @@ namespace InterlockLedger.Peer2Peer
 
         private void Step_ProcessMessageFor(ulong channel) {
             try {
-                if (_segments.Any()) {
+                if (_segments.Count > 0) {
                     _logger.LogTrace($"Message body received {string.Join("|", _segments.Select(b => b.ToBase64()))}");
                     LastResult = _messageProcessor(new NetworkMessageSlice(channel, _segments)).Result;
                 }

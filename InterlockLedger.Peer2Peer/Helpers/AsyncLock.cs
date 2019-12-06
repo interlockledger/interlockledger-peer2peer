@@ -80,8 +80,7 @@ namespace InterlockLedger.Peer2Peer
                     else
                         _currentCount++;
                 }
-                if (toRelease != null)
-                    toRelease.SetResult(true);
+                toRelease?.SetResult(true);
             }
 
             public Task WaitAsync() {

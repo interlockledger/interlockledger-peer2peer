@@ -30,7 +30,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-
 namespace InterlockLedger.Peer2Peer
 {
     public interface IConnection : INetworkIdentity

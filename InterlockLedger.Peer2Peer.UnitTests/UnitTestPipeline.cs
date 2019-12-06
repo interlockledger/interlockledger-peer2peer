@@ -57,14 +57,14 @@ namespace InterlockLedger.Peer2Peer
                 channelProcessed = channelBytes.Channel;
                 var activeChannel = fakeClient.GetChannel(channelProcessed);
                 activeChannel.Send(new byte[] { 13, 1, 128 });
-                await Task.Delay(1);
+                await Task.Delay(1).ConfigureAwait(false);
                 return Success.Exit;
             }
             void stopProcessor() {
                 stopped = true;
                 fakeClient.OnPipelineStopped();
             }
-            fakeClient.ConnectionStopped += (i) => { stoppedId = i.Id; };
+            fakeClient.ConnectionStopped += (i) => stoppedId = i.Id;
             var pipeline = new Pipeline(fakeSocket, source, 13, 4096, processor, stopProcessor, fakeLogger);
             Assert.IsNotNull(pipeline);
             fakeClient.Pipeline = pipeline;

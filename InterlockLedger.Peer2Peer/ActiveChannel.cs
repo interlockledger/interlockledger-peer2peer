@@ -64,6 +64,6 @@ namespace InterlockLedger.Peer2Peer
         internal IChannelSink Sink { get; }
         private bool _stop;
 
-        private static bool IsValid(IEnumerable<byte> message) => message != null && message.Any();
+        private static bool IsValid(IEnumerable<byte> message) => message?.Any() == true;
     }
 }

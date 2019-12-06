@@ -36,7 +36,6 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-
     // TODO1: to be replaced by some implementation that deals with NAT/UPnP/Whatever to really give the node a public address and port
     public class DummyExternalAccessDiscoverer : AbstractExternalAccessDiscoverer
     {

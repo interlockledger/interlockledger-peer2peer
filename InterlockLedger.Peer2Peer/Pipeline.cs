@@ -99,20 +99,20 @@ namespace InterlockLedger.Peer2Peer
         private readonly ISocket _socket;
         private readonly Action _stopProcessor;
 
-        private bool Active => !_linkedToken.IsCancellationRequested;
+        private bool _active => !_linkedToken.IsCancellationRequested;
 
         private async Task PipeFillAsync(PipeWriter writer) {
-            while (Active) {
+            while (_active) {
                 try {
                     if (_socket.Available > 0) {
                         _logger.LogTrace($"Getting {_minimumBufferSize} bytes to receive in the socket");
-                        Memory<byte> memory = writer.GetMemory(_minimumBufferSize);
+                        var memory = writer.GetMemory(_minimumBufferSize);
                         int bytesRead = await _socket.ReceiveAsync(memory, SocketFlags.None, _linkedToken);
                         if (bytesRead > 0) {
                             // Tell the PipeWriter how much was read
                             writer.Advance(bytesRead);
                             // Make the data available to the PipeReader
-                            FlushResult result = await writer.FlushAsync();
+                            var result = await writer.FlushAsync();
                             if (result.IsCompleted) {
                                 break;
                             }
@@ -138,9 +138,9 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private async Task PipeReadAsync(PipeReader reader, MessageParser parser) {
-            while (Active) {
+            while (_active) {
                 try {
-                    ReadResult result = await reader.ReadAsync(_linkedToken);
+                    var result = await reader.ReadAsync(_linkedToken);
                     if (result.IsCanceled)
                         break;
                     var buffer = result.Buffer;
@@ -166,11 +166,11 @@ namespace InterlockLedger.Peer2Peer
 
         private async Task SendingPipeDequeueAsync(PipeWriter writer) {
             var senderWriterLock = new AsyncLock();
-            while (Active) {
+            while (_active) {
                 try {
                     if (_queue.Exit)
                         break;
-                    NetworkMessageSlice response = await _queue.DequeueAsync(_linkedToken);
+                    var response = await _queue.DequeueAsync(_linkedToken);
                     using (await senderWriterLock.LockAsync()) {
                         if (!await WriteResponse(writer, response))
                             break;
@@ -193,9 +193,9 @@ namespace InterlockLedger.Peer2Peer
 
         private async Task SendingPipeSendAsync(PipeReader reader) {
             var senderSocketLock = new AsyncLock();
-            while (Active) {
+            while (_active) {
                 try {
-                    ReadResult result = await reader.ReadAsync(_linkedToken);
+                    var result = await reader.ReadAsync(_linkedToken);
                     if (result.IsCanceled)
                         break;
                     var sequence = result.Buffer;

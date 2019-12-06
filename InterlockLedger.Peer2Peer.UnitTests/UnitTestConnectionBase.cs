@@ -30,14 +30,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.Extensions.Logging;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Tasks;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using static InterlockLedger.Peer2Peer.TestHelpers;
 
 namespace InterlockLedger.Peer2Peer
@@ -66,7 +61,7 @@ namespace InterlockLedger.Peer2Peer
             Assert.IsNotNull(connection.GetChannel(1));
             var ex = Assert.ThrowsException<ArgumentOutOfRangeException>(() => connection.GetChannel(10));
             Assert.AreEqual("channel", ex.ParamName);
-            Assert.AreEqual(string.Format(ConnectionBase.ExceptionChannelNotFoundFormat, 10) + Environment.NewLine + "Parameter name: channel", ex.Message);
+            Assert.AreEqual(string.Format(ConnectionBase.ExceptionChannelNotFoundFormat, 10) + " (Parameter 'channel')", ex.Message);
         }
     }
 }

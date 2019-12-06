@@ -42,19 +42,19 @@ namespace InterlockLedger.Peer2Peer
 
         public TestClient(string id) => Id = id ?? throw new ArgumentNullException(nameof(id));
 
+        public event Action<INetworkIdentity> ConnectionStopped;
+
         public bool Active => true;
         public ulong Channel { get; private set; }
+        public bool Connected => Pipeline?.Connected ?? false;
         public IConnection Connection => this;
         public string Id { get; }
         public int ListeningBufferSize => 1024;
         public ulong MessageTag { get; }
         public string NetworkName { get; }
         public string NetworkProtocolName { get; }
-        public bool Connected => Pipeline?.Connected ?? false;
         public bool NothingToSend => Pipeline?.NothingToSend ?? false;
         public bool Stopped => Pipeline?.Stopped ?? false;
-
-        public event Action<INetworkIdentity> ConnectionStopped;
 
         public IActiveChannel AllocateChannel(IChannelSink channelSink) => this;
 
@@ -69,13 +69,16 @@ namespace InterlockLedger.Peer2Peer
             return true;
         }
 
-        internal void OnPipelineStopped() => ConnectionStopped?.Invoke(this);
-        public void SetDefaultSink(IChannelSink sink) => throw new NotImplementedException();
+        public void SetDefaultSink(IChannelSink sink) => _sink = sink ?? throw new ArgumentNullException(nameof(sink));
 
-        public Task<Success> SinkAsync(IEnumerable<byte> message) => throw new NotImplementedException();
+        public async Task<Success> SinkAsync(IEnumerable<byte> message) => await (_sink?.SinkAsync(message, this) ?? Task.FromResult(Success.Next));
 
         public void Stop() => Pipeline?.Stop();
 
+        internal void OnPipelineStopped() => ConnectionStopped?.Invoke(this);
+
         protected override void DisposeManagedResources() => Stop();
+
+        private IChannelSink _sink;
     }
 }

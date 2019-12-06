@@ -84,7 +84,7 @@ namespace Demo.InterlockLedger.Peer2Peer
             await Task.Delay(1);
             if (message.Any()) {
                 var response = Encoding.UTF8.GetString(message.Skip(1).ToArray());
-                Console.WriteLine($@"[{channel}] {response}");
+                Console.WriteLine($"[{channel}] {response}");
                 return response[0] == 0 ? Success.Exit : Success.Next;
             }
             return Success.Exit;

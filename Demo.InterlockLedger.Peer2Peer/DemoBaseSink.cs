@@ -47,7 +47,7 @@ namespace Demo.InterlockLedger.Peer2Peer
 {
     internal abstract class DemoBaseSink : AbstractNodeSink, IChannelSink
     {
-        public DemoBaseSink(string message) {
+        protected DemoBaseSink(string message) {
             PublishAtAddress = HostAtAddress = "localhost";
             PublishAtPortNumber = HostAtPortNumber = 8080;
             ListeningBufferSize = 512;

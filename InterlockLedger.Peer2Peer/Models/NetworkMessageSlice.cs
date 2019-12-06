@@ -99,8 +99,8 @@ namespace InterlockLedger.Peer2Peer
 
         public override int GetHashCode() {
             var hashCode = -596340573;
-            hashCode = hashCode * -1521134295 + EqualityComparer<byte[]>.Default.GetHashCode(AllBytes);
-            hashCode = hashCode * -1521134295 + Channel.GetHashCode();
+            hashCode = (hashCode * -1521134295) + EqualityComparer<byte[]>.Default.GetHashCode(AllBytes);
+            hashCode = (hashCode * -1521134295) + Channel.GetHashCode();
             return hashCode;
         }
 

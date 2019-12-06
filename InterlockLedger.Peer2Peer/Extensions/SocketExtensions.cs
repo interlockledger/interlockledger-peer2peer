@@ -41,18 +41,18 @@ namespace InterlockLedger.Peer2Peer
     internal static class SocketExtensions
     {
         public static Task<int> ReceiveAsync(this Socket socket, Memory<byte> memory)
-            => SocketTaskExtensions.ReceiveAsync(socket, MemoryExtensions.GetArraySegment(memory), SocketFlags.None);
+            => SocketTaskExtensions.ReceiveAsync(socket, memory.GetArraySegment(), SocketFlags.None);
 
         public static Task<int> ReceiveAsync(this Socket socket, Memory<byte> memory, SocketFlags socketFlags)
-            => SocketTaskExtensions.ReceiveAsync(socket, MemoryExtensions.GetArraySegment(memory), socketFlags);
+            => SocketTaskExtensions.ReceiveAsync(socket, memory.GetArraySegment(), socketFlags);
 
         public static Task<int> SendAsync(this Socket socket, ArraySegment<byte> buffer)
-            => SocketTaskExtensions.SendAsync(socket, buffer, SocketFlags.None);
+            => socket.SendAsync(buffer, SocketFlags.None);
 
         public static Task<int> SendAsync(this Socket socket, IList<ArraySegment<byte>> buffers)
-            => SocketTaskExtensions.SendAsync(socket, buffers, SocketFlags.None);
+            => socket.SendAsync(buffers, SocketFlags.None);
 
         public static Task<int> SendILintAsync(this Socket socket, ulong ilint)
-            => SocketTaskExtensions.SendAsync(socket, new ArraySegment<byte>(ilint.ILIntEncode()), SocketFlags.None);
+            => socket.SendAsync(new ArraySegment<byte>(ilint.ILIntEncode()), SocketFlags.None);
     }
 }

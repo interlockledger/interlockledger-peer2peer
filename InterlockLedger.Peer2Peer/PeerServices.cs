@@ -30,10 +30,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
+using Microsoft.Extensions.Logging;
 
 namespace InterlockLedger.Peer2Peer
 {
@@ -61,43 +61,6 @@ namespace InterlockLedger.Peer2Peer
         public IProxyingServices ProxyingServices => this;
         public CancellationTokenSource Source => _source ?? throw new InvalidOperationException("CancellationTokenSource was not set yet!");
 
-        public IListener CreateListenerFor(INodeSink nodeSink)
-            => _disposer.Do(() => new ListenerForPeer(nodeSink, _discoverer, Source, LoggerNamed($"{nameof(ListenerForPeer)}#{nodeSink.MessageTag}")));
-
-        public void Dispose()
-            => _disposer.Dispose(() => {
-                _loggerFactory.Dispose();
-                _discoverer.Dispose();
-                _knownNodes.Clear();
-                foreach (var client in _clients.Values)
-                    client?.Dispose();
-                _clients.Clear();
-            });
-
-        public IConnection GetClient(string address, int port)
-            => _disposer.Do(() => {
-                var id = $"{address}:{port}#{MessageTag}";
-                try {
-                    if (_clients.TryGetValue(id, out var existingClient))
-                        return existingClient;
-                    ConnectionToPeer client = BuildClient(address, port, id);
-                    if (_clients.TryAdd(id, client))
-                        return client;
-                    client.Dispose();
-                } catch (Exception e) {
-                    _logger.LogError(e, "Could not build PeerClient for {0}!", id);
-                }
-                return null;
-            });
-
-        public IConnection GetClient(string nodeId)
-            => _disposer.Do(() => _clients.TryGetValue(Framed(nodeId), out var existingClient) ? existingClient : null);
-
-        public IPeerServices WithCancellationTokenSource(CancellationTokenSource source) {
-            _source = source ?? throw new ArgumentNullException(nameof(source));
-            return this;
-        }
-
         void IKnownNodesServices.Add(string nodeId, string address, int port, bool retain)
             => _disposer.Do(() => {
                 if (string.IsNullOrWhiteSpace(nodeId))
@@ -115,10 +78,44 @@ namespace InterlockLedger.Peer2Peer
                 _clients[Framed(nodeId)] = connection;
             });
 
+        public IListener CreateListenerFor(INodeSink nodeSink)
+                            => _disposer.Do(() => new ListenerForPeer(nodeSink, _discoverer, Source, LoggerNamed($"{nameof(ListenerForPeer)}#{nodeSink.MessageTag}")));
+
         IListenerForProxying IProxyingServices.CreateListenerForProxying(string externalAddress, string hostedAddress, ushort firstPort, IConnection connection)
             => _disposer.Do(() => new ListenerForProxying(externalAddress, hostedAddress, firstPort, connection, _socketFactory, _source, LoggerNamed($"{nameof(ListenerForProxying)}#{connection.MessageTag}|from:{connection.Id}")));
 
-        void IKnownNodesServices.Forget(string nodeId) => _disposer.Do(() => { _ = _knownNodes.TryRemove(nodeId, out _); });
+        public void Dispose()
+                    => _disposer.Dispose(() => {
+                        _loggerFactory.Dispose();
+                        _discoverer.Dispose();
+                        _knownNodes.Clear();
+                        foreach (var client in _clients.Values)
+                            client?.Dispose();
+                        _clients.Clear();
+                    });
+
+        void IKnownNodesServices.Forget(string nodeId) => _disposer.Do(() => _ = _knownNodes.TryRemove(nodeId, out _));
+
+        public IConnection GetClient(string address, int port) {
+            IConnection Lookup() {
+                var id = $"{address}:{port}#{MessageTag}";
+                try {
+                    if (_clients.TryGetValue(id, out var existingClient))
+                        return existingClient;
+                    var newClient = BuildClient(address, port, id);
+                    if (_clients.TryAdd(id, newClient))
+                        return newClient;
+                    newClient.Dispose();
+                } catch (Exception e) {
+                    _logger.LogError(e, "Could not build PeerClient for {0}!", id);
+                }
+                return null;
+            }
+            return _disposer.Do(Lookup);
+        }
+
+        public IConnection GetClient(string nodeId)
+            => _disposer.Do(() => _clients.TryGetValue(Framed(nodeId), out var existingClient) ? existingClient : null);
 
         IConnection IKnownNodesServices.GetClient(string nodeId) => _disposer.Do(() => GetResponder(nodeId));
 
@@ -126,6 +123,11 @@ namespace InterlockLedger.Peer2Peer
             => BuildClient(address, port, $"{address}:{port}#{MessageTag}/proxying");
 
         bool IKnownNodesServices.IsKnown(string nodeId) => _disposer.Do(() => _knownNodes.ContainsKey(nodeId));
+
+        public IPeerServices WithCancellationTokenSource(CancellationTokenSource source) {
+            _source = source ?? throw new ArgumentNullException(nameof(source));
+            return this;
+        }
 
         private readonly ConcurrentDictionary<string, IConnection> _clients;
         private readonly IExternalAccessDiscoverer _discoverer;
@@ -142,9 +144,7 @@ namespace InterlockLedger.Peer2Peer
             => new ConnectionToPeer(id, this, address, port, Source, LoggerForClient(id));
 
         private IConnection GetResponder(string nodeId)
-            => _knownNodes.TryGetValue(nodeId, out (string address, int port, bool retain) n)
-                ? n.port != 0 ? GetClient(n.address, n.port) : GetClient(nodeId)
-                : null;
+            => _knownNodes.TryGetValue(nodeId, out var n) ? n.port != 0 ? GetClient(n.address, n.port) : GetClient(nodeId) : null;
 
         private ILogger LoggerForClient(string id) => LoggerNamed($"{nameof(ConnectionToPeer)}@{id}");
 

@@ -45,9 +45,7 @@ namespace InterlockLedger.Peer2Peer
     {
         [TestMethod]
         public void Creation() {
-            static Task<Success> messageProcessor(NetworkMessageSlice channelBytes) {
-                return Task.FromResult(Success.Exit);
-            }
+            static Task<Success> messageProcessor(NetworkMessageSlice channelBytes) => Task.FromResult(Success.Exit);
 
             var mp = new MessageParser(15, this, messageProcessor);
             Assert.IsNotNull(mp);
@@ -106,7 +104,7 @@ namespace InterlockLedger.Peer2Peer
                 var inputBytes = channelBytes.AllBytes;
                 Assert.AreEqual(expectedChannels[payloadIndex], channelBytes.Channel);
                 byte[] expectedPayload = expectedPayloads[payloadIndex++];
-                Assert.AreEqual(expectedPayload.Length, inputBytes.Count());
+                Assert.AreEqual(expectedPayload.Length, inputBytes.Length);
                 Assert.IsTrue(expectedPayload.SequenceEqual(inputBytes.ToArray()));
             }
         }

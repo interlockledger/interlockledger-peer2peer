@@ -30,7 +30,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using InterlockLedger.Peer2Peer;
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
@@ -39,6 +38,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using InterlockLedger.Peer2Peer;
 
 namespace Demo.InterlockLedger.Peer2Peer
 {

@@ -30,11 +30,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using InterlockLedger.Tags;
 using System;
 using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
+using InterlockLedger.Tags;
 
 namespace InterlockLedger.Peer2Peer
 {

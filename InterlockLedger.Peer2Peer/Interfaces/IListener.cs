@@ -30,8 +30,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using System.Threading.Tasks;
-
 namespace InterlockLedger.Peer2Peer
 {
     public interface IListener : INetworkIdentity

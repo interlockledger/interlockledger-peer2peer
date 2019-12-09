@@ -30,12 +30,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using Microsoft.Extensions.Logging;
 
 namespace InterlockLedger.Peer2Peer
 {
@@ -51,7 +51,7 @@ namespace InterlockLedger.Peer2Peer
         public ushort PortDelta { get; }
 
         public static IEnumerable<IPAddress> GetAddresses(string name)
-            => IPAddress.TryParse(name, out IPAddress address)
+            => IPAddress.TryParse(name, out var address)
                 ? (new IPAddress[] { address })
                 : Dns.GetHostEntry(name).AddressList.Where(ip => IsIPV4(ip.AddressFamily));
 

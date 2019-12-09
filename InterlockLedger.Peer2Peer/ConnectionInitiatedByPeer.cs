@@ -30,10 +30,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using Microsoft.Extensions.Logging;
 using System;
 using System.Net;
 using System.Threading;
+using Microsoft.Extensions.Logging;
 
 namespace InterlockLedger.Peer2Peer
 {

@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -81,6 +81,9 @@ namespace InterlockLedger.Peer2Peer
                 action(reader.Value);
         }
 
+        private static string BuildMessageBodyReceived(ulong channel, IEnumerable<ReadOnlyMemory<byte>> segments)
+            => $"Message body received on channel {channel}: {string.Join("|", segments.Select(b => b.ToBase64()))}";
+
         private static ulong ReadBytes(ReadOnlySequence<byte> buffer, ref long current, ulong length, List<ReadOnlyMemory<byte>> segments = null) {
             long bytesToRead = Math.Min((long)length, buffer.Length - current);
             if (segments != null) {
@@ -132,23 +135,32 @@ namespace InterlockLedger.Peer2Peer
             return buffer.End;
         }
 
+        private void LogTrace(string logMessage) => LogTrace(() => logMessage);
+
+        private void LogTrace(Func<string> buildLogMessage) {
+            if (_logger.IsEnabled(LogLevel.Trace))
+                _logger.LogTrace(buildLogMessage());
+        }
+
+        private async Task<Success> ProcessMessage(NetworkMessageSlice messageSlice) => await _messageProcessor(messageSlice).ConfigureAwait(false);
+
         private void Step_CheckLengthToRead(ulong lengthToRead) {
             _lengthToRead = lengthToRead;
             if (_lengthToRead > _maxBytesToRead) {
-                _logger.LogTrace($"Skipping {_lengthToRead} bytes for message body, too long");
+                LogTrace($"Skipping {_lengthToRead} bytes for message body, too long");
                 _state = State.SkipBytes;
             } else {
-                _logger.LogTrace($"Expecting {_lengthToRead} bytes for message body");
+                LogTrace($"Expecting {_lengthToRead} bytes for message body");
                 _state = _lengthToRead == 0 ? State.ReadChannel : State.ReadBytes;
             }
         }
 
         private void Step_CheckTag(ulong tag) {
             if (tag != _expectedTag) {
-                _logger.LogTrace($"Ignoring bad tag {tag}");
+                LogTrace($"Ignoring bad tag {tag}");
                 _state = State.Init;
             } else {
-                _logger.LogTrace("Receiving new message");
+                LogTrace("Receiving new message");
                 _state = State.ReadLength;
             }
         }
@@ -166,8 +178,8 @@ namespace InterlockLedger.Peer2Peer
         private void Step_ProcessMessageFor(ulong channel) {
             try {
                 if (_segments.Count > 0) {
-                    _logger.LogTrace($"Message body received {string.Join("|", _segments.Select(b => b.ToBase64()))}");
-                    LastResult = _messageProcessor(new NetworkMessageSlice(channel, _segments)).Result;
+                    LogTrace(() => BuildMessageBodyReceived(channel, _segments));
+                    LastResult = ProcessMessage(new NetworkMessageSlice(channel, _segments)).Result;
                 }
             } catch (Exception e) {
                 _logger.LogError(e, "Failed to process last message!");

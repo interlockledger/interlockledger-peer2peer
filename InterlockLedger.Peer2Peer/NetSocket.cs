@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -51,13 +52,19 @@ namespace InterlockLedger.Peer2Peer
         public bool Connected => Do(() => _socket.Connected);
 
         public Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token)
-            => DoAsync(async () => token.IsCancellationRequested ? 0 : await _socket.ReceiveAsync(memory, socketFlags));
+            => DoAsync(async () => token.IsCancellationRequested ? 0 : await _socket.ReceiveAsync(memory, socketFlags).ConfigureAwait(false));
 
-        public Task SendAsync(IList<ArraySegment<byte>> buffers) => DoAsync(() => _socket.SendAsync(buffers));
+        public Task SendAsync(IList<ArraySegment<byte>> buffers) => DoAsync(async () => await _socket.SendAsync(buffers).ConfigureAwait(false));
 
         protected override void DisposeManagedResources() {
-            _socket.Shutdown(SocketShutdown.Both);
-            _socket.Dispose();
+            try {
+                _socket.Shutdown(SocketShutdown.Both);
+                _socket.Dispose();
+            } catch (ObjectDisposedException e) {
+                Debug.WriteLine($"Ignored: {e}");
+            } catch (SocketException e) {
+                Debug.WriteLine($"This should not happen: {e}");
+            }
         }
 
         private readonly Socket _socket;

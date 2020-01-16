@@ -24,7 +24,7 @@ jobs:
       run: dotnet test --configuration Release -v:m | grep -v 'NAME_UNKNOWN:Package'
 
     - name: Pack nuget
-      run: dotnet pack -o `pwd`/.nugets --configuration Release --no-build -v:m
+      run: dotnet pack -o `pwd`/.nugets --configuration Release --no-build -v:m | grep -v 'NAME_UNKNOWN:Package'
 
     - name: Push nuget
       run: dotnet nuget push `pwd`/.nugets/*.nupkg -s https://nuget.pkg.github.com/interlockledger/index.json --skip-duplicate

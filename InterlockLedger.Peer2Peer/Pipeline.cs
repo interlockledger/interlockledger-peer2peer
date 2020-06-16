@@ -74,14 +74,10 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        public void Send(NetworkMessageSlice slice) {
+        public Task SendAsync(NetworkMessageSlice slice) {
             if (!slice.IsEmpty)
                 _queue.Enqueue(slice);
-        }
-
-        public Pipeline Start(string threadName) {
-            ListenAsync().RunOnThread(threadName);
-            return this;
+            return Task.CompletedTask;
         }
 
         public void Stop() {

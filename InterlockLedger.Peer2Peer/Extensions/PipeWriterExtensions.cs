@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -40,10 +40,13 @@ namespace InterlockLedger.Peer2Peer
 {
     internal static class PipeWriterExtensions
     {
-        public static ValueTask<FlushResult> WriteAsync(this PipeWriter writer, ArraySegment<byte> segment, CancellationToken cancellationToken = default)
-            => writer.WriteAsync(new ReadOnlyMemory<byte>(segment.Array, segment.Offset, segment.Count), cancellationToken);
-
-        public static ValueTask<FlushResult> WriteILintAsync(this PipeWriter writer, ulong ilint, CancellationToken cancellationToken = default)
-            => writer.WriteAsync(new ReadOnlyMemory<byte>(ilint.ILIntEncode()), cancellationToken);
+        public static async Task<bool> WriteResponseAsync(this PipeWriter writer, NetworkMessageSlice response, CancellationToken token) {
+            if (response.IsEmpty)
+                return true;
+            foreach (var segment in response.DataList)
+                if ((await writer.WriteAsync(segment, token)).IsCanceled)
+                    return false;
+            return !(await writer.WriteAsync(response.Channel.ILIntEncode(), token)).IsCanceled;
+        }
     }
 }

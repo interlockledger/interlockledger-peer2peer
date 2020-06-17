@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -30,6 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -37,8 +38,23 @@ namespace InterlockLedger.Peer2Peer
 {
     public static class TaskExtensions
     {
-        public static void RunOnThread(this Task task, string name) {
-            var thread = new Thread(task.Wait) {
+        public static void RunOnThread(this Task task, string name) => Start(name, task.Wait);
+
+        public static void RunOnThread(this Task task, string name, Action done) {
+            if (done is null)
+                throw new ArgumentNullException(nameof(done));
+            Start(name, () => {
+                task.Wait();
+                done();
+            });
+        }
+
+        private static void Start(string name, ThreadStart action) {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentNullException(nameof(name));
+            if (action is null)
+                throw new ArgumentNullException(nameof(action));
+            var thread = new Thread(action) {
                 Name = name,
                 Priority = ThreadPriority.Normal
             };

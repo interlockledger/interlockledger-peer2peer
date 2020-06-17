@@ -49,6 +49,6 @@ namespace InterlockLedger.Peer2Peer
 
     public interface ISender
     {
-        bool Send(IEnumerable<byte> message);
+        Task<bool> SendAsync(IEnumerable<byte> message);
     }
 }

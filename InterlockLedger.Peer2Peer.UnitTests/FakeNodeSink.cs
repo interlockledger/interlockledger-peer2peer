@@ -69,9 +69,8 @@ namespace InterlockLedger.Peer2Peer
 
         public virtual async Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
             MessagesReceived.Add(message);
-            await Task.Delay(10);
             if (_response.Length > 0)
-                channel.Send(_response);
+                await channel.SendAsync(_response);
             return Success.Exit;
         }
 

@@ -13,7 +13,7 @@
         <RepositoryUrl>https://github.com/interlockledger/interlockledger-peer2peer.git</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageReleaseNotes>Try to avoid causing a OutOfMemory</PackageReleaseNotes>
+        <PackageReleaseNotes>Some more async native and less memory allocation</PackageReleaseNotes>
         <LangVersion>8</LangVersion>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
     </PropertyGroup>

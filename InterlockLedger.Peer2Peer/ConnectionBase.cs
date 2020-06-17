@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -48,9 +48,9 @@ namespace InterlockLedger.Peer2Peer
 
         public event Action<INetworkIdentity> ConnectionStopped;
 
+        public bool Connected => Pipeline.Connected;
         public long LastChannelUsed => _lastChannelUsed;
         public int NumberOfActiveChannels => _channelSinks.Count;
-        public bool Connected => Pipeline.Connected;
 
         public IActiveChannel AllocateChannel(IChannelSink channelSink) {
             var channel = (ulong)Interlocked.Increment(ref _lastChannelUsed);
@@ -76,12 +76,16 @@ namespace InterlockLedger.Peer2Peer
 
         public override void Stop() => _pipeline?.Stop();
 
-        internal bool Send(NetworkMessageSlice slice) => Do(() => InnerSend(slice));
+        internal Pipeline Pipeline => GetPipelineAsync().Result;
+
+        internal Task<bool> SendAsync(NetworkMessageSlice slice) => DoAsync(() => InnerSendAsync(slice));
 
         internal Task<Success> SinkAsync(NetworkMessageSlice slice) => DoAsync(() => InnerSinkAsync(slice));
 
         protected readonly ConcurrentDictionary<ulong, IActiveChannel> _channelSinks = new ConcurrentDictionary<ulong, IActiveChannel>();
+
         protected IChannelSink _sink;
+
         protected ISocket _socket;
 
         protected ConnectionBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger)
@@ -96,6 +100,7 @@ namespace InterlockLedger.Peer2Peer
         protected override void DisposeManagedResources() {
             base.DisposeManagedResources();
             StopAllChannelSinks();
+            Stop();
             _socket?.Dispose();
         }
 
@@ -110,28 +115,30 @@ namespace InterlockLedger.Peer2Peer
 
         private const int _hoursOfSilencedDuplicateErrors = 8;
         private static readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
+        private readonly AsyncLock _pipelineLock = new AsyncLock();
         private long _lastChannelUsed = 0;
         private Pipeline _pipeline;
 
-        private Pipeline Pipeline {
-            get {
-                try {
-                    if (_pipeline != null)
-                        return _pipeline;
-                    _pipeline = RunPipeline(BuildSocket());
-                    return _pipeline;
-                } catch (Exception se) {
-                    throw new PeerException($"Client {Id} could not connect into remote endpoint {NetworkAddress}:{NetworkPort} .{Environment.NewLine}{se.Message}", se);
-                }
+        private async Task<Pipeline> GetPipelineAsync() {
+            try {
+                if (_pipeline is null)
+                    using (await _pipelineLock.LockAsync()) {
+                        var socket = BuildSocket();
+                        _pipeline = new Pipeline(socket, _source, MessageTag, ListeningBufferSize, SinkAsync, OnPipelineStopped, _logger); ;
+                        _pipeline.ListenAsync().RunOnThread($"Pipeline {Id} to {socket.RemoteEndPoint}", PipelineThreadDone);
+                    }
+                return _pipeline;
+            } catch (Exception se) {
+                throw new PeerException($"Client {Id} could not connect into remote endpoint {NetworkAddress}:{NetworkPort}{Environment.NewLine}[{se.Message}]", se);
             }
         }
 
-        private bool InnerSend(NetworkMessageSlice slice) {
+        private async Task<bool> InnerSendAsync(NetworkMessageSlice slice) {
             if (Abandon)
                 return false;
             try {
                 if (!slice.IsEmpty) {
-                    Pipeline.Send(slice);
+                    await Pipeline.SendAsync(slice);
                 }
                 return true;
             } catch (PeerException pe) {
@@ -162,9 +169,7 @@ namespace InterlockLedger.Peer2Peer
             return Success.Next;
         }
 
-        private Pipeline RunPipeline(ISocket socket)
-            => new Pipeline(socket, _source, MessageTag, ListeningBufferSize, SinkAsync, OnPipelineStopped, _logger)
-                .Start($"Pipeline {Id} to {socket.RemoteEndPoint}");
+        private void PipelineThreadDone() => _logger.LogDebug($"Pipeline {Id} thread stopped");
 
         private void StopAllChannelSinks() {
             foreach (var cs in _channelSinks.Values)

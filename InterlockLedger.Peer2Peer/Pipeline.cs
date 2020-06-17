@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -57,14 +57,16 @@ namespace InterlockLedger.Peer2Peer
             _stopProcessor = stopProcessor ?? throw new ArgumentNullException(nameof(stopProcessor));
         }
 
-        public bool Stopped { get; private set; } = false;
         public bool Connected => _socket.Connected;
         public bool NothingToSend => _queue.IsEmpty;
+        public bool Stopped { get; private set; } = false;
 
         public async Task ListenAsync() {
             try {
-                await UsePipes(_socket.RemoteEndPoint);
-                await Task.Delay(10);
+                if (_socket.Connected) {
+                    await UsePipes(_socket.RemoteEndPoint);
+                    await Task.Delay(10);
+                }
             } finally {
                 _socket.Dispose();
                 try {
@@ -166,9 +168,9 @@ namespace InterlockLedger.Peer2Peer
                 try {
                     if (_queue.Exit)
                         break;
-                    var response = await _queue.DequeueAsync(_linkedToken);
                     using (await senderWriterLock.LockAsync()) {
-                        if (!await WriteResponse(writer, response))
+                        var response = await _queue.DequeueAsync(_linkedToken);
+                        if (!await writer.WriteResponseAsync(response, _linkedToken))
                             break;
                     }
                 } catch (OperationCanceledException oce) {
@@ -221,35 +223,25 @@ namespace InterlockLedger.Peer2Peer
             reader.Complete();
         }
 
-        private async Task UsePipes(EndPoint remoteEndPoint) {
+        private Task UsePipes(EndPoint remoteEndPoint) {
             _logger.LogTrace($"[{remoteEndPoint}]: connected");
             try {
                 var parser = new MessageParser(_messageTag, _logger, _sliceProcessor);
                 var listeningPipe = new Pipe();
                 var respondingPipe = new Pipe();
-                var pipeTasks = new Task[] {
+                return Task.WhenAll(
                     PipeFillAsync(listeningPipe.Writer),
                     PipeReadAsync(listeningPipe.Reader, parser),
                     SendingPipeDequeueAsync(respondingPipe.Writer),
                     SendingPipeSendAsync(respondingPipe.Reader)
-                };
-                await Task.WhenAll(pipeTasks);
-                _logger.LogTrace($"[{remoteEndPoint}]: all pipes stopped");
+                );
             } catch (OperationCanceledException) {
                 // just ignore
+                return Task.CompletedTask;
             } catch (Exception e) {
                 _logger.LogError(e, $"[{remoteEndPoint}]: Exception while processing on the pipeline");
+                return Task.FromException(e);
             }
-            _logger.LogTrace($"[{remoteEndPoint}]: disconnected");
-        }
-
-        private async Task<bool> WriteResponse(PipeWriter writer, NetworkMessageSlice response) {
-            if (response.IsEmpty)
-                return true;
-            foreach (var segment in response.DataList)
-                if ((await writer.WriteAsync(segment, _linkedToken)).IsCanceled)
-                    return false;
-            return !(await writer.WriteILintAsync(response.Channel, _linkedToken)).IsCanceled;
         }
     }
 }

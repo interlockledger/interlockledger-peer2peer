@@ -75,7 +75,7 @@ namespace Demo.InterlockLedger.Peer2Peer
                 if (command == null || command.FirstOrDefault() == 'x')
                     break;
                 var channel = client.AllocateChannel(this);
-                channel.Send(ToMessage(AsUTF8Bytes(command), isLast: true).AllBytes);
+                channel.SendAsync(ToMessage(AsUTF8Bytes(command), isLast: true).AllBytes).Wait();
             }
         }
 
@@ -106,7 +106,7 @@ namespace Demo.InterlockLedger.Peer2Peer
                 => Task.Run(() => {
                     try {
                         while (channel.Connected) {
-                            channel.Send(ToMessage(AsUTF8Bytes("l"), isLast: true).AllBytes);
+                            channel.SendAsync(ToMessage(AsUTF8Bytes("l"), isLast: true).AllBytes).Wait();
                             Task.Delay(1000).Wait();
                         }
                     } catch {

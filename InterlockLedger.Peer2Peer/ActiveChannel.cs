@@ -45,8 +45,8 @@ namespace InterlockLedger.Peer2Peer
         public string Id => $"{PeerConnection.Id}@{Channel}";
         public bool Connected => PeerConnection.Connected;
 
-        public bool Send(IEnumerable<byte> message)
-            => Active && IsValid(message) ? PeerConnection.Send(new NetworkMessageSlice(Channel, message)) : true;
+        public async Task<bool> SendAsync(IEnumerable<byte> message)
+            => Active && IsValid(message) ? await PeerConnection.SendAsync(new NetworkMessageSlice(Channel, message)) : true;
 
         public async Task<Success> SinkAsync(IEnumerable<byte> message) => _stop ? Success.Next : await Sink.SinkAsync(message, this);
 

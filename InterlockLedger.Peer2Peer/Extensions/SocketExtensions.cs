@@ -53,6 +53,6 @@ namespace InterlockLedger.Peer2Peer
             => socket.SendAsync(buffers, SocketFlags.None);
 
         public static Task<int> SendILintAsync(this Socket socket, ulong ilint)
-            => socket.SendAsync(new ArraySegment<byte>(ilint.ILIntEncode()), SocketFlags.None);
+            => socket.SendAsync(ilint.ILIntEncode(), SocketFlags.None);
     }
 }

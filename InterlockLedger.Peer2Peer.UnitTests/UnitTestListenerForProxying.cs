@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -94,7 +94,7 @@ namespace InterlockLedger.Peer2Peer
             referenceListener.Start();
             internalListener.Start();
             using var internalConnection = new ConnectionToPeer("RequestProxying", internalNodeSink, referenceListener.ExternalAddress, referenceListener.ExternalPortNumber, source, fakeLogger);
-            internalConnection.AllocateChannel(internalNodeSink).Send(ProxyNodeSink.ProxyRequest);
+            internalConnection.AllocateChannel(internalNodeSink).SendAsync(ProxyNodeSink.ProxyRequest).Wait();
             while (externalNodeSink.ListenerForProxying == null)
                 WaitForOthers(100);
             var lfp = externalNodeSink.ListenerForProxying;
@@ -104,7 +104,7 @@ namespace InterlockLedger.Peer2Peer
             using var externalConnection = new ConnectionToPeer("ExternalMessage", internalNodeSink, lfp.ExternalAddress, lfp.ExternalPortNumber, source, fakeLogger);
             externalConnection.AllocateChannel(externalNodeSink); // just to bump channel
             var outsideChannel = externalConnection.AllocateChannel(externalNodeSink);
-            outsideChannel.Send(new byte[] { _tag, 1, 2 });
+            outsideChannel.SendAsync(new byte[] { _tag, 1, 2 }).Wait();
             while (fakeSink.ChannelProcessed == 0)
                 WaitForOthers(100);
             AssertHasSameItems<byte>(nameof(fakeSink.BytesProcessed), fakeSink.BytesProcessed, 2);
@@ -135,7 +135,7 @@ namespace InterlockLedger.Peer2Peer
             referenceListener.Start();
             internalListener.Start();
             using var internalConnection = new ConnectionToPeer("RequestProxying", internalNodeSink, referenceListener.ExternalAddress, referenceListener.ExternalPortNumber, source, fakeLogger);
-            internalConnection.AllocateChannel(internalNodeSink).Send(ProxyNodeSink.ProxyRequest);
+            internalConnection.AllocateChannel(internalNodeSink).SendAsync(ProxyNodeSink.ProxyRequest).Wait();
             while (externalNodeSink.ListenerForProxying == null)
                 WaitForOthers(100);
             var lfp = externalNodeSink.ListenerForProxying;
@@ -145,7 +145,7 @@ namespace InterlockLedger.Peer2Peer
             using var externalConnection = new ConnectionToPeer("ExternalMessage", internalNodeSink, lfp.ExternalAddress, lfp.ExternalPortNumber, source, fakeLogger);
             externalConnection.AllocateChannel(externalNodeSink); // just to bump channel
             var outsideChannel = externalConnection.AllocateChannel(externalNodeSink);
-            outsideChannel.Send(new byte[] { _tag, 1, 2 });
+            outsideChannel.SendAsync(new byte[] { _tag, 1, 2 }).Wait();
             while (fakeSink.ChannelProcessed == 0)
                 WaitForOthers(100);
             AssertHasSameItems<byte>(nameof(fakeSink.BytesProcessed), fakeSink.BytesProcessed, 2);
@@ -200,11 +200,12 @@ namespace InterlockLedger.Peer2Peer
             public IConnection Connection { get; }
             public string Id { get; }
 
-            public bool Send(IEnumerable<byte> message) => true;
+            public Task<bool> SendAsync(IEnumerable<byte> message) => Task.FromResult(true);
 
             public Task<Success> SinkAsync(IEnumerable<byte> message) => Task.FromResult(Success.Next);
 
-            public void Stop() { }
+            public void Stop() {
+            }
         }
     }
 }

@@ -49,7 +49,7 @@ namespace InterlockLedger.Peer2Peer
             var fakeConfig = new FakeConfig(13, "UnitTest", "unit", 4096);
             var connection = new TestConnection(fakeSocket, fakeSink, "TestConnection", fakeConfig, source, fakeLogger);
             Assert.IsNotNull(connection);
-            Thread.Sleep(200);
+            Thread.Sleep(400);
             Assert.IsNotNull(fakeSink.BytesProcessed);
             Assert.IsNotNull(fakeLogger.LastLog);
             AssertHasSameItems<byte>(nameof(fakeSink.BytesProcessed), fakeSink.BytesProcessed, 128);

@@ -63,9 +63,9 @@ namespace InterlockLedger.Peer2Peer
             return this;
         }
 
-        public bool Send(IEnumerable<byte> message) {
+        public async Task<bool> SendAsync(IEnumerable<byte> message) {
             if (message != null)
-                Pipeline?.Send(new NetworkMessageSlice(Channel, message));
+                await Pipeline?.SendAsync(new NetworkMessageSlice(Channel, message));
             return true;
         }
 

@@ -53,7 +53,7 @@ namespace InterlockLedger.Peer2Peer
             BytesProcessed = message;
             ChannelProcessed = channel.Channel;
             if (_response.Length > 0)
-                channel.Send(_response);
+                await channel.SendAsync(_response);
             await Task.Delay(100);
             return Success.Next;
         }

@@ -56,7 +56,7 @@ namespace InterlockLedger.Peer2Peer
                 bytesProcessed = channelBytes.AllBytes;
                 channelProcessed = channelBytes.Channel;
                 var activeChannel = fakeClient.GetChannel(channelProcessed);
-                activeChannel.Send(new byte[] { 13, 1, 128 });
+                await activeChannel.SendAsync(new byte[] { 13, 1, 128 });
                 await Task.Delay(1).ConfigureAwait(false);
                 return Success.Exit;
             }
@@ -69,7 +69,7 @@ namespace InterlockLedger.Peer2Peer
             Assert.IsNotNull(pipeline);
             fakeClient.Pipeline = pipeline;
             Assert.IsNull(fakeLogger.LastLog);
-            pipeline.Start("UnitTestPipeline");
+            pipeline.ListenAsync().RunOnThread("UnitTestPipeline");
             while (!(pipeline.NothingToSend && fakeSocket.Available == 0))
                 Thread.Sleep(1);
             pipeline.Stop();

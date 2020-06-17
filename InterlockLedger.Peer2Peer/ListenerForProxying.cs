@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -85,21 +85,21 @@ namespace InterlockLedger.Peer2Peer
             => _logger.LogDebug("Sinked Message '{0}' from Channel {1} using {2} pair to Proxied Channel {3}. Sent: {4}", message.ToUrlSafeBase64(), channel, newPair ? "new" : "existing", proxiedChannelId, sent);
 
         public override Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel)
-            => DoAsync(() => {
+            => DoAsync(async () => {
                 try {
                     if (_channelMap.TryGetValue(channel.Id, out var pair)) {
-                        var sent = pair.Send(message);
+                        var sent = await pair.SendAsync(message);
                         Sinked(message, channel, false, pair.ProxiedChannelId, sent);
                     } else {
                         var newPair = new ChannelPairing(channel, Connection, this);
                         _channelMap.TryAdd(channel.Id, newPair);
-                        var sent = newPair.Send(message);
+                        var sent = await newPair.SendAsync(message);
                         Sinked(message, channel, true, newPair.ProxiedChannelId, sent);
                     }
                 } catch (Exception e) {
                     Errored(message, channel, e);
                 }
-                return Task.FromResult(Success.Next);
+                return Success.Next;
             }, Success.Exit);
 
         public async Task<IListenerForProxying> StartAsync() {
@@ -153,24 +153,24 @@ namespace InterlockLedger.Peer2Peer
 
             public ulong ProxiedChannelId => _proxied.Channel;
 
-            public bool Send(IEnumerable<byte> message) {
+            public async Task<bool> SendAsync(IEnumerable<byte> message) {
                 try {
-                    return _proxied.Send(WithTagAndLength(message));
+                    return await _proxied.SendAsync(WithTagAndLength(message));
                 } catch (Exception e) {
                     _parent.Errored(message, _proxied, e);
                     return false;
                 }
             }
 
-            public Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
+            public async Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
                 try {
                     var fullMessage = WithTagAndLength(message);
-                    var sent = _external.Send(fullMessage);
+                    var sent = await _external.SendAsync(fullMessage);
                     _parent.Responded(fullMessage, channel, _external.Channel, sent);
                 } catch (Exception e) {
                     _parent.Errored(message, channel, e);
                 }
-                return Task.FromResult(Success.Next);
+                return Success.Next;
             }
 
             private readonly IActiveChannel _external;

@@ -65,7 +65,7 @@ namespace InterlockLedger.Peer2Peer
                 fakeClient.OnPipelineStopped();
             }
             fakeClient.ConnectionStopped += (i) => stoppedId = i.Id;
-            var pipeline = new Pipeline(fakeSocket, source, 13, 4096, processor, stopProcessor, fakeLogger);
+            var pipeline = new Pipeline(fakeSocket, source, 13, 4096, processor, stopProcessor, fakeLogger, 10);
             Assert.IsNotNull(pipeline);
             fakeClient.Pipeline = pipeline;
             Assert.IsNull(fakeLogger.LastLog);

@@ -40,7 +40,7 @@ namespace InterlockLedger.Peer2Peer
 {
     public class TestListenerForPeer : ListenerForPeer
     {
-        public TestListenerForPeer(TestSocket testSocket, INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger) : base(nodeSink, discoverer, source, logger)
+        public TestListenerForPeer(TestSocket testSocket, INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger) : base(nodeSink, discoverer, source, logger, 10)
             => _testSocket = new SingleUseSocket(testSocket, _source);
 
         protected override Func<Socket, Task<ISocket>> AcceptSocket => _testSocket.AcceptSocketOnce;

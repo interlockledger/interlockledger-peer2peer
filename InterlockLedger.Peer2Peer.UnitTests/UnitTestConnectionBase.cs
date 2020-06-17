@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -42,12 +42,7 @@ namespace InterlockLedger.Peer2Peer
     {
         [TestMethod]
         public void TestConnectionMinimally() {
-            var fakeLogger = new FakeLogging();
-            var source = new CancellationTokenSource();
-            var fakeSocket = new TestSocket(13, 1, 128, 2);
-            var fakeSink = new TestSink(13, 1, 129);
-            var fakeConfig = new FakeConfig(13, "UnitTest", "unit", 4096);
-            var connection = new TestConnection(fakeSocket, fakeSink, "TestConnection", fakeConfig, source, fakeLogger);
+            var connection = Setup(out var fakeLogger, out var fakeSocket, out var fakeSink);
             Assert.IsNotNull(connection);
             Thread.Sleep(400);
             Assert.IsNotNull(fakeSink.BytesProcessed);
@@ -62,6 +57,28 @@ namespace InterlockLedger.Peer2Peer
             var ex = Assert.ThrowsException<ArgumentOutOfRangeException>(() => connection.GetChannel(10));
             Assert.AreEqual("channel", ex.ParamName);
             Assert.AreEqual(string.Format(ConnectionBase.ExceptionChannelNotFoundFormat, 10) + " (Parameter 'channel')", ex.Message);
+        }
+
+        [TestMethod, Timeout(120_000)]
+        public void TestConnectionTimeout() {
+            var connection = Setup(out var fakeLogger, out var fakeSocket, out var fakeSink);
+            Assert.IsNotNull(connection);
+            string stoppedId = null;
+            connection.ConnectionStopped += (n) => stoppedId = n.Id;
+            Assert.IsFalse(connection.Disposed);
+            Assert.IsNull(stoppedId);
+            Thread.Sleep(60_500);
+            Assert.IsNotNull(stoppedId);
+            Assert.IsTrue(connection.Disposed);
+        }
+
+        private static TestConnection Setup(out FakeLogging fakeLogger, out TestSocket fakeSocket, out TestSink fakeSink) {
+            fakeLogger = new FakeLogging();
+            var source = new CancellationTokenSource();
+            fakeSocket = new TestSocket(13, 1, 128, 2);
+            fakeSink = new TestSink(13, 1, 129);
+            var fakeConfig = new FakeConfig(13, "UnitTest", "unit", 4096);
+            return new TestConnection(fakeSocket, fakeSink, "TestConnection", fakeConfig, source, fakeLogger, 1);
         }
     }
 }

@@ -68,8 +68,8 @@ namespace InterlockLedger.Peer2Peer
                 _source.Cancel();
         }
 
-        protected ListenerCommon(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger)
-            : base(id, config, source, logger) { }
+        protected ListenerCommon(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger, int inactivityTimeoutInMinutes)
+            : base(id, config, source, logger, inactivityTimeoutInMinutes) { }
 
         protected virtual Func<Socket, Task<ISocket>> AcceptSocket => async (socket) => new NetSocket(await socket.AcceptAsync());
         protected abstract string HeaderText { get; }
@@ -129,6 +129,7 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        private ConnectionInitiatedByPeer RunPeerClient(ISocket socket) => new ConnectionInitiatedByPeer(BuildId(), this, socket, this, _source, _logger);
+        private ConnectionInitiatedByPeer RunPeerClient(ISocket socket)
+            => new ConnectionInitiatedByPeer(BuildId(), this, socket, this, _source, _logger, _inactivityTimeoutInMinutes);
     }
 }

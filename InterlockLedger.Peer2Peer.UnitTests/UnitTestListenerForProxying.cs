@@ -52,8 +52,8 @@ namespace InterlockLedger.Peer2Peer
             var fakeInternalSocket = new TestSocket(holdYourHorses: true, _tag, 1, 241, 1);
             var fakeSink = new TestSink(_tag, 1, 242);
             var fakeNodeSink = new FakeNodeSink(_tag, 2000);
-            using var referenceListener = new ListenerForPeer(fakeNodeSink, fakeDiscoverer, source, fakeLogger);
-            var internalConnection = new ConnectionInitiatedByPeer("TLFPM", fakeNodeSink, fakeInternalSocket, fakeSink, source, fakeLogger);
+            using var referenceListener = new ListenerForPeer(fakeNodeSink, fakeDiscoverer, source, fakeLogger, 10);
+            var internalConnection = new ConnectionInitiatedByPeer("TLFPM", fakeNodeSink, fakeInternalSocket, fakeSink, source, fakeLogger, 10);
             internalConnection.SetDefaultSink(fakeNodeSink);
             using var lfp = new TestListenerForProxying(fakeExternalSocket, referenceListener.ExternalAddress, referenceListener.ExternalAddress, 333, internalConnection, new SocketFactory(fakeLogger, 3), source, fakeLogger);
             lfp.Start();
@@ -89,11 +89,11 @@ namespace InterlockLedger.Peer2Peer
             var fakeSink = new TestSink(_tag, 1, 242);
             var externalNodeSink = new ProxyNodeSink(_tag, 4000, fakeLogger, source);
             var internalNodeSink = new FakeNodeSink(_tag, 3000);
-            using var referenceListener = new ListenerForPeer(externalNodeSink, fakeDiscoverer, source, fakeLogger);
-            using var internalListener = new ListenerForPeer(internalNodeSink, fakeDiscoverer, source, fakeLogger);
+            using var referenceListener = new ListenerForPeer(externalNodeSink, fakeDiscoverer, source, fakeLogger, 10);
+            using var internalListener = new ListenerForPeer(internalNodeSink, fakeDiscoverer, source, fakeLogger, 10);
             referenceListener.Start();
             internalListener.Start();
-            using var internalConnection = new ConnectionToPeer("RequestProxying", internalNodeSink, referenceListener.ExternalAddress, referenceListener.ExternalPortNumber, source, fakeLogger);
+            using var internalConnection = new ConnectionToPeer("RequestProxying", internalNodeSink, referenceListener.ExternalAddress, referenceListener.ExternalPortNumber, source, fakeLogger, 10);
             internalConnection.AllocateChannel(internalNodeSink).SendAsync(ProxyNodeSink.ProxyRequest).Wait();
             while (externalNodeSink.ListenerForProxying == null)
                 WaitForOthers(100);
@@ -101,7 +101,7 @@ namespace InterlockLedger.Peer2Peer
             lfp.Start();
             WaitForOthers(300);
             internalConnection.SetDefaultSink(fakeSink);
-            using var externalConnection = new ConnectionToPeer("ExternalMessage", internalNodeSink, lfp.ExternalAddress, lfp.ExternalPortNumber, source, fakeLogger);
+            using var externalConnection = new ConnectionToPeer("ExternalMessage", internalNodeSink, lfp.ExternalAddress, lfp.ExternalPortNumber, source, fakeLogger, 10);
             externalConnection.AllocateChannel(externalNodeSink); // just to bump channel
             var outsideChannel = externalConnection.AllocateChannel(externalNodeSink);
             outsideChannel.SendAsync(new byte[] { _tag, 1, 2 }).Wait();
@@ -130,11 +130,11 @@ namespace InterlockLedger.Peer2Peer
             var fakeSink = new TestSink(_tag, 1, 242);
             var externalNodeSink = new ProxyNodeSink(_tag, 6000, fakeLogger, source);
             var internalNodeSink = new FakeNodeSink(_tag, 5000);
-            using var referenceListener = new ListenerForPeer(externalNodeSink, fakeDiscoverer, source, fakeLogger);
-            using var internalListener = new ListenerForPeer(internalNodeSink, fakeDiscoverer, source, fakeLogger);
+            using var referenceListener = new ListenerForPeer(externalNodeSink, fakeDiscoverer, source, fakeLogger, 10);
+            using var internalListener = new ListenerForPeer(internalNodeSink, fakeDiscoverer, source, fakeLogger, 10);
             referenceListener.Start();
             internalListener.Start();
-            using var internalConnection = new ConnectionToPeer("RequestProxying", internalNodeSink, referenceListener.ExternalAddress, referenceListener.ExternalPortNumber, source, fakeLogger);
+            using var internalConnection = new ConnectionToPeer("RequestProxying", internalNodeSink, referenceListener.ExternalAddress, referenceListener.ExternalPortNumber, source, fakeLogger, 10);
             internalConnection.AllocateChannel(internalNodeSink).SendAsync(ProxyNodeSink.ProxyRequest).Wait();
             while (externalNodeSink.ListenerForProxying == null)
                 WaitForOthers(100);
@@ -142,7 +142,7 @@ namespace InterlockLedger.Peer2Peer
             lfp.Start();
             WaitForOthers(300);
             internalConnection.SetDefaultSink(fakeSink);
-            using var externalConnection = new ConnectionToPeer("ExternalMessage", internalNodeSink, lfp.ExternalAddress, lfp.ExternalPortNumber, source, fakeLogger);
+            using var externalConnection = new ConnectionToPeer("ExternalMessage", internalNodeSink, lfp.ExternalAddress, lfp.ExternalPortNumber, source, fakeLogger, 10);
             externalConnection.AllocateChannel(externalNodeSink); // just to bump channel
             var outsideChannel = externalConnection.AllocateChannel(externalNodeSink);
             outsideChannel.SendAsync(new byte[] { _tag, 1, 2 }).Wait();
@@ -180,7 +180,7 @@ namespace InterlockLedger.Peer2Peer
 
             public override Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
                 if (message.SequenceEqual(ProxyRequest.Skip(2))) {
-                    ListenerForProxying = new ListenerForProxying(HostAtAddress, HostAtAddress, (ushort)(HostAtPortNumber - 1), channel.Connection, new SocketFactory(_fakeLogger, 3), _source, _fakeLogger);
+                    ListenerForProxying = new ListenerForProxying(HostAtAddress, HostAtAddress, (ushort)(HostAtPortNumber - 1), channel.Connection, new SocketFactory(_fakeLogger, 3), _source, _fakeLogger, 10);
                     return Task.FromResult(Success.Next);
                 }
                 return base.SinkAsync(message, channel);

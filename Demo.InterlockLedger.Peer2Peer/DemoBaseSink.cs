@@ -123,7 +123,7 @@ namespace Demo.InterlockLedger.Peer2Peer
                         config.MessageTag, config.NetworkName, config.NetworkProtocolName, config.ListeningBufferSize,
                         sp.GetRequiredService<ILoggerFactory>(),
                         sp.GetRequiredService<IExternalAccessDiscoverer>(),
-                        sp.GetRequiredService<SocketFactory>()).WithCancellationTokenSource(source))
+                        sp.GetRequiredService<SocketFactory>(), 10).WithCancellationTokenSource(source))
                 .BuildServiceProvider();
         }
 

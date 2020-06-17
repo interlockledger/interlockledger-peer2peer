@@ -39,7 +39,7 @@ namespace InterlockLedger.Peer2Peer
 {
     public sealed class PeerServices : IPeerServices, IKnownNodesServices, IProxyingServices
     {
-        public PeerServices(ulong messageTag, string networkName, string networkProtocolName, int listeningBufferSize, ILoggerFactory loggerFactory, IExternalAccessDiscoverer discoverer, SocketFactory socketFactory) {
+        public PeerServices(ulong messageTag, string networkName, string networkProtocolName, int listeningBufferSize, ILoggerFactory loggerFactory, IExternalAccessDiscoverer discoverer, SocketFactory socketFactory, int inactivityTimeoutInMinutes) {
             _disposer = new Disposer(); // TODO: change to use AbstractDisposable
             MessageTag = messageTag;
             NetworkName = networkName ?? throw new ArgumentNullException(nameof(networkName));
@@ -51,6 +51,7 @@ namespace InterlockLedger.Peer2Peer
             _knownNodes = new ConcurrentDictionary<string, (string address, int port, bool retain)>();
             _clients = new ConcurrentDictionary<string, IConnection>();
             _logger = LoggerNamed(nameof(PeerServices));
+            _inactivityTimeoutInMinutes = inactivityTimeoutInMinutes;
         }
 
         public IKnownNodesServices KnownNodes => this;
@@ -79,20 +80,20 @@ namespace InterlockLedger.Peer2Peer
             });
 
         public IListener CreateListenerFor(INodeSink nodeSink)
-                            => _disposer.Do(() => new ListenerForPeer(nodeSink, _discoverer, Source, LoggerNamed($"{nameof(ListenerForPeer)}#{nodeSink.MessageTag}")));
+            => _disposer.Do(() => new ListenerForPeer(nodeSink, _discoverer, Source, LoggerNamed($"{nameof(ListenerForPeer)}#{nodeSink.MessageTag}"), _inactivityTimeoutInMinutes));
 
         IListenerForProxying IProxyingServices.CreateListenerForProxying(string externalAddress, string hostedAddress, ushort firstPort, IConnection connection)
-            => _disposer.Do(() => new ListenerForProxying(externalAddress, hostedAddress, firstPort, connection, _socketFactory, _source, LoggerNamed($"{nameof(ListenerForProxying)}#{connection.MessageTag}|from:{connection.Id}")));
+            => _disposer.Do(() => new ListenerForProxying(externalAddress, hostedAddress, firstPort, connection, _socketFactory, _source, LoggerNamed($"{nameof(ListenerForProxying)}#{connection.MessageTag}|from:{connection.Id}"), _inactivityTimeoutInMinutes*10));
 
         public void Dispose()
-                    => _disposer.Dispose(() => {
-                        _loggerFactory.Dispose();
-                        _discoverer.Dispose();
-                        _knownNodes.Clear();
-                        foreach (var client in _clients.Values)
-                            client?.Dispose();
-                        _clients.Clear();
-                    });
+            => _disposer.Dispose(() => {
+                _loggerFactory.Dispose();
+                _discoverer.Dispose();
+                _knownNodes.Clear();
+                foreach (var client in _clients.Values)
+                    client?.Dispose();
+                _clients.Clear();
+            });
 
         void IKnownNodesServices.Forget(string nodeId) => _disposer.Do(() => _ = _knownNodes.TryRemove(nodeId, out _));
 
@@ -136,12 +137,13 @@ namespace InterlockLedger.Peer2Peer
         private readonly ILogger _logger;
         private readonly ILoggerFactory _loggerFactory;
         private readonly SocketFactory _socketFactory;
+        private readonly int _inactivityTimeoutInMinutes;
         private CancellationTokenSource _source;
 
         private static string Framed(string nodeId) => $"[{nodeId}]";
 
         private ConnectionToPeer BuildClient(string address, int port, string id)
-            => new ConnectionToPeer(id, this, address, port, Source, LoggerForClient(id));
+            => new ConnectionToPeer(id, this, address, port, Source, LoggerForClient(id), _inactivityTimeoutInMinutes);
 
         private IConnection GetResponder(string nodeId)
             => _knownNodes.TryGetValue(nodeId, out var n) ? n.port != 0 ? GetClient(n.address, n.port) : GetClient(nodeId) : null;

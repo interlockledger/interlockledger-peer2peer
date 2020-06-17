@@ -46,8 +46,8 @@ namespace InterlockLedger.Peer2Peer
 {
     public class ListenerForProxying : ListenerCommon, IListenerForProxying
     {
-        public ListenerForProxying(string externalAddress, string hostedAddress, ushort firstPort, IConnection connection, SocketFactory socketFactory, CancellationTokenSource source, ILogger logger)
-            : base(connection.Id, connection, CreateKindOfLinkedSource(source), logger) {
+        public ListenerForProxying(string externalAddress, string hostedAddress, ushort firstPort, IConnection connection, SocketFactory socketFactory, CancellationTokenSource source, ILogger logger, int inactivityTimeoutInMinutes)
+            : base(connection.Id, connection, CreateKindOfLinkedSource(source), logger, inactivityTimeoutInMinutes) {
             if (string.IsNullOrWhiteSpace(externalAddress))
                 throw new ArgumentException("message", nameof(externalAddress));
             Connection = connection ?? throw new ArgumentNullException(nameof(connection));

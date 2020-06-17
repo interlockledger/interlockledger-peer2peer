@@ -41,8 +41,8 @@ namespace InterlockLedger.Peer2Peer
 {
     public sealed class ConnectionToPeer : ConnectionBase
     {
-        public ConnectionToPeer(string id, INetworkConfig config, string networkAddress, int port, CancellationTokenSource source, ILogger logger)
-            : base(id, config, source, logger) {
+        public ConnectionToPeer(string id, INetworkConfig config, string networkAddress, int port, CancellationTokenSource source, ILogger logger, int inactivityTimeoutInMinutes)
+            : base(id, config, source, logger, inactivityTimeoutInMinutes) {
             if (string.IsNullOrWhiteSpace(networkAddress))
                 throw new ArgumentNullException(nameof(networkAddress));
             NetworkAddress = networkAddress;
@@ -50,8 +50,8 @@ namespace InterlockLedger.Peer2Peer
         }
 
         protected override ISocket BuildSocket() {
-            IPHostEntry ipHostInfo = Dns.GetHostEntry(NetworkAddress);
-            IPAddress ipAddress = ipHostInfo.AddressList.First(ip => ip.AddressFamily == AddressFamily.InterNetwork);
+            var ipHostInfo = Dns.GetHostEntry(NetworkAddress);
+            var ipAddress = ipHostInfo.AddressList.First(ip => ip.AddressFamily == AddressFamily.InterNetwork);
             var socket = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             socket.Connect(new IPEndPoint(ipAddress, NetworkPort));
             socket.LingerState = new LingerOption(true, 1);

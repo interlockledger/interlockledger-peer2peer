@@ -44,7 +44,7 @@ namespace InterlockLedger.Peer2Peer
     {
         public Pipeline(ISocket socket, CancellationTokenSource source, ulong messageTag,
             int minimumBufferSize, Func<NetworkMessageSlice, Task<Success>> sliceProcessor,
-            Action stopProcessor, ILogger logger) {
+            Action stopProcessor, ILogger logger, int inactivityTimeoutInMinutes) {
             _socket = socket ?? throw new ArgumentNullException(nameof(socket));
             _queue = new SendingQueue();
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -55,6 +55,7 @@ namespace InterlockLedger.Peer2Peer
             _minimumBufferSize = minimumBufferSize;
             _sliceProcessor = sliceProcessor ?? throw new ArgumentNullException(nameof(sliceProcessor));
             _stopProcessor = stopProcessor ?? throw new ArgumentNullException(nameof(stopProcessor));
+            _inactivity = new TimeoutManager(inactivityTimeoutInMinutes);
         }
 
         public bool Connected => _socket.Connected;
@@ -96,13 +97,14 @@ namespace InterlockLedger.Peer2Peer
         private readonly Func<NetworkMessageSlice, Task<Success>> _sliceProcessor;
         private readonly ISocket _socket;
         private readonly Action _stopProcessor;
-
+        private readonly TimeoutManager _inactivity;
         private bool _active => !_linkedToken.IsCancellationRequested;
 
         private async Task PipeFillAsync(PipeWriter writer) {
             while (_active) {
                 try {
                     if (_socket.Available > 0) {
+                        _inactivity.Restart();
                         _logger.LogTrace($"Getting {_minimumBufferSize} bytes to receive in the socket");
                         var memory = writer.GetMemory(_minimumBufferSize);
                         int bytesRead = await _socket.ReceiveAsync(memory, SocketFlags.None, _linkedToken);
@@ -116,8 +118,11 @@ namespace InterlockLedger.Peer2Peer
                             }
                         } else
                             break;
-                    } else
+                    } else {
                         await Task.Delay(1, _linkedToken);
+                        if (_inactivity.TimedOut)
+                            _localSource.Cancel(false);
+                    }
                 } catch (OperationCanceledException oce) {
                     writer.Complete(oce);
                     return;
@@ -198,6 +203,7 @@ namespace InterlockLedger.Peer2Peer
                         break;
                     var sequence = result.Buffer;
                     if (!sequence.IsEmpty) {
+                        _inactivity.Restart();
                         using (await senderSocketLock.LockAsync()) {
                             await _socket.SendAsync(sequence.ToArraySegments());
                             reader.AdvanceTo(sequence.End);

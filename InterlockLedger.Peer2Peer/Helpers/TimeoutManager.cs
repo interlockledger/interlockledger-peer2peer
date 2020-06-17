@@ -31,44 +31,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
-using System.Threading;
-using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public abstract class ListenerBase : AbstractDisposable, INetworkIdentity
+    public readonly struct TimeoutManager
     {
-        public string Id { get; }
-
-        public int ListeningBufferSize => _config.ListeningBufferSize;
-
-        public ulong MessageTag => _config.MessageTag;
-
-        public string NetworkName => _config.NetworkName;
-
-        public string NetworkProtocolName => _config.NetworkProtocolName;
-
-        public abstract void Stop();
-
-        protected internal readonly ILogger _logger;
-        protected internal readonly CancellationTokenSource _source;
-        protected internal bool Abandon => _source.IsCancellationRequested || Disposed;
-
-        protected readonly int _inactivityTimeoutInMinutes;
-
-        protected ListenerBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger, int inactivityTimeoutInMinutes) {
-            if (string.IsNullOrWhiteSpace(id))
-                throw new ArgumentNullException(nameof(id));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _source = source ?? throw new ArgumentNullException(nameof(source));
-            Id = id;
-            _config = config ?? throw new ArgumentNullException(nameof(config));
-            _source.Token.Register(Dispose);
-            _inactivityTimeoutInMinutes = inactivityTimeoutInMinutes;
+        public TimeoutManager(int minutes) {
+            Timeout = new TimeSpan(0, Math.Max(1, minutes), 0);
+            _watch = Stopwatch.StartNew();
         }
 
-        protected override void DisposeManagedResources() => Stop();
+        public bool TimedOut => _watch.Elapsed > Timeout;
+        public TimeSpan Timeout { get; }
 
-        private readonly INetworkConfig _config;
+        public void Restart() => _watch.Restart();
+
+        private readonly Stopwatch _watch;
     }
 }

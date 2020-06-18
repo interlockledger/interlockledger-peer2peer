@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -30,10 +30,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using System;
+
 namespace InterlockLedger.Peer2Peer
 {
     public interface IListener : INetworkIdentity
     {
+        event Action InactiveConnectionDropped;
+        event Action ExcessConnectionRejected;
+
         bool Alive { get; }
         string ExternalAddress { get; }
         ushort ExternalPortNumber { get; }

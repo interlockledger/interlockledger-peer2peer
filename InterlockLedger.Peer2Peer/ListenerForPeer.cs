@@ -41,8 +41,8 @@ namespace InterlockLedger.Peer2Peer
 {
     public class ListenerForPeer : ListenerCommon
     {
-        public ListenerForPeer(INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger, int inactivityTimeoutInMinutes)
-            : base(nodeSink.NodeId, nodeSink, source, logger, inactivityTimeoutInMinutes)
+        public ListenerForPeer(INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger)
+            : base(nodeSink.NodeId, nodeSink, source, logger)
             => (_nodeSink, _socket, _route) = DetermineExternalAccess(
                     nodeSink ?? throw new ArgumentNullException(nameof(nodeSink)),
                     discoverer ?? throw new ArgumentNullException(nameof(discoverer)));

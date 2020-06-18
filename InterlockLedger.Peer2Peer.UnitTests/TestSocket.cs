@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -70,12 +71,13 @@ namespace InterlockLedger.Peer2Peer
 
         public void ReleaseYourHorses() => _holdYourHorses = false;
 
-        public Task SendAsync(IList<ArraySegment<byte>> segment) {
+        public Task<int> SendAsync(IList<ArraySegment<byte>> segment) {
             _bytesSent.AddRange(segment);
-            return Task.CompletedTask;
+            return Task.FromResult(segment.Select(s => s.Count).Sum());
         }
 
-        protected override void DisposeManagedResources() { }
+        protected override void DisposeManagedResources() {
+        }
 
         private readonly Memory<byte> _bytesReceived;
         private readonly List<ArraySegment<byte>> _bytesSent = new List<ArraySegment<byte>>();

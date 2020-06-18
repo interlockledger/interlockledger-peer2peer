@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -39,7 +39,7 @@ namespace InterlockLedger.Peer2Peer
     {
         public readonly List<IEnumerable<byte>> MessagesReceived = new List<IEnumerable<byte>>();
 
-        public FakeNodeSink(ulong messageTag, ushort port, params byte[] response) {
+        public FakeNodeSink(ulong messageTag, ushort port, int inactivityTimeoutInMinutes, int maxConcurrentConnections, params byte[] response) {
             MessageTag = messageTag;
             HostAtPortNumber = port;
             _response = response;
@@ -49,8 +49,10 @@ namespace InterlockLedger.Peer2Peer
         public string HostAtAddress => "localhost";
         public ushort HostAtPortNumber { get; }
         public string Id => NodeId;
+        public int InactivityTimeoutInMinutes { get; }
         public int ListeningBufferSize => 1024;
         public IEnumerable<string> LocalResources { get; } = new string[] { "DummyDoc1", "DummyDoc2" };
+        public int MaxConcurrentConnections { get; }
         public ulong MessageTag { get; }
         public string NetworkName => "UnitTesting";
         public string NetworkProtocolName => "UnitTest";
@@ -74,7 +76,8 @@ namespace InterlockLedger.Peer2Peer
             return Success.Exit;
         }
 
-        protected override void DisposeManagedResources() { }
+        protected override void DisposeManagedResources() {
+        }
 
         private readonly byte[] _response;
     }

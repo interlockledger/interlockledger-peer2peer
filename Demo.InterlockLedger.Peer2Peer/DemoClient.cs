@@ -56,14 +56,16 @@ namespace Demo.InterlockLedger.Peer2Peer
         public override async Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel activeChannel)
             => Received(await Process(message, activeChannel.Channel));
 
+        private bool _brokenConnection = false;
         protected override void Run(IPeerServices peerServices) {
             using var client = peerServices.GetClient("localhost", 8080);
+            client.ConnectionStopped += (_) => _brokenConnection = true;
             var liveness = new LivenessListener(client);
-            while (!_source.IsCancellationRequested) {
+            while (!_source.IsCancellationRequested && liveness.Alive && !_brokenConnection) {
                 Console.WriteLine();
                 Console.Write(Prompt);
                 while (!Console.KeyAvailable) {
-                    if (!liveness.Alive) {
+                    if (!liveness.Alive || _brokenConnection) {
                         Console.WriteLine();
                         Console.WriteLine();
                         Console.WriteLine("Lost connection with server! Abandoning...");

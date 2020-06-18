@@ -39,13 +39,11 @@ namespace InterlockLedger.Peer2Peer
     public abstract class ListenerBase : AbstractDisposable, INetworkIdentity
     {
         public string Id { get; }
-
+        public int InactivityTimeoutInMinutes => _config.InactivityTimeoutInMinutes;
         public int ListeningBufferSize => _config.ListeningBufferSize;
-
+        public int MaxConcurrentConnections => _config.MaxConcurrentConnections;
         public ulong MessageTag => _config.MessageTag;
-
         public string NetworkName => _config.NetworkName;
-
         public string NetworkProtocolName => _config.NetworkProtocolName;
 
         public abstract void Stop();
@@ -54,9 +52,8 @@ namespace InterlockLedger.Peer2Peer
         protected internal readonly CancellationTokenSource _source;
         protected internal bool Abandon => _source.IsCancellationRequested || Disposed;
 
-        protected readonly int _inactivityTimeoutInMinutes;
-
-        protected ListenerBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger, int inactivityTimeoutInMinutes) {
+        protected ListenerBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger)
+        {
             if (string.IsNullOrWhiteSpace(id))
                 throw new ArgumentNullException(nameof(id));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -64,7 +61,6 @@ namespace InterlockLedger.Peer2Peer
             Id = id;
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _source.Token.Register(Dispose);
-            _inactivityTimeoutInMinutes = inactivityTimeoutInMinutes;
         }
 
         protected override void DisposeManagedResources() => Stop();

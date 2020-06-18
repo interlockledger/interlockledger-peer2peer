@@ -54,7 +54,14 @@ namespace InterlockLedger.Peer2Peer
         public Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token)
             => DoAsync(async () => token.IsCancellationRequested ? 0 : await _socket.ReceiveAsync(memory, socketFlags).ConfigureAwait(false));
 
-        public Task SendAsync(IList<ArraySegment<byte>> buffers) => DoAsync(async () => await _socket.SendAsync(buffers).ConfigureAwait(false));
+        public Task<int> SendAsync(IList<ArraySegment<byte>> buffers)
+            => DoAsync(async () => {
+                try {
+                    return await _socket.SendAsync(buffers).ConfigureAwait(false);
+                } catch (SocketException){
+                    return -1;
+                }
+            });
 
         protected override void DisposeManagedResources() {
             try {

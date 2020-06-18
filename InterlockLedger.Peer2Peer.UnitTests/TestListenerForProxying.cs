@@ -41,7 +41,7 @@ namespace InterlockLedger.Peer2Peer
     public class TestListenerForProxying : ListenerForProxying
     {
         public TestListenerForProxying(TestSocket overridingSocket, string externalAddress, string hostedAddress, ushort firstPort, ConnectionInitiatedByPeer connection, SocketFactory socketFactory, CancellationTokenSource source, ILogger logger) :
-            base(externalAddress, hostedAddress, firstPort, connection, socketFactory, source, logger, 10)
+            base(externalAddress, hostedAddress, firstPort, connection, socketFactory, source, logger)
             => _testSocket = new SingleUseSocket(overridingSocket, _source);
 
         protected override Func<Socket, Task<ISocket>> AcceptSocket => _testSocket.AcceptSocketOnce;

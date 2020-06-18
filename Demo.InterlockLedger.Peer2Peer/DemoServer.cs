@@ -55,10 +55,11 @@ namespace Demo.InterlockLedger.Peer2Peer
         }
 
         protected override void Run(IPeerServices peerServices) {
-            _peerServices = peerServices ?? throw new ArgumentNullException(nameof(peerServices));
-            using var listener = peerServices.CreateListenerFor(this);
+            using var listener = (peerServices ?? throw new ArgumentNullException(nameof(peerServices))).CreateListenerFor(this);
             try {
                 _ = listener.Start();
+                listener.ExcessConnectionRejected += Listener_ExcessConnectionRejected;
+                listener.InactiveConnectionDropped += Listener_InactiveConnectionDropped;
                 Dequeue().RunOnThread("DemoServer-DelayedResponses");
                 while (listener.Alive) {
                     Thread.Sleep(1);
@@ -68,9 +69,10 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
         }
 
-        private readonly ConcurrentQueue<(IEnumerable<byte> message, IActiveChannel activeChannel)> _queue = new ConcurrentQueue<(IEnumerable<byte> message, IActiveChannel activeChannel)>();
+        private void Listener_InactiveConnectionDropped() => Console.WriteLine("Inactive Connection Dropped");
+        private void Listener_ExcessConnectionRejected() => Console.WriteLine("Excess Connection Rejected");
 
-        private IPeerServices _peerServices;
+        private readonly ConcurrentQueue<(IEnumerable<byte> message, IActiveChannel activeChannel)> _queue = new ConcurrentQueue<(IEnumerable<byte> message, IActiveChannel activeChannel)>();
 
         private bool _stop = false;
 

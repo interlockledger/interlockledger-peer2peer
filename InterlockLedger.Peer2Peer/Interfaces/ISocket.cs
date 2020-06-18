@@ -47,6 +47,6 @@ namespace InterlockLedger.Peer2Peer
 
         Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token);
 
-        Task SendAsync(IList<ArraySegment<byte>> buffers);
+        Task<int> SendAsync(IList<ArraySegment<byte>> buffers);
     }
 }

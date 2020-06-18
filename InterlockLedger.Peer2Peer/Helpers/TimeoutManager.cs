@@ -38,14 +38,19 @@ namespace InterlockLedger.Peer2Peer
     public readonly struct TimeoutManager
     {
         public TimeoutManager(int minutes) {
-            Timeout = new TimeSpan(0, Math.Max(1, minutes), 0);
-            _watch = Stopwatch.StartNew();
+            if (minutes > 0) {
+                Timeout = new TimeSpan(0, minutes, 0);
+                _watch = Stopwatch.StartNew();
+            } else {
+                Timeout = TimeSpan.Zero;
+                _watch = null;
+            }
         }
 
-        public bool TimedOut => _watch.Elapsed > Timeout;
+        public bool TimedOut => !(_watch is null) && _watch.Elapsed > Timeout;
         public TimeSpan Timeout { get; }
 
-        public void Restart() => _watch.Restart();
+        public void Restart() => _watch?.Restart();
 
         private readonly Stopwatch _watch;
     }

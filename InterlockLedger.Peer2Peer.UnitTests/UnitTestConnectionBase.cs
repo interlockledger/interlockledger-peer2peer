@@ -42,7 +42,7 @@ namespace InterlockLedger.Peer2Peer
     {
         [TestMethod]
         public void TestConnectionMinimally() {
-            var connection = Setup(out var fakeLogger, out var fakeSocket, out var fakeSink);
+            var connection = Setup(10, out var fakeLogger, out var fakeSocket, out var fakeSink);
             Assert.IsNotNull(connection);
             Thread.Sleep(400);
             Assert.IsNotNull(fakeSink.BytesProcessed);
@@ -61,7 +61,7 @@ namespace InterlockLedger.Peer2Peer
 
         [TestMethod, Timeout(120_000)]
         public void TestConnectionTimeout() {
-            var connection = Setup(out var fakeLogger, out var fakeSocket, out var fakeSink);
+            var connection = Setup(inactivityTimeoutInMinutes: 1, out var fakeLogger, out var fakeSocket, out var fakeSink);
             Assert.IsNotNull(connection);
             string stoppedId = null;
             connection.ConnectionStopped += (n) => stoppedId = n.Id;
@@ -72,13 +72,26 @@ namespace InterlockLedger.Peer2Peer
             Assert.IsTrue(connection.Disposed);
         }
 
-        private static TestConnection Setup(out FakeLogging fakeLogger, out TestSocket fakeSocket, out TestSink fakeSink) {
+        [TestMethod, Timeout(30_000)]
+        public void TestConnectionNonTimeout() {
+            var connection = Setup(inactivityTimeoutInMinutes: 0, out var fakeLogger, out var fakeSocket, out var fakeSink);
+            Assert.IsNotNull(connection);
+            string stoppedId = null;
+            connection.ConnectionStopped += (n) => stoppedId = n.Id;
+            Assert.IsFalse(connection.Disposed);
+            Assert.IsNull(stoppedId);
+            Thread.Sleep(10_500);
+            Assert.IsNull(stoppedId);
+            Assert.IsFalse(connection.Disposed);
+        }
+
+        private static TestConnection Setup(int inactivityTimeoutInMinutes, out FakeLogging fakeLogger, out TestSocket fakeSocket, out TestSink fakeSink) {
             fakeLogger = new FakeLogging();
             var source = new CancellationTokenSource();
             fakeSocket = new TestSocket(13, 1, 128, 2);
             fakeSink = new TestSink(13, 1, 129);
-            var fakeConfig = new FakeConfig(13, "UnitTest", "unit", 4096);
-            return new TestConnection(fakeSocket, fakeSink, "TestConnection", fakeConfig, source, fakeLogger, 1);
+            var fakeConfig = new FakeConfig(13, "UnitTest", "unit", 4096, inactivityTimeoutInMinutes, 4);
+            return new TestConnection(fakeSocket, fakeSink, "TestConnection", fakeConfig, source, fakeLogger);
         }
     }
 }

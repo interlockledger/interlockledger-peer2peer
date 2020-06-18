@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -36,18 +36,23 @@ namespace InterlockLedger.Peer2Peer
 {
     public class FakeConfig : AbstractDisposable, INetworkConfig
     {
-        public FakeConfig(ulong messageTag, string networkName, string networkProtocolName, int listeningBufferSize) {
+        public FakeConfig(ulong messageTag, string networkName, string networkProtocolName, int listeningBufferSize, int inactivityTimeoutInMinutes, int maxConcurrentConnections) {
             MessageTag = messageTag;
             NetworkName = networkName ?? throw new ArgumentNullException(nameof(networkName));
             NetworkProtocolName = networkProtocolName ?? throw new ArgumentNullException(nameof(networkProtocolName));
             ListeningBufferSize = listeningBufferSize;
+            InactivityTimeoutInMinutes = inactivityTimeoutInMinutes;
+            MaxConcurrentConnections = maxConcurrentConnections;
         }
 
+        public int InactivityTimeoutInMinutes { get; }
         public int ListeningBufferSize { get; }
+        public int MaxConcurrentConnections { get; }
         public ulong MessageTag { get; }
         public string NetworkName { get; }
         public string NetworkProtocolName { get; }
 
-        protected override void DisposeManagedResources() { }
+        protected override void DisposeManagedResources() {
+        }
     }
 }

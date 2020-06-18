@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -49,7 +49,9 @@ namespace InterlockLedger.Peer2Peer
         public bool Connected => Pipeline?.Connected ?? false;
         public IConnection Connection => this;
         public string Id { get; }
+        public int InactivityTimeoutInMinutes { get; }
         public int ListeningBufferSize => 1024;
+        public int MaxConcurrentConnections { get; }
         public ulong MessageTag { get; }
         public string NetworkName { get; }
         public string NetworkProtocolName { get; }

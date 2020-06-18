@@ -88,8 +88,8 @@ namespace InterlockLedger.Peer2Peer
 
         protected ISocket _socket;
 
-        protected ConnectionBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger, int inactivityTimeoutInMinutes)
-            : base(id, config, source, logger, inactivityTimeoutInMinutes) => _pipeline = null;
+        protected ConnectionBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger)
+            : base(id, config, source, logger) => _pipeline = null;
 
         protected string NetworkAddress { get; set; }
 
@@ -124,7 +124,7 @@ namespace InterlockLedger.Peer2Peer
                 if (_pipeline is null)
                     using (await _pipelineLock.LockAsync()) {
                         var socket = BuildSocket();
-                        _pipeline = new Pipeline(socket, _source, MessageTag, ListeningBufferSize, SinkAsync, OnPipelineStopped, _logger, _inactivityTimeoutInMinutes); ;
+                        _pipeline = new Pipeline(socket, _source, MessageTag, ListeningBufferSize, SinkAsync, OnPipelineStopped, _logger, InactivityTimeoutInMinutes); ;
                         _pipeline.ListenAsync().RunOnThread($"Pipeline {Id} to {socket.RemoteEndPoint}", PipelineThreadDone);
                     }
                 return _pipeline;

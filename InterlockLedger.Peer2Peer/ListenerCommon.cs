@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -43,6 +44,10 @@ namespace InterlockLedger.Peer2Peer
 {
     public abstract class ListenerCommon : ListenerBase, IListener, IChannelSink
     {
+        public event Action ExcessConnectionRejected;
+
+        public event Action InactiveConnectionDropped;
+
         public bool Alive => _listenSocket != null;
 
         public string ExternalAddress { get; protected set; }
@@ -56,23 +61,18 @@ namespace InterlockLedger.Peer2Peer
             return this;
         }
 
-        protected async Task StartListeningAsync() {
-            if (!_source.IsCancellationRequested)
-                Listen().RunOnThread(GetType().FullName);
-            while (!Alive)
-                await Task.Yield();
-        }
-
         public override void Stop() {
             if (!_source.IsCancellationRequested)
                 _source.Cancel();
         }
 
-        protected ListenerCommon(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger, int inactivityTimeoutInMinutes)
-            : base(id, config, source, logger, inactivityTimeoutInMinutes) { }
+        protected ListenerCommon(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger)
+            : base(id, config, source, logger) { }
 
         protected virtual Func<Socket, Task<ISocket>> AcceptSocket => async (socket) => new NetSocket(await socket.AcceptAsync());
+
         protected abstract string HeaderText { get; }
+
         protected abstract string IdPrefix { get; }
 
         protected abstract Socket BuildSocket();
@@ -87,7 +87,7 @@ namespace InterlockLedger.Peer2Peer
                 _listenSocket.Dispose();
                 _listenSocket = null;
             }
-            foreach (var conn in _connections.ToArray())
+            foreach (var conn in _connections.Values.ToArray())
                 conn?.Dispose();
             _connections.Clear();
             base.DisposeManagedResources();
@@ -95,7 +95,14 @@ namespace InterlockLedger.Peer2Peer
 
         protected void LogHeader(string verb) => _logger.LogInformation($"-- {verb} " + HeaderText);
 
-        private readonly List<ConnectionInitiatedByPeer> _connections = new List<ConnectionInitiatedByPeer>();
+        protected async Task StartListeningAsync() {
+            if (!_source.IsCancellationRequested)
+                Listen().RunOnThread(GetType().FullName);
+            while (!Alive)
+                await Task.Yield();
+        }
+
+        private readonly ConcurrentDictionary<string, ConnectionInitiatedByPeer> _connections = new ConcurrentDictionary<string, ConnectionInitiatedByPeer>();
         private long _lastIdUsed = 0;
 
         [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = DisposedJustification)]
@@ -110,7 +117,15 @@ namespace InterlockLedger.Peer2Peer
                 do {
                     try {
                         while (!_source.IsCancellationRequested) {
-                            _connections.Add(RunPeerClient(await AcceptSocket(_listenSocket)));
+                            var socket = await AcceptSocket(_listenSocket);
+                            if (MaxConcurrentConnections == 0 || _connections.Count < MaxConcurrentConnections) {
+                                var connection = ConnectToPeerUsing(socket);
+                                if (_connections.TryAdd(connection.Id, connection)) {
+                                    connection.ConnectionStopped += inid => RemoveConnection(inid);
+                                }
+                            } else {
+                                RejectConnection(socket);
+                            }
                         }
                     } catch (AggregateException e) when (e.InnerExceptions.Any(ex => ex is ObjectDisposedException)) {
                         _logger.LogTrace(e, "ObjectDisposedException");
@@ -127,9 +142,22 @@ namespace InterlockLedger.Peer2Peer
                 LogHeader("Stopped");
                 Dispose();
             }
-        }
+            ConnectionInitiatedByPeer ConnectToPeerUsing(ISocket socket)
+                => new ConnectionInitiatedByPeer(BuildId(), this, socket, this, _source, _logger);
 
-        private ConnectionInitiatedByPeer RunPeerClient(ISocket socket)
-            => new ConnectionInitiatedByPeer(BuildId(), this, socket, this, _source, _logger, _inactivityTimeoutInMinutes);
+            void RemoveConnection(INetworkIdentity inid) {
+                if (_connections.TryRemove(inid.Id, out _))
+                    InactiveConnectionDropped?.Invoke();
+            }
+
+            void RejectConnection(ISocket socket) {
+                try {
+                    socket.Dispose();
+                } catch {
+                } finally {
+                    ExcessConnectionRejected?.Invoke();
+                }
+            }
+        }
     }
 }

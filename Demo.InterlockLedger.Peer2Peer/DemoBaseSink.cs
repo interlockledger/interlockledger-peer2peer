@@ -51,6 +51,8 @@ namespace Demo.InterlockLedger.Peer2Peer
             PublishAtPortNumber = HostAtPortNumber = 8080;
             ListeningBufferSize = 512;
             DefaultTimeoutInMilliseconds = 30_000;
+            MaxConcurrentConnections = 2;
+            InactivityTimeoutInMinutes = 1;
             MessageTag = _messageTagCode;
             NetworkName = "Demo";
             NetworkProtocolName = "DemoPeer2Peer";
@@ -123,7 +125,7 @@ namespace Demo.InterlockLedger.Peer2Peer
                         config.MessageTag, config.NetworkName, config.NetworkProtocolName, config.ListeningBufferSize,
                         sp.GetRequiredService<ILoggerFactory>(),
                         sp.GetRequiredService<IExternalAccessDiscoverer>(),
-                        sp.GetRequiredService<SocketFactory>(), 10).WithCancellationTokenSource(source))
+                        sp.GetRequiredService<SocketFactory>(), 10, 2).WithCancellationTokenSource(source))
                 .BuildServiceProvider();
         }
 

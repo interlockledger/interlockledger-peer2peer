@@ -205,8 +205,10 @@ namespace InterlockLedger.Peer2Peer
                     if (!sequence.IsEmpty) {
                         _inactivity.Restart();
                         using (await senderSocketLock.LockAsync()) {
-                            await _socket.SendAsync(sequence.ToArraySegments());
+                            var bytesCount = await _socket.SendAsync(sequence.ToArraySegments());
                             reader.AdvanceTo(sequence.End);
+                            if (bytesCount < 0)
+                                _localSource.Cancel(false);
                         }
                     }
                     if (_queue.Exit)

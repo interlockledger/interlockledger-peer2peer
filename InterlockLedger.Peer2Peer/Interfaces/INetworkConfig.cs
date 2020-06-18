@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -34,11 +34,40 @@ using System;
 
 namespace InterlockLedger.Peer2Peer
 {
+    /// <summary>
+    /// Basic Peer2Peer Network Configuration
+    /// </summary>
     public interface INetworkConfig : IDisposable
     {
+        /// <summary>
+        /// No read or written bytes while this time elapses will cause the connection to be shut
+        /// 0 - means no timeout
+        /// </summary>
+        int InactivityTimeoutInMinutes { get; }
+
+        /// <summary>
+        /// Default size in bytes for listening buffers
+        /// </summary>
         int ListeningBufferSize { get; }
+
+        /// <summary>
+        /// Maximum number of concurrent connections
+        /// </summary>
+        int MaxConcurrentConnections { get; }
+
+        /// <summary>
+        /// Tag identifier for messages, all messages must begin with the value encoded as an ILInt
+        /// </summary>
         ulong MessageTag { get; }
+
+        /// <summary>
+        /// Network name, multiple networks can coexist using the same protocol
+        /// </summary>
         string NetworkName { get; }
+
+        /// <summary>
+        /// Protocol name for the network that Peer2Peer will interact
+        /// </summary>
         string NetworkProtocolName { get; }
     }
 }

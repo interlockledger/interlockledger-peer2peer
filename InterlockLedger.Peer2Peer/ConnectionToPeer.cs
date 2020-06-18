@@ -41,8 +41,9 @@ namespace InterlockLedger.Peer2Peer
 {
     public sealed class ConnectionToPeer : ConnectionBase
     {
-        public ConnectionToPeer(string id, INetworkConfig config, string networkAddress, int port, CancellationTokenSource source, ILogger logger, int inactivityTimeoutInMinutes)
-            : base(id, config, source, logger, inactivityTimeoutInMinutes) {
+        public ConnectionToPeer(string id, INetworkConfig config, string networkAddress, int port, CancellationTokenSource source, ILogger logger)
+            : base(id, config, source, logger)
+        {
             if (string.IsNullOrWhiteSpace(networkAddress))
                 throw new ArgumentNullException(nameof(networkAddress));
             NetworkAddress = networkAddress;

@@ -58,7 +58,7 @@ namespace InterlockLedger.Peer2Peer
             => DoAsync(async () => {
                 try {
                     return await _socket.SendAsync(buffers).ConfigureAwait(false);
-                } catch (SocketException){
+                } catch (SocketException) {
                     return -1;
                 }
             });

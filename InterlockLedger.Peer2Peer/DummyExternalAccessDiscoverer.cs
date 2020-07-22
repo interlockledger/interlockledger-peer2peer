@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -32,29 +32,42 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace InterlockLedger.Peer2Peer
 {
     // TODO1: to be replaced by some implementation that deals with NAT/UPnP/Whatever to really give the node a public address and port
     public class DummyExternalAccessDiscoverer : AbstractExternalAccessDiscoverer
     {
-        public DummyExternalAccessDiscoverer(SocketFactory socketFactory)
-            => _socketFactory = socketFactory ?? throw new ArgumentNullException(nameof(socketFactory));
+        public DummyExternalAccessDiscoverer(SocketFactory socketFactory, ILoggerFactory loggerFactory) {
+            _socketFactory = socketFactory ?? throw new ArgumentNullException(nameof(socketFactory));
+            _logger = loggerFactory.NewLogger<DummyExternalAccessDiscoverer>();
+        }
 
         public override Task<ExternalAccess> DetermineExternalAccessAsync(string hostAtAddress, ushort hostAtPortNumber, string publishAtAddress, ushort? publishAtPortNumber) {
             if (Disposed)
-                return Task.FromResult<ExternalAccess>(null);
+                return Task.FromResult<ExternalAccess>(default);
             string hostingAddress = hostAtAddress ?? "localhost";
-            var listener = _socketFactory.GetSocket(hostingAddress, hostAtPortNumber);
-            if (listener is null)
-                throw new InterlockLedgerIOException($"Could not open a listening socket for {hostingAddress}:{hostAtPortNumber}");
-            var port = (ushort)((IPEndPoint)listener.LocalEndPoint).Port;
-            return Task.FromResult(new ExternalAccess(listener, hostingAddress, port, publishAtAddress, publishAtPortNumber));
+            var listenerSocket = GetSocket(hostingAddress, hostAtPortNumber);
+            var port = (ushort)((IPEndPoint)listenerSocket.LocalEndPoint).Port;
+            return Task.FromResult(new ExternalAccess(listenerSocket, hostingAddress, port, publishAtAddress, publishAtPortNumber));
+
+            Socket GetSocket(string hostingAddress, ushort hostAtPortNumber) {
+                try {
+                    return _socketFactory.GetSocket(hostingAddress, hostAtPortNumber);
+                } catch (SocketException se) {
+                    var message = $"Could not open a listening socket for {hostingAddress}:{hostAtPortNumber}";
+                    _logger.LogError(se, message);
+                    throw new InterlockLedgerIOException($"Could not open a listening socket for {hostingAddress}:{hostAtPortNumber}");
+                }
+            }
         }
 
-        protected override void DisposeManagedResources() => _socketFactory.Dispose();
+        protected override void DisposeManagedResources() { }
 
+        private readonly ILogger<DummyExternalAccessDiscoverer> _logger;
         private readonly SocketFactory _socketFactory;
     }
 }

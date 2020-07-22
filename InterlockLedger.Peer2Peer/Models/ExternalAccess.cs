@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2019 InterlockLedger Network
 All rights reserved.
 
@@ -35,8 +35,14 @@ using System.Net.Sockets;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public class ExternalAccess
+    public readonly struct ExternalAccess
     {
+        public readonly string ExternalAddress;
+        public readonly ushort ExternalPort;
+        public readonly string InternalAddress;
+        public readonly ushort InternalPort;
+        public readonly Socket Socket;
+
         public ExternalAccess(Socket socket, string internalAddress, ushort internalPort, string externalAddress = null, ushort? externalPort = null) {
             Socket = socket ?? throw new ArgumentNullException(nameof(socket));
             InternalAddress = internalAddress ?? throw new ArgumentNullException(nameof(internalAddress));
@@ -45,11 +51,6 @@ namespace InterlockLedger.Peer2Peer
             ExternalPort = externalPort ?? internalPort;
         }
 
-        public string ExternalAddress { get; }
-        public ushort ExternalPort { get; }
-        public string InternalAddress { get; }
-        public ushort InternalPort { get; }
         public string Route => $"{InternalAddress}:{InternalPort} via {ExternalAddress}:{ExternalPort}!";
-        public Socket Socket { get; }
     }
 }

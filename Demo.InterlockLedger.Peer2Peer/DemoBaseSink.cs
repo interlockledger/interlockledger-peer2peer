@@ -80,7 +80,7 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         public void Run() {
             PrepareConsole(_message);
-            var serviceProvider = Configure(_source, portDelta: 4, this);
+            var serviceProvider = Configure(this, _source, portDelta: -4);
             using var peerServices = serviceProvider.GetRequiredService<IPeerServices>();
             Run(peerServices);
         }
@@ -110,7 +110,7 @@ namespace Demo.InterlockLedger.Peer2Peer
         private const ulong _messageTagCode = ':';
         private readonly string _message;
 
-        private static ServiceProvider Configure(CancellationTokenSource source, ushort portDelta, INetworkConfig config) {
+        private static ServiceProvider Configure(INetworkConfig config, CancellationTokenSource source, short portDelta) {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
             return new ServiceCollection()
@@ -118,7 +118,7 @@ namespace Demo.InterlockLedger.Peer2Peer
                     builder
                         .AddConsole(c => c.DisableColors = false)
                         .SetMinimumLevel(LogLevel.Information))
-                .AddSingleton(sp => new SocketFactory(sp.GetRequiredService<ILoggerFactory>(), portDelta))
+                .AddSingleton(sp => new SocketFactory(sp.GetRequiredService<ILoggerFactory>(), portDelta, howManyPortsToTry: 7))
                 .AddSingleton<IExternalAccessDiscoverer, DummyExternalAccessDiscoverer>()
                 .AddSingleton(sp =>
                     new PeerServices(

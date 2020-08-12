@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
  
-Copyright (c) 2018-2019 InterlockLedger Network
+Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -75,7 +75,7 @@ namespace InterlockLedger.Peer2Peer
 
         public ulong Channel { get; }
 
-        public IList<ArraySegment<byte>> DataList => _dataList ?? (_dataList = (_segmentList ?? new List<ArraySegment<byte>>()).AsReadOnly());
+        public IList<ArraySegment<byte>> DataList => _dataList ??= (_segmentList ?? new List<ArraySegment<byte>>()).AsReadOnly();
 
         public bool IsEmpty => !DataList.Any(s => s.Count > 0);
 
@@ -97,12 +97,7 @@ namespace InterlockLedger.Peer2Peer
 
         public bool Equals(NetworkMessageSlice other) => EqualityComparer<byte[]>.Default.Equals(AllBytes, other.AllBytes) && Channel == other.Channel;
 
-        public override int GetHashCode() {
-            var hashCode = -596340573;
-            hashCode = (hashCode * -1521134295) + EqualityComparer<byte[]>.Default.GetHashCode(AllBytes);
-            hashCode = (hashCode * -1521134295) + Channel.GetHashCode();
-            return hashCode;
-        }
+        public override int GetHashCode() => HashCode.Combine(AllBytes, Channel);
 
         public NetworkMessageSlice WithChannel(ulong channel) => new NetworkMessageSlice(channel, DataList);
 

@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
 
-Copyright (c) 2018-2019 InterlockLedger Network
+Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -60,7 +60,7 @@ namespace InterlockLedger.Peer2Peer
                 await Task.Yield();
             if (_bytesReceived.Length > _receivedCount) {
                 int howMany = Math.Min(memory.Length, _bytesReceived.Length - _receivedCount);
-                Memory<byte> slice = _bytesReceived.Slice(_receivedCount, howMany);
+                var slice = _bytesReceived.Slice(_receivedCount, howMany);
                 if (slice.TryCopyTo(memory)) {
                     _receivedCount += slice.Length;
                     return slice.Length;

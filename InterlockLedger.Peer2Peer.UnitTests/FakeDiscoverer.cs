@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
  
-Copyright (c) 2018-2019 InterlockLedger Network
+Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -45,11 +45,10 @@ namespace InterlockLedger.Peer2Peer
 
         public ushort PortDelta { get; }
 
-        public Task<ExternalAccess> DetermineExternalAccessAsync(INodeSink nodeSink) {
-            if (nodeSink == null)
-                throw new ArgumentNullException(nameof(nodeSink));
-            return DetermineExternalAccessAsync(nodeSink.HostAtAddress, nodeSink.HostAtPortNumber, nodeSink.PublishAtAddress, nodeSink.PublishAtPortNumber);
-        }
+        public Task<ExternalAccess> DetermineExternalAccessAsync(INodeSink nodeSink)
+            => nodeSink == null
+                ? throw new ArgumentNullException(nameof(nodeSink))
+                : DetermineExternalAccessAsync(nodeSink.HostAtAddress, nodeSink.HostAtPortNumber, nodeSink.PublishAtAddress, nodeSink.PublishAtPortNumber);
 
         public Task<ExternalAccess> DetermineExternalAccessAsync(string hostAtAddress, ushort hostAtPortNumber, string publishAtAddress, ushort? publishAtPortNumber) {
             var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);

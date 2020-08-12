@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
 
-Copyright (c) 2018-2019 InterlockLedger Network
+Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -57,11 +57,10 @@ namespace InterlockLedger.Peer2Peer
             return _channelSinks[channel] = new ActiveChannel(channel, channelSink, this);
         }
 
-        public IActiveChannel GetChannel(ulong channel) {
-            if (_channelSinks.TryGetValue(channel, out IActiveChannel activeChannel))
-                return activeChannel;
-            throw new ArgumentOutOfRangeException(nameof(channel), string.Format(ExceptionChannelNotFoundFormat, channel));
-        }
+        public IActiveChannel GetChannel(ulong channel)
+            => _channelSinks.TryGetValue(channel, out var activeChannel)
+                ? activeChannel
+                : throw new ArgumentOutOfRangeException(nameof(channel), string.Format(ExceptionChannelNotFoundFormat, channel));
 
         public virtual void OnPipelineStopped() {
             _logger.LogTrace($"Stopping pipeline on client {Id}");

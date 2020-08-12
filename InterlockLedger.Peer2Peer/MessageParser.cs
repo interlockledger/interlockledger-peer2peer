@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
 
-Copyright (c) 2018-2019 InterlockLedger Network
+Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -55,9 +55,9 @@ namespace InterlockLedger.Peer2Peer
 
         public SequencePosition Parse(ReadOnlySequence<byte> buffer) {
             try {
-                if (Interlocked.Increment(ref _parsingCount) > 1)
-                    throw new InvalidOperationException("This MessageParser is already parsing a buffer!");
-                return InnerParse(buffer);
+                return Interlocked.Increment(ref _parsingCount) > 1
+                    ? throw new InvalidOperationException("This MessageParser is already parsing a buffer!")
+                    : InnerParse(buffer);
             } finally {
                 Interlocked.Decrement(ref _parsingCount);
             }

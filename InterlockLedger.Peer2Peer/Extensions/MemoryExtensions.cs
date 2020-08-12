@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
  
-Copyright (c) 2018-2019 InterlockLedger Network
+Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,12 +39,10 @@ namespace InterlockLedger.Peer2Peer
 {
     internal static class MemoryExtensions
     {
-        public static ArraySegment<byte> GetArraySegment(this ReadOnlyMemory<byte> memory) {
-            if (!MemoryMarshal.TryGetArray(memory, out var result)) {
-                throw new InvalidOperationException("Buffer backed by array was expected");
-            }
-            return result;
-        }
+        public static ArraySegment<byte> GetArraySegment(this ReadOnlyMemory<byte> memory)
+            => !MemoryMarshal.TryGetArray(memory, out var result)
+                ? throw new InvalidOperationException("Buffer backed by array was expected")
+                : result;
 
         public static ArraySegment<byte> GetArraySegment(this Memory<byte> memory) => GetArraySegment((ReadOnlyMemory<byte>)memory);
 

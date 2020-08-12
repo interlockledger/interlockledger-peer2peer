@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
  
-Copyright (c) 2018-2019 InterlockLedger Network
+Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -46,7 +46,7 @@ namespace InterlockLedger.Peer2Peer
         public bool Connected => PeerConnection.Connected;
 
         public async Task<bool> SendAsync(IEnumerable<byte> message)
-            => Active && IsValid(message) ? await PeerConnection.SendAsync(new NetworkMessageSlice(Channel, message)) : true;
+            => !Active || !IsValid(message) || await PeerConnection.SendAsync(new NetworkMessageSlice(Channel, message));
 
         public async Task<Success> SinkAsync(IEnumerable<byte> message) => _stop ? Success.Next : await Sink.SinkAsync(message, this);
 

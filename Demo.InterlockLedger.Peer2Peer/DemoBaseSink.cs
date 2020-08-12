@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
  
-Copyright (c) 2018-2019 InterlockLedger Network
+Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -110,24 +110,23 @@ namespace Demo.InterlockLedger.Peer2Peer
         private const ulong _messageTagCode = ':';
         private readonly string _message;
 
-        private static ServiceProvider Configure(INetworkConfig config, CancellationTokenSource source, short portDelta) {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-            return new ServiceCollection()
-                .AddLogging(builder =>
-                    builder
-                        .AddConsole(c => c.DisableColors = false)
-                        .SetMinimumLevel(LogLevel.Information))
-                .AddSingleton(sp => new SocketFactory(sp.GetRequiredService<ILoggerFactory>(), portDelta, howManyPortsToTry: 7))
-                .AddSingleton<IExternalAccessDiscoverer, DummyExternalAccessDiscoverer>()
-                .AddSingleton(sp =>
-                    new PeerServices(
-                        config.MessageTag, config.NetworkName, config.NetworkProtocolName, config.ListeningBufferSize,
-                        sp.GetRequiredService<ILoggerFactory>(),
-                        sp.GetRequiredService<IExternalAccessDiscoverer>(),
-                        sp.GetRequiredService<SocketFactory>(), 10, 2).WithCancellationTokenSource(source))
-                .BuildServiceProvider();
-        }
+        private static ServiceProvider Configure(INetworkConfig config, CancellationTokenSource source, short portDelta)
+            => source == null
+                ? throw new ArgumentNullException(nameof(source))
+                : new ServiceCollection()
+                    .AddLogging(builder =>
+                        builder
+                            .AddConsole(c => c.DisableColors = false)
+                            .SetMinimumLevel(LogLevel.Information))
+                    .AddSingleton(sp => new SocketFactory(sp.GetRequiredService<ILoggerFactory>(), portDelta, howManyPortsToTry: 7))
+                    .AddSingleton<IExternalAccessDiscoverer, DummyExternalAccessDiscoverer>()
+                    .AddSingleton(sp =>
+                        new PeerServices(
+                            config.MessageTag, config.NetworkName, config.NetworkProtocolName, config.ListeningBufferSize,
+                            sp.GetRequiredService<ILoggerFactory>(),
+                            sp.GetRequiredService<IExternalAccessDiscoverer>(),
+                            sp.GetRequiredService<SocketFactory>(), 10, 2).WithCancellationTokenSource(source))
+                    .BuildServiceProvider();
 
         private CancellationTokenSource PrepareConsole(string message) {
             void Cancel(object sender, ConsoleCancelEventArgs e) {

@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
  
-Copyright (c) 2018-2019 InterlockLedger Network
+Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -47,7 +47,7 @@ namespace InterlockLedger.Peer2Peer
 
         private static List<ArraySegment<byte>> Append(this List<ArraySegment<byte>> buffers, ReadOnlySequence<byte> sequence) {
             foreach (var b in sequence) {
-                ArraySegment<byte> segment = b.GetArraySegment();
+                var segment = b.GetArraySegment();
                 if (segment.Count > 0)
                     buffers.Add(segment);
             }

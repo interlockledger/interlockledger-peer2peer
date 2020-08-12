@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
  
-Copyright (c) 2018-2019 InterlockLedger Network
+Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -52,7 +52,7 @@ namespace InterlockLedger.Peer2Peer
             var peerClient = peerServices.GetClient("localhost", 80);
             Assert.IsNotNull(peerClient);
             Assert.IsNull(fakeLogger.LastLog);
-            IKnownNodesServices knownNodes = peerServices.KnownNodes;
+            var knownNodes = peerServices.KnownNodes;
             var peerClient2 = knownNodes.GetClient("test2");
             Assert.IsNull(peerClient2);
             Assert.IsNull(fakeLogger.LastLog);

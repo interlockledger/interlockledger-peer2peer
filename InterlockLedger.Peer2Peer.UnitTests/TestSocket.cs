@@ -51,11 +51,11 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public int Available => _holdYourHorses ? 0 : _bytesReceived.Length - _receivedCount;
-        public IList<ArraySegment<byte>> BytesSent => _bytesSent;
+        public IEnumerable<ReadOnlyMemory<byte>> BytesSent => _bytesSent;
         public bool Connected => _holdYourHorses || Available > 0;
         public EndPoint RemoteEndPoint => new IPEndPoint(IPAddress.Loopback, 13013);
 
-        public async Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token) {
+        public async Task<int> ReceiveAsync(Memory<byte> memory, CancellationToken token, SocketFlags socketFlags) {
             while (_holdYourHorses)
                 await Task.Yield();
             if (_bytesReceived.Length > _receivedCount) {
@@ -71,17 +71,18 @@ namespace InterlockLedger.Peer2Peer
 
         public void ReleaseYourHorses() => _holdYourHorses = false;
 
-        public Task<int> SendAsync(IList<ArraySegment<byte>> segment) {
-            _bytesSent.AddRange(segment);
-            return Task.FromResult(segment.Select(s => s.Count).Sum());
+        public Task<int> SendBuffersAsync(IEnumerable<ReadOnlyMemory<byte>> buffers, CancellationToken token, SocketFlags socketFlags) {
+            _bytesSent.AddRange(buffers);
+            return Task.FromResult(buffers.Select(s => s.Length).Sum());
         }
 
         protected override void DisposeManagedResources() {
         }
 
         private readonly Memory<byte> _bytesReceived;
-        private readonly List<ArraySegment<byte>> _bytesSent = new List<ArraySegment<byte>>();
+        private readonly List<ReadOnlyMemory<byte>> _bytesSent = new List<ReadOnlyMemory<byte>>();
         private bool _holdYourHorses;
         private int _receivedCount;
+
     }
 }

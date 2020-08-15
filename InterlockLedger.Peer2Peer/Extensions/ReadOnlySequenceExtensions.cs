@@ -37,21 +37,12 @@ using System.Linq;
 
 namespace InterlockLedger.Peer2Peer
 {
-    internal static class MemorySegmentsExtensions
+    internal static class ReadOnlySequenceExtensions
     {
-        public static bool IsEmpty(this IList<ArraySegment<byte>> segments)
-            => !segments.Any(segment => segment.Count > 0);
 
-        public static IList<ArraySegment<byte>> ToArraySegments(this ReadOnlySequence<byte> sequence)
-            => new List<ArraySegment<byte>>().Append(sequence);
-
-        private static List<ArraySegment<byte>> Append(this List<ArraySegment<byte>> buffers, ReadOnlySequence<byte> sequence) {
-            foreach (var b in sequence) {
-                var segment = b.GetArraySegment();
-                if (segment.Count > 0)
-                    buffers.Add(segment);
-            }
-            return buffers;
+        public static IEnumerable<ReadOnlyMemory<byte>> ToBuffers(this ReadOnlySequence<byte> sequence) {
+            foreach (var buffer in sequence)
+                yield return buffer;
         }
     }
 }

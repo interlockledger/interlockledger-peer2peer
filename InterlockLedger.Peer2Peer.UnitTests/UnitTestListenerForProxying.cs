@@ -165,7 +165,7 @@ namespace InterlockLedger.Peer2Peer
         private const byte _tag = 13;
 
         private static IEnumerable<byte> AllBytes(TestSocket fakeProxiedSocket)
-            => fakeProxiedSocket.BytesSent.SelectMany(a => a).ToArray();
+            => ToBytes(fakeProxiedSocket.BytesSent);
 
         private class ProxyNodeSink : FakeNodeSink
         {

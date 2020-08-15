@@ -32,7 +32,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using InterlockLedger.Tags;
 
@@ -40,17 +42,39 @@ namespace InterlockLedger.Peer2Peer
 {
     internal static class SocketExtensions
     {
-        public static Task<int> ReceiveAsync(this Socket socket, Memory<byte> memory)
-            => SocketTaskExtensions.ReceiveAsync(socket, memory.GetArraySegment(), SocketFlags.None);
+        public static ValueTask<int> ReceiveAsync(this Socket socket, Memory<byte> memory, CancellationToken token)
+            => ReceiveAsync(socket, memory, token, SocketFlags.None);
 
-        public static Task<int> ReceiveAsync(this Socket socket, Memory<byte> memory, SocketFlags socketFlags)
-            => SocketTaskExtensions.ReceiveAsync(socket, memory.GetArraySegment(), socketFlags);
+        public static ValueTask<int> ReceiveAsync(this Socket socket, Memory<byte> memory, CancellationToken token, SocketFlags socketFlags)
+            => SocketTaskExtensions.ReceiveAsync(socket, memory, socketFlags, token);
 
-        public static Task<int> SendAsync(this Socket socket, ArraySegment<byte> buffer)
-            => socket.SendAsync(buffer, SocketFlags.None);
+        public static ValueTask<int> SendAsync(this Socket socket, ReadOnlyMemory<byte> buffer, CancellationToken token, SocketFlags socketFlags)
+            => SocketTaskExtensions.SendAsync(socket, buffer, socketFlags, token);
 
-        public static Task<int> SendAsync(this Socket socket, IList<ArraySegment<byte>> buffers)
-            => socket.SendAsync(buffers, SocketFlags.None);
+        public static Task<int> SendBuffersAsync(this Socket socket, IEnumerable<ReadOnlyMemory<byte>> buffers, CancellationToken token)
+            => SendBuffersAsync(socket, buffers, SocketFlags.None, token);
+
+        public static async Task<int> SendBuffersAsync(this Socket socket, IEnumerable<ReadOnlyMemory<byte>> buffers, SocketFlags socketFlags, CancellationToken token)
+        {
+            if (socket is null)
+                throw new ArgumentNullException(nameof(socket));
+            if (buffers is null)
+                throw new ArgumentNullException(nameof(buffers));
+            var total = 0;
+            foreach (var buffer in buffers) {
+                var expected = buffer.Length;
+                var sent = await SocketTaskExtensions.SendAsync(socket, buffer, socketFlags, token);
+                total += sent;
+                if (sent < expected)
+                    break;
+            }
+            return total;
+        }
+
+        public static Task<int> SendBuffersAsync(this Socket socket, IEnumerable<ArraySegment<byte>> buffers, CancellationToken token)
+            => SendBuffersAsync(socket, buffers, SocketFlags.None, token);
+        public static Task<int> SendBuffersAsync(this Socket socket, IEnumerable<ArraySegment<byte>> buffers, SocketFlags socketFlags, CancellationToken token)
+            => SendBuffersAsync(socket, buffers?.Cast<ReadOnlyMemory<byte>>(), socketFlags, token);
 
         public static Task<int> SendILintAsync(this Socket socket, ulong ilint)
             => socket.SendAsync(ilint.ILIntEncode(), SocketFlags.None);

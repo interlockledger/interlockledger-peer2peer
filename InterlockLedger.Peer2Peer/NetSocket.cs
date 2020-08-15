@@ -51,13 +51,17 @@ namespace InterlockLedger.Peer2Peer
         public int Available => Do(() => _socket.Available);
         public bool Connected => Do(() => _socket.Connected);
 
-        public Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token)
-            => DoAsync(async () => token.IsCancellationRequested ? 0 : await _socket.ReceiveAsync(memory, socketFlags).ConfigureAwait(false));
+        public Task<int> ReceiveAsync(Memory<byte> memory, CancellationToken token, SocketFlags socketFlags = SocketFlags.None)
+            => DoAsync(async ()
+                => token.IsCancellationRequested
+                    ? 0
+                    : await _socket.ReceiveAsync(memory, socketFlags, token).ConfigureAwait(false));
 
-        public Task<int> SendAsync(IList<ArraySegment<byte>> buffers)
+
+        public Task<int> SendBuffersAsync(IEnumerable<ReadOnlyMemory<byte>> buffers, CancellationToken token, SocketFlags socketFlags) 
             => DoAsync(async () => {
                 try {
-                    return await _socket.SendAsync(buffers).ConfigureAwait(false);
+                    return await _socket.SendBuffersAsync(buffers, socketFlags,token).ConfigureAwait(false);
                 } catch (SocketException) {
                     return -1;
                 }
@@ -75,5 +79,6 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private readonly Socket _socket;
+
     }
 }

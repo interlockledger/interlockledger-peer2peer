@@ -45,8 +45,12 @@ namespace InterlockLedger.Peer2Peer
         EndPoint RemoteEndPoint { get; }
         bool Connected { get; }
 
-        Task<int> ReceiveAsync(Memory<byte> memory, SocketFlags socketFlags, CancellationToken token);
+        Task<int> ReceiveAsync(Memory<byte> memory, CancellationToken token)
+            => ReceiveAsync(memory, token, SocketFlags.None);
+        Task<int> ReceiveAsync(Memory<byte> memory, CancellationToken token, SocketFlags socketFlags);
 
-        Task<int> SendAsync(IList<ArraySegment<byte>> buffers);
+        Task<int> SendBuffersAsync(IEnumerable<ReadOnlyMemory<byte>> buffers, CancellationToken token)
+            => SendBuffersAsync(buffers, token, SocketFlags.None);
+        Task<int> SendBuffersAsync(IEnumerable<ReadOnlyMemory<byte>> buffers, CancellationToken token, SocketFlags socketFlags);
     }
 }

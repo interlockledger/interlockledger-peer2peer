@@ -82,7 +82,7 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private static string BuildMessageBodyReceived(ulong channel, IEnumerable<ReadOnlyMemory<byte>> segments)
-            => $"Message body received on channel {channel}: {string.Join("|", segments.Select(b => b.ToBase64()))}";
+            => $"Message body received on channel {channel}: {string.Join("|", segments.Select(b => b.Slice(0, 90).ToBase64()))}";
 
         private static ulong ReadBytes(ReadOnlySequence<byte> buffer, ref long current, ulong length, List<ReadOnlyMemory<byte>> segments = null) {
             long bytesToRead = Math.Min((long)length, buffer.Length - current);
@@ -149,6 +149,7 @@ namespace InterlockLedger.Peer2Peer
             if (_lengthToRead > _maxBytesToRead) {
                 LogTrace($"Skipping {_lengthToRead} bytes for message body, too long");
                 _state = State.SkipBytes;
+                // TODO some splitting of large payloads to avoid having them on memory
             } else {
                 LogTrace($"Expecting {_lengthToRead} bytes for message body");
                 _state = _lengthToRead == 0 ? State.ReadChannel : State.ReadBytes;

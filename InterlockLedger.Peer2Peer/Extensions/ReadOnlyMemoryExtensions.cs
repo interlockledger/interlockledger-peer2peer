@@ -1,4 +1,4 @@
-/******************************************************************************************************************************
+﻿/******************************************************************************************************************************
  
 Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
@@ -31,13 +31,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public static class MemoryExtensions
+    public static class ReadOnlyMemoryExtensions
     {
-        public static ArraySegment<byte> ToArraySegment(this Memory<byte> memory)
-            => ReadOnlyMemoryExtensions.ToArraySegment(memory);
+        public static ArraySegment<byte> ToArraySegment(this ReadOnlyMemory<byte> memory)
+            => !MemoryMarshal.TryGetArray(memory, out var result)
+                ? throw new InvalidOperationException("Buffer backed by array was expected")
+                : result;
+        public static IEnumerable<ArraySegment<byte>> ToArraySegments(this IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes)
+            => readOnlyBytes.Select(rob => rob.ToArraySegment());
+
+        public static string ToBase64(this ReadOnlyMemory<byte> bytes) => Convert.ToBase64String(bytes.Span);
 
     }
 }

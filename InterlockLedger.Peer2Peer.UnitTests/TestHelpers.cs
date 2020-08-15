@@ -51,10 +51,9 @@ namespace InterlockLedger.Peer2Peer
 
         public static string Joined<T>(IEnumerable<T> items) => items.Any() ? string.Join(", ", items.Select(b => b.ToString())) : "-";
 
-        public static IEnumerable<byte> ToBytes(IList<ArraySegment<byte>> bytesSent) {
+        public static IEnumerable<byte> ToBytes(IEnumerable<ReadOnlyMemory<byte>> bytesSent) {
             foreach (var segment in bytesSent) {
-                if (segment.Array != null)
-                    foreach (var b in segment)
+                    foreach (var b in segment.ToArraySegment())
                         yield return b;
             }
         }

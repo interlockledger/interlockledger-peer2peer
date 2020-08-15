@@ -107,7 +107,7 @@ namespace InterlockLedger.Peer2Peer
                         _inactivity.Restart();
                         _logger.LogTrace($"Getting {_minimumBufferSize} bytes to receive in the socket");
                         var memory = writer.GetMemory(_minimumBufferSize);
-                        int bytesRead = await _socket.ReceiveAsync(memory, SocketFlags.None, _linkedToken);
+                        int bytesRead = await _socket.ReceiveAsync(memory, _linkedToken, SocketFlags.None);
                         if (bytesRead > 0) {
                             // Tell the PipeWriter how much was read
                             writer.Advance(bytesRead);
@@ -205,7 +205,7 @@ namespace InterlockLedger.Peer2Peer
                     if (!sequence.IsEmpty) {
                         _inactivity.Restart();
                         using (await senderSocketLock.LockAsync()) {
-                            var bytesCount = await _socket.SendAsync(sequence.ToArraySegments());
+                            var bytesCount = await _socket.SendBuffersAsync(sequence.ToBuffers(), _linkedToken);
                             reader.AdvanceTo(sequence.End);
                             if (bytesCount < 0)
                                 _localSource.Cancel(false);

@@ -51,7 +51,7 @@ namespace InterlockLedger.Peer2Peer
             _knownNodes = new ConcurrentDictionary<string, (string address, int port, bool retain)>();
             _clients = new ConcurrentDictionary<string, IConnection>();
             _logger = LoggerNamed(nameof(PeerServices));
-            MaxConcurrentConnections = maxConcurrentConnections;
+            MaxConcurrentConnections = Math.Max(maxConcurrentConnections, 0);
         }
 
         public int InactivityTimeoutInMinutes { get; }

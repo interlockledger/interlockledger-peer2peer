@@ -58,10 +58,10 @@ namespace InterlockLedger.Peer2Peer
                     : await _socket.ReceiveAsync(memory, socketFlags, token).ConfigureAwait(false));
 
 
-        public Task<int> SendBuffersAsync(IEnumerable<ReadOnlyMemory<byte>> buffers, CancellationToken token, SocketFlags socketFlags) 
+        public Task<int> SendBuffersAsync(IEnumerable<ReadOnlyMemory<byte>> buffers, CancellationToken token, SocketFlags socketFlags)
             => DoAsync(async () => {
                 try {
-                    return await _socket.SendBuffersAsync(buffers, socketFlags,token).ConfigureAwait(false);
+                    return await _socket.SendBuffersAsync(buffers, socketFlags, token).ConfigureAwait(false);
                 } catch (SocketException) {
                     return -1;
                 }

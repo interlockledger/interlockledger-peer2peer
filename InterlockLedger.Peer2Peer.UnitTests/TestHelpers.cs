@@ -53,8 +53,8 @@ namespace InterlockLedger.Peer2Peer
 
         public static IEnumerable<byte> ToBytes(IEnumerable<ReadOnlyMemory<byte>> bytesSent) {
             foreach (var segment in bytesSent) {
-                    foreach (var b in segment.ToArraySegment())
-                        yield return b;
+                foreach (var b in segment.ToArraySegment())
+                    yield return b;
             }
         }
 

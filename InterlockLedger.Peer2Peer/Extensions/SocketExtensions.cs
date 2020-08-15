@@ -54,8 +54,7 @@ namespace InterlockLedger.Peer2Peer
         public static Task<int> SendBuffersAsync(this Socket socket, IEnumerable<ReadOnlyMemory<byte>> buffers, CancellationToken token)
             => SendBuffersAsync(socket, buffers, SocketFlags.None, token);
 
-        public static async Task<int> SendBuffersAsync(this Socket socket, IEnumerable<ReadOnlyMemory<byte>> buffers, SocketFlags socketFlags, CancellationToken token)
-        {
+        public static async Task<int> SendBuffersAsync(this Socket socket, IEnumerable<ReadOnlyMemory<byte>> buffers, SocketFlags socketFlags, CancellationToken token) {
             if (socket is null)
                 throw new ArgumentNullException(nameof(socket));
             if (buffers is null)

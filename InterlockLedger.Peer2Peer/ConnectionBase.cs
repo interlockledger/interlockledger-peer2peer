@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -136,10 +137,14 @@ namespace InterlockLedger.Peer2Peer
             if (Abandon)
                 return false;
             try {
-                if (!slice.IsEmpty) {
-                    await Pipeline.SendAsync(slice);
+                try {
+                    if (!slice.IsEmpty) {
+                        await Pipeline.SendAsync(slice);
+                    }
+                    return true;
+                } catch (AggregateException ae) {
+                    throw ae.Flatten().InnerExceptions.First();
                 }
-                return true;
             } catch (PeerException pe) {
                 LogError(pe.Message);
             } catch (SocketException se) {

@@ -72,9 +72,10 @@ namespace InterlockLedger.Peer2Peer
             AssertHasSameItems<byte>(nameof(fakeExternalSocket.BytesSent), AllBytes(fakeExternalSocket), _tag, 1, 241, 128);
             fakeSink.Reset();
             fakeSink.SinkAsync(allInternalBytes.SkipLast(1), new TestChannel(allInternalBytes.Last())).Wait();
-            max = 7;
+            max = 12;
             while (fakeSink.ChannelProcessed == 0ul && max-- > 0)
                 WaitForOthers(100);
+            WaitForOthers(100);
             AssertHasSameItems<byte>(nameof(fakeSink.BytesProcessed), fakeSink.BytesProcessed, _tag, 1, 240);
             Assert.AreEqual((ulong)1, fakeSink.ChannelProcessed);
             AssertHasLogLine(fakeLogger, "Debug: Sinked Message '8A' from Channel ProxyingClient#1@128 using new pair to Proxied Channel 1. Sent: True");

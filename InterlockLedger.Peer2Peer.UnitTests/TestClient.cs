@@ -82,5 +82,9 @@ namespace InterlockLedger.Peer2Peer
         protected override void DisposeManagedResources() => Stop();
 
         private IChannelSink _sink;
+
+        public bool KeepingAlive => false;
+
+        public void SetupLivenessKeeping(Func<IEnumerable<byte>> buildAliveMessage) { }
     }
 }

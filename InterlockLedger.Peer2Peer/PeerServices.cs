@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 using Microsoft.Extensions.Logging;
 
@@ -39,7 +40,16 @@ namespace InterlockLedger.Peer2Peer
 {
     public sealed class PeerServices : AbstractDisposable, IPeerServices, IKnownNodesServices, IProxyingServices
     {
-        public PeerServices(ulong messageTag, string networkName, string networkProtocolName, int listeningBufferSize, ILoggerFactory loggerFactory, IExternalAccessDiscoverer discoverer, SocketFactory socketFactory, int inactivityTimeoutInMinutes, int maxConcurrentConnections) {
+        public PeerServices(ulong messageTag,
+                            string networkName,
+                            string networkProtocolName,
+                            int listeningBufferSize,
+                            ILoggerFactory loggerFactory,
+                            IExternalAccessDiscoverer discoverer,
+                            SocketFactory socketFactory,
+                            int inactivityTimeoutInMinutes,
+                            int maxConcurrentConnections,
+                            Func<IEnumerable<byte>> buildAliveMessage) {
             MessageTag = messageTag;
             NetworkName = networkName ?? throw new ArgumentNullException(nameof(networkName));
             NetworkProtocolName = networkProtocolName ?? throw new ArgumentNullException(nameof(networkProtocolName));
@@ -52,6 +62,7 @@ namespace InterlockLedger.Peer2Peer
             _clients = new ConcurrentDictionary<string, IConnection>();
             _logger = LoggerNamed(nameof(PeerServices));
             MaxConcurrentConnections = Math.Max(maxConcurrentConnections, 0);
+            _buildAliveMessage = buildAliveMessage;
         }
 
         public int InactivityTimeoutInMinutes { get; }
@@ -137,12 +148,13 @@ namespace InterlockLedger.Peer2Peer
         private readonly ILogger _logger;
         private readonly ILoggerFactory _loggerFactory;
         private readonly SocketFactory _socketFactory;
+        private readonly Func<IEnumerable<byte>> _buildAliveMessage;
         private CancellationTokenSource _source;
 
         private static string Framed(string nodeId) => $"[{nodeId}]";
 
         private ConnectionToPeer BuildClient(string address, int port, string id)
-            => new ConnectionToPeer(id, this, address, port, Source, LoggerForClient(id));
+            => new ConnectionToPeer(id, this, address, port, Source, LoggerForClient(id), _buildAliveMessage);
 
         private IConnection GetResponder(string nodeId)
             => _knownNodes.TryGetValue(nodeId, out var n) ? n.port != 0 ? GetClient(n.address, n.port) : GetClient(nodeId) : null;

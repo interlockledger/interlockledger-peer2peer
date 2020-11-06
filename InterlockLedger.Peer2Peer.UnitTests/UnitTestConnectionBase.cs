@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using static InterlockLedger.Peer2Peer.TestHelpers;
@@ -91,7 +92,7 @@ namespace InterlockLedger.Peer2Peer
             fakeSocket = new TestSocket(13, 1, 128, 2);
             fakeSink = new TestSink(13, 1, 129);
             var fakeConfig = new FakeConfig(13, "UnitTest", "unit", 4096, inactivityTimeoutInMinutes, 4);
-            return new TestConnection(fakeSocket, fakeSink, "TestConnection", fakeConfig, source, fakeLogger);
+            return new TestConnection(fakeSocket, fakeSink, "TestConnection", fakeConfig, source, fakeLogger, null);
         }
     }
 }

@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
@@ -41,10 +41,10 @@ namespace Demo.InterlockLedger.Peer2Peer
 {
     internal class DemoClient : DemoBaseSink
     {
+        public static readonly byte[] _livenessBytes = ToMessageBytes(AsUTF8Bytes("l"), isLast: true);
+
         public DemoClient() : base("Client") {
         }
-
-        public bool DoneReceiving { get; set; } = false;
 
         public static string Prompt => @"Command (
     x to exit,
@@ -53,10 +53,13 @@ namespace Demo.InterlockLedger.Peer2Peer
     3... to echo ... 3 times,
     4... to echo ... 4 times from stored responder): ";
 
+        public bool DoneReceiving { get; set; } = false;
+
         public override async Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel activeChannel)
             => Received(await Process(message, activeChannel.Channel));
 
-        private bool _brokenConnection = false;
+        protected override Func<IEnumerable<byte>> AliveMessageBuilder => BuildAliveMessage;
+
         protected override void Run(IPeerServices peerServices) {
             using var client = peerServices.GetClient("localhost", 8080);
             client.ConnectionStopped += (_) => _brokenConnection = true;
@@ -80,6 +83,10 @@ namespace Demo.InterlockLedger.Peer2Peer
                 channel.SendAsync(ToMessage(AsUTF8Bytes(command), isLast: true).AllBytes).Wait();
             }
         }
+
+        private bool _brokenConnection = false;
+
+        private static IEnumerable<byte> BuildAliveMessage() => _livenessBytes;
 
         private static async Task<Success> Process(IEnumerable<byte> message, ulong channel) {
             await Task.Delay(1);
@@ -106,9 +113,10 @@ namespace Demo.InterlockLedger.Peer2Peer
 
             private void Start(IActiveChannel channel)
                 => Task.Run(() => {
+                    byte[] livenessOnChannel0 = new NetworkMessageSlice(0, _livenessBytes).AllBytes;
                     try {
                         while (channel.Connected) {
-                            channel.SendAsync(ToMessage(AsUTF8Bytes("l"), isLast: true).AllBytes).Wait();
+                            channel.SendAsync(livenessOnChannel0).Wait();
                             Task.Delay(1000).Wait();
                         }
                     } catch {

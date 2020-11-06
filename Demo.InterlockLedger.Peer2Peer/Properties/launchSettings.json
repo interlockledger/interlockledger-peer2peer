@@ -2,7 +2,7 @@
   "profiles": {
     "Client": {
       "commandName": "Project",
-      "commandLineArgs": "server"
+      "commandLineArgs": "client"
     },
     "Server": {
       "commandName": "Project",

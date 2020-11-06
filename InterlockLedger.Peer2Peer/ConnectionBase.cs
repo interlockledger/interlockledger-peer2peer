@@ -50,6 +50,7 @@ namespace InterlockLedger.Peer2Peer
         public event Action<INetworkIdentity> ConnectionStopped;
 
         public bool Connected => Pipeline.Connected;
+        public bool KeepingAlive => _livenessKeeper is not null;
         public long LastChannelUsed => _lastChannelUsed;
         public int NumberOfActiveChannels => _channelSinks.Count;
 
@@ -74,6 +75,13 @@ namespace InterlockLedger.Peer2Peer
             StopAllChannelSinks();
         }
 
+        public void SetupLivenessKeeping(Func<IEnumerable<byte>> buildAliveMessage) {
+            if (buildAliveMessage is not null) {
+                if (_livenessKeeper is null)
+                    _livenessKeeper = new LivenessKeeper(buildAliveMessage, InactivityTimeoutInMinutes, AllocateChannel);
+            }
+        }
+
         public override void Stop() => _pipeline?.Stop();
 
         internal Pipeline Pipeline => GetPipelineAsync().Result;
@@ -83,21 +91,22 @@ namespace InterlockLedger.Peer2Peer
         internal Task<Success> SinkAsync(NetworkMessageSlice slice) => DoAsync(() => InnerSinkAsync(slice));
 
         protected readonly ConcurrentDictionary<ulong, IActiveChannel> _channelSinks = new ConcurrentDictionary<ulong, IActiveChannel>();
-
         protected IChannelSink _sink;
-
         protected ISocket _socket;
 
-        protected ConnectionBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger)
-            : base(id, config, source, logger) => _pipeline = null;
+        protected ConnectionBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger, Func<IEnumerable<byte>> buildAliveMessage)
+            : base(id, config, source, logger) {
+            _pipeline = null;
+            SetupLivenessKeeping(buildAliveMessage);
+        }
 
         protected string NetworkAddress { get; set; }
-
         protected int NetworkPort { get; set; }
 
         protected abstract ISocket BuildSocket();
 
         protected override void DisposeManagedResources() {
+            _livenessKeeper?.Dispose();
             base.DisposeManagedResources();
             StopAllChannelSinks();
             Stop();
@@ -117,6 +126,7 @@ namespace InterlockLedger.Peer2Peer
         private static readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
         private readonly AsyncLock _pipelineLock = new AsyncLock();
         private long _lastChannelUsed = 0;
+        private LivenessKeeper _livenessKeeper;
         private Pipeline _pipeline;
 
         private async Task<Pipeline> GetPipelineAsync() {
@@ -129,6 +139,8 @@ namespace InterlockLedger.Peer2Peer
                     }
                 return _pipeline;
             } catch (Exception se) {
+                _pipeline?.Stop();
+                _pipeline = null;
                 throw new PeerException($"Client {Id} could not connect into remote endpoint {NetworkAddress}:{NetworkPort}{Environment.NewLine}[{se.Message}]", se);
             }
         }

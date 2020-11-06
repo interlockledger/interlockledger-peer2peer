@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
@@ -46,22 +46,8 @@ namespace Demo.InterlockLedger.Peer2Peer
 {
     internal abstract class DemoBaseSink : AbstractNodeSink, IChannelSink
     {
-        protected DemoBaseSink(string message) {
-            PublishAtAddress = HostAtAddress = "localhost";
-            PublishAtPortNumber = HostAtPortNumber = 8080;
-            ListeningBufferSize = 512;
-            DefaultTimeoutInMilliseconds = 30_000;
-            MaxConcurrentConnections = 2;
-            InactivityTimeoutInMinutes = 1;
-            MessageTag = _messageTagCode;
-            NetworkName = "Demo";
-            NetworkProtocolName = "DemoPeer2Peer";
-            NodeId = "Local Node";
-            _message = message ?? throw new ArgumentNullException(nameof(message));
-            _source = new CancellationTokenSource();
-        }
-
         public override IEnumerable<string> LocalResources { get; } = new string[] { "Document" };
+
         public override IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "Echo", "Who", "TripleEcho" };
 
         public static string AsString(IEnumerable<byte> text) => Encoding.UTF8.GetString(text.ToArray());
@@ -80,17 +66,36 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         public void Run() {
             PrepareConsole(_message);
-            var serviceProvider = Configure(this, _source, portDelta: -4);
+            var serviceProvider = Configure(this, _source, portDelta: -4, buildAliveMessage: AliveMessageBuilder);
             using var peerServices = serviceProvider.GetRequiredService<IPeerServices>();
             Run(peerServices);
         }
 
         protected static readonly byte[] _encodedMessageTag = _messageTagCode.ILIntEncode();
+
         protected static readonly IEnumerable<byte> _haveMoreMarker = new byte[] { 1 };
+
         protected static readonly IEnumerable<byte> _isLastMarker = new byte[] { 0 };
 
         [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "Disposed at DisposeManagedResources")]
         protected readonly CancellationTokenSource _source;
+
+        protected DemoBaseSink(string message) {
+            PublishAtAddress = HostAtAddress = "localhost";
+            PublishAtPortNumber = HostAtPortNumber = 8080;
+            ListeningBufferSize = 512;
+            DefaultTimeoutInMilliseconds = 30_000;
+            MaxConcurrentConnections = 2;
+            InactivityTimeoutInMinutes = 1;
+            MessageTag = _messageTagCode;
+            NetworkName = "Demo";
+            NetworkProtocolName = "DemoPeer2Peer";
+            NodeId = "Local Node";
+            _message = message ?? throw new ArgumentNullException(nameof(message));
+            _source = new CancellationTokenSource();
+        }
+
+        protected abstract Func<IEnumerable<byte>> AliveMessageBuilder { get; }
 
         protected static NetworkMessageSlice ToMessage(IEnumerable<byte> bytes, bool isLast)
             => new NetworkMessageSlice(0, ToMessageBytes(bytes, isLast));
@@ -110,7 +115,7 @@ namespace Demo.InterlockLedger.Peer2Peer
         private const ulong _messageTagCode = ':';
         private readonly string _message;
 
-        private static ServiceProvider Configure(INetworkConfig config, CancellationTokenSource source, short portDelta)
+        private static ServiceProvider Configure(INetworkConfig config, CancellationTokenSource source, short portDelta, Func<IEnumerable<byte>> buildAliveMessage)
             => source == null
                 ? throw new ArgumentNullException(nameof(source))
                 : new ServiceCollection()
@@ -125,7 +130,7 @@ namespace Demo.InterlockLedger.Peer2Peer
                             config.MessageTag, config.NetworkName, config.NetworkProtocolName, config.ListeningBufferSize,
                             sp.GetRequiredService<ILoggerFactory>(),
                             sp.GetRequiredService<IExternalAccessDiscoverer>(),
-                            sp.GetRequiredService<SocketFactory>(), 10, 2).WithCancellationTokenSource(source))
+                            sp.GetRequiredService<SocketFactory>(), 10, 2, buildAliveMessage).WithCancellationTokenSource(source))
                     .BuildServiceProvider();
 
         private CancellationTokenSource PrepareConsole(string message) {

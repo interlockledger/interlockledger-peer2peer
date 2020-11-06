@@ -54,6 +54,8 @@ namespace Demo.InterlockLedger.Peer2Peer
             return Task.FromResult(Success.Next);
         }
 
+        protected override Func<IEnumerable<byte>> AliveMessageBuilder { get; }
+
         protected override void Run(IPeerServices peerServices) {
             using var listener = (peerServices ?? throw new ArgumentNullException(nameof(peerServices))).CreateListenerFor(this);
             try {
@@ -68,9 +70,6 @@ namespace Demo.InterlockLedger.Peer2Peer
                 _stop = true;
             }
         }
-
-        private void Listener_InactiveConnectionDropped() => Console.WriteLine("Inactive Connection Dropped");
-        private void Listener_ExcessConnectionRejected() => Console.WriteLine("Excess Connection Rejected");
 
         private readonly ConcurrentQueue<(IEnumerable<byte> message, IActiveChannel activeChannel)> _queue = new ConcurrentQueue<(IEnumerable<byte> message, IActiveChannel activeChannel)>();
 
@@ -88,6 +87,10 @@ namespace Demo.InterlockLedger.Peer2Peer
                 await Task.Delay(10);
             } while (!_stop);
         }
+
+        private void Listener_ExcessConnectionRejected() => Console.WriteLine("Excess Connection Rejected");
+
+        private void Listener_InactiveConnectionDropped() => Console.WriteLine("Inactive Connection Dropped");
 
         private async Task SinkAsServerWithDelayedResponsesAsync(IEnumerable<byte> message, IActiveChannel activeChannel) {
             var results = SinkAsServer(message, activeChannel.Channel, out bool silent);

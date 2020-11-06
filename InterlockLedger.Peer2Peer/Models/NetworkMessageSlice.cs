@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
@@ -48,25 +48,20 @@ namespace InterlockLedger.Peer2Peer
         public NetworkMessageSlice(ulong channel, MemoryStream ms) : this(channel, ms.ToArray()) {
         }
 
-        public NetworkMessageSlice(ulong channel, ReadOnlyMemory<byte> readOnlyMemory) : this(channel, readOnlyMemory.ToArray()) {
-        }
-
-        public NetworkMessageSlice(ulong channel, ArraySegment<byte> data) : this(channel, new List<ArraySegment<byte>>() { data }) {
-        }
 
         public NetworkMessageSlice(ulong channel, params byte[] array) : this(channel, array, 0, array.Length) {
         }
 
-        public NetworkMessageSlice(ulong channel, byte[] array, int start, int length) : this(channel, new ArraySegment<byte>(array, start, length)) {
+        public NetworkMessageSlice(ulong channel, byte[] array, int start, int length) : this(channel, new ReadOnlyMemory<byte>(array, start, length)) {
         }
 
-        public NetworkMessageSlice(ulong channel, IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes) : this(channel, readOnlyBytes.ToArraySegments()) {
+        public NetworkMessageSlice(ulong channel, params ReadOnlyMemory<byte>[] data) : this(channel, (IEnumerable<ReadOnlyMemory<byte>>)data) {
         }
 
-        public NetworkMessageSlice(ulong channel, IEnumerable<ArraySegment<byte>> dataList) {
+        public NetworkMessageSlice(ulong channel, IEnumerable<ReadOnlyMemory<byte>> dataList) {
             if (dataList == null)
                 throw new ArgumentNullException(nameof(dataList));
-            _segmentList = new List<ArraySegment<byte>>(dataList);
+            _segmentList = new List<ReadOnlyMemory<byte>>(dataList);
             _dataList = null;
             Channel = channel;
         }
@@ -75,9 +70,9 @@ namespace InterlockLedger.Peer2Peer
 
         public ulong Channel { get; }
 
-        public IList<ArraySegment<byte>> DataList => _dataList ??= (_segmentList ?? new List<ArraySegment<byte>>()).AsReadOnly();
+        public IList<ReadOnlyMemory<byte>> DataList => _dataList ??= (_segmentList ?? new List<ReadOnlyMemory<byte>>()).AsReadOnly();
 
-        public bool IsEmpty => !DataList.Any(s => s.Count > 0);
+        public bool IsEmpty => !DataList.Any(s => !s.IsEmpty);
 
         public static bool operator !=(NetworkMessageSlice left, NetworkMessageSlice right) => !(left == right);
 
@@ -87,7 +82,7 @@ namespace InterlockLedger.Peer2Peer
 
         public NetworkMessageSlice Add(byte[] array, int start, int length) => Add(new ArraySegment<byte>(array, start, length));
 
-        public NetworkMessageSlice Add(ArraySegment<byte> data) {
+        public NetworkMessageSlice Add(ReadOnlyMemory<byte> data) {
             if (_dataList == null)
                 _segmentList.Add(data);
             return this;
@@ -101,7 +96,7 @@ namespace InterlockLedger.Peer2Peer
 
         public NetworkMessageSlice WithChannel(ulong channel) => new NetworkMessageSlice(channel, DataList);
 
-        private readonly List<ArraySegment<byte>> _segmentList;
-        private ReadOnlyCollection<ArraySegment<byte>> _dataList;
+        private readonly List<ReadOnlyMemory<byte>> _segmentList;
+        private ReadOnlyCollection<ReadOnlyMemory<byte>> _dataList;
     }
 }

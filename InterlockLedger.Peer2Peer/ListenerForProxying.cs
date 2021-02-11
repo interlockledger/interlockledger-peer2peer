@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
 
-Copyright (c) 2018-2020 InterlockLedger Network
+Copyright (c) 2018-2021 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -34,6 +34,7 @@ using System;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -131,8 +132,6 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private readonly ConcurrentDictionary<string, ChannelPairing> _channelMap;
-
-        [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = DisposedJustification)]
         private readonly Socket _socket;
 
         private static CancellationTokenSource CreateKindOfLinkedSource(CancellationTokenSource source) {
@@ -146,7 +145,7 @@ namespace InterlockLedger.Peer2Peer
             public ChannelPairing(IActiveChannel external, IConnection connection, ListenerForProxying parent) {
                 _external = external ?? throw new ArgumentNullException(nameof(external));
                 _parent = parent ?? throw new ArgumentNullException(nameof(parent));
-                _tagAsILInt = connection.MessageTag.AsILInt();
+                _tagAsILInt = new ReadOnlySequence<byte>(connection.MessageTag.AsILInt());
                 _proxied = connection.AllocateChannel(this);
             }
 
@@ -154,7 +153,7 @@ namespace InterlockLedger.Peer2Peer
 
             public async Task<bool> SendAsync(ReadOnlySequence<byte> messageBytes) {
                 try {
-                    return await _proxied.SendAsync(messageBytes);
+                    return await _proxied.SendAsync(WithTagAndLength(messageBytes));
                 } catch (Exception e) {
                     _parent.Errored(messageBytes, _proxied, e);
                     return false;
@@ -163,7 +162,7 @@ namespace InterlockLedger.Peer2Peer
 
             public async Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel) {
                 try {
-                    var sent = await _external.SendAsync(messageBytes);
+                    var sent = await _external.SendAsync(WithTagAndLength(messageBytes));
                     _parent.Responded(messageBytes, channel, _external.Channel, sent);
                 } catch (Exception e) {
                     _parent.Errored(messageBytes, channel, e);
@@ -174,7 +173,11 @@ namespace InterlockLedger.Peer2Peer
             private readonly IActiveChannel _external;
             private readonly ListenerForProxying _parent;
             private readonly IActiveChannel _proxied;
-            private readonly byte[] _tagAsILInt;
+            private readonly ReadOnlySequence<byte> _tagAsILInt;
+
+            private ReadOnlySequence<byte> WithTagAndLength(ReadOnlySequence<byte> message)
+                => _tagAsILInt.Add(((ulong)message.Length).AsILInt()).Add(message);
+
         }
     }
 }

@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
  
-Copyright (c) 2018-2020 InterlockLedger Network
+Copyright (c) 2018-2021 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -37,8 +37,6 @@ using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
-#pragma warning disable S3881 // "IDisposable" should be implemented correctly
-
     internal class FakeDiscoverer : IExternalAccessDiscoverer
     {
         public FakeDiscoverer() => PortDelta = 1;

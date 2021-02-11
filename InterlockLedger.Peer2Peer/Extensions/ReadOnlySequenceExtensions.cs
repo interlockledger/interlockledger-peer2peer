@@ -31,39 +31,39 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
-using System.Threading;
-using Microsoft.Extensions.Logging;
+using System.Buffers;
+using System.Collections.Generic;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public abstract class ListenerBase : AbstractDisposable, INetworkIdentity
+    public static class ReadOnlySequenceExtensions
     {
-        public string Id { get; }
-        public int InactivityTimeoutInMinutes => _config.InactivityTimeoutInMinutes;
-        public int ListeningBufferSize => _config.ListeningBufferSize;
-        public int MaxConcurrentConnections => _config.MaxConcurrentConnections;
-        public ulong MessageTag => _config.MessageTag;
-        public string NetworkName => _config.NetworkName;
-        public string NetworkProtocolName => _config.NetworkProtocolName;
+        public static ReadOnlySequence<byte> Add(this ReadOnlySequence<byte> sequence, ReadOnlySequence<byte> otherSequence)
+            => sequence.JoinTo(otherSequence).ToSequence();
 
-        public abstract void Stop();
+        public static ReadOnlySequence<byte> Add(this ReadOnlySequence<byte> sequence, ReadOnlyMemory<byte> memory)
+            => sequence.Append(memory).ToSequence();
 
-        protected internal readonly ILogger _logger;
-        protected internal readonly CancellationTokenSource _source;
-        protected internal bool Abandon => _source.IsCancellationRequested || Disposed;
+        public static ReadOnlySequence<byte> Add(this ReadOnlySequence<byte> sequence, byte[] array)
+            => sequence.Add(new ReadOnlyMemory<byte>(array));
 
-        protected ListenerBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger) {
-            if (string.IsNullOrWhiteSpace(id))
-                throw new ArgumentNullException(nameof(id));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _source = source ?? throw new ArgumentNullException(nameof(source));
-            Id = id;
-            _config = config ?? throw new ArgumentNullException(nameof(config));
-            _source.Token.Register(Dispose);
+        public static ReadOnlySequence<byte> Add(this ReadOnlySequence<byte> sequence, byte[] array, int start, int length)
+            => sequence.Add(new ReadOnlyMemory<byte>(array, start, length));
+
+        private static IEnumerable<ReadOnlyMemory<byte>> Append(this ReadOnlySequence<byte> sequence, ReadOnlyMemory<byte> memory) {
+            var current = sequence.Start;
+            while (sequence.TryGet(ref current, out var segment))
+                yield return segment;
+            yield return memory;
         }
 
-        protected override void DisposeManagedResources() => Stop();
-
-        private readonly INetworkConfig _config;
+        private static IEnumerable<ReadOnlyMemory<byte>> JoinTo(this ReadOnlySequence<byte> sequence, ReadOnlySequence<byte> otherSequence) {
+            var current = sequence.Start;
+            while (sequence.TryGet(ref current, out var segment))
+                yield return segment;
+            current = otherSequence.Start;
+            while (otherSequence.TryGet(ref current, out var segment))
+                yield return segment;
+        }
     }
 }

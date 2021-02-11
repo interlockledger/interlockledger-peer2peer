@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
 
-Copyright (c) 2018-2020 InterlockLedger Network
+Copyright (c) 2018-2021 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -76,8 +76,6 @@ namespace Demo.InterlockLedger.Peer2Peer
         protected static readonly ReadOnlyMemory<byte> _haveMoreMarker = new byte[] { 1 };
 
         protected static readonly ReadOnlyMemory<byte> _isLastMarker = new byte[] { 0 };
-
-        [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "Disposed at DisposeManagedResources")]
         protected readonly CancellationTokenSource _source;
 
         protected DemoBaseSink(string message) {

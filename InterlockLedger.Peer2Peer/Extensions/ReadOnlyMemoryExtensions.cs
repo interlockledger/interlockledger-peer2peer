@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
 
-Copyright (c) 2018-2020 InterlockLedger Network
+Copyright (c) 2018-2021 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -47,31 +47,34 @@ namespace InterlockLedger.Peer2Peer
 
         public static string ToBase64(this ReadOnlyMemory<byte> bytes) => Convert.ToBase64String(bytes.Span);
 
-        public static ReadOnlySequence<byte> ToSequence(this List<ReadOnlyMemory<byte>> segments) {
-            if (segments.Count == 0)
-                return new ReadOnlySequence<byte>();
-            if (segments.Count == 1)
-                return new ReadOnlySequence<byte>(segments[0]);
-            NmsSegment first = null;
-            NmsSegment current = null;
-            foreach (var segment in segments) {
-                var next = new NmsSegment(segment, current is null ? 0 : (current.RunningIndex + current.Memory.Length));
-                if (first is null)
-                    first = next;
-                current?.SetNext(next);
-                current = next;
-            }
-            return new ReadOnlySequence<byte>(first, 0, current, current.Memory.Length);
-        }
+        public static ReadOnlySequence<byte> ToSequence(this IEnumerable<ReadOnlyMemory<byte>> segments)
+            => (segments?.Count() ?? 0) switch {
+                0 => ReadOnlySequence<byte>.Empty,
+                1 => new ReadOnlySequence<byte>(segments.First()),
+                _ => LinkedSegment.Link(segments)
+            };
 
-        private class NmsSegment : ReadOnlySequenceSegment<byte>
+        private class LinkedSegment : ReadOnlySequenceSegment<byte>
         {
-            public NmsSegment(ReadOnlyMemory<byte> segment, long runningIndex) {
-                Memory = segment;
+            public int Length => Memory.Length;
+
+            public long NextRunningIndex => RunningIndex + Length;
+
+            public static ReadOnlySequence<byte> Link(IEnumerable<ReadOnlyMemory<byte>> segments) {
+                var first = new LinkedSegment(segments.First(), 0);
+                var current = first;
+                foreach (var segment in segments.Skip(1)) {
+                    var next = new LinkedSegment(segment, current.NextRunningIndex);
+                    current.Next = next;
+                    current = next;
+                }
+                return new ReadOnlySequence<byte>(first, 0, current, current.Length);
+            }
+
+            private LinkedSegment(ReadOnlyMemory<byte> memory, long runningIndex) {
+                Memory = memory;
                 RunningIndex = runningIndex;
             }
-
-            public void SetNext(NmsSegment segment) => Next = segment;
         }
     }
 }

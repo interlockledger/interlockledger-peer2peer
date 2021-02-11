@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
  
-Copyright (c) 2018-2020 InterlockLedger Network
+Copyright (c) 2018-2021 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -71,7 +71,6 @@ namespace InterlockLedger.Peer2Peer
             Dispose(false);
         }
 
-        [SuppressMessage("Design", "CA1063:Implement IDisposable Correctly", Justification = "Implemented another way")]
         private void Dispose(bool disposing) {
             if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0) {
                 if (disposing) {

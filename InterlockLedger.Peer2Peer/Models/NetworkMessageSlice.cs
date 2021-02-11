@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
 
-Copyright (c) 2018-2020 InterlockLedger Network
+Copyright (c) 2018-2021 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -33,11 +33,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using System;
 using System.Buffers;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public struct NetworkMessageSlice
+    public readonly struct NetworkMessageSlice
     {
         public NetworkMessageSlice(ulong channel, params byte[] array) : this(channel, array, 0, array.Length) {
         }
@@ -49,58 +48,27 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public NetworkMessageSlice(ulong channel, IEnumerable<ReadOnlyMemory<byte>> segmentList) {
-            if (segmentList == null)
-                throw new ArgumentNullException(nameof(segmentList));
-            _segmentList = new List<ReadOnlyMemory<byte>>(segmentList);
-            _dataList = ReadOnlySequence<byte>.Empty;
-            _readonly = false;
+            DataList = segmentList.ToSequence();
+            Channel = channel;
+        }
+
+        public NetworkMessageSlice(ulong channel, ReadOnlySequence<byte> dataList) {
+            DataList = dataList;
             Channel = channel;
         }
 
         public ulong Channel { get; }
 
-        public ReadOnlySequence<byte> DataList => _readonly
-            ? _dataList
-            : _dataList = BuildDataList();
+        public ReadOnlySequence<byte> DataList { get; }
 
-        public bool IsEmpty => _readonly ? DataList.IsEmpty : !_segmentList.Any(m => !m.IsEmpty);
+        public bool IsEmpty => DataList.IsEmpty;
 
         public NetworkMessageSlice Add(byte[] array) => Add(new ReadOnlyMemory<byte>(array));
 
         public NetworkMessageSlice Add(byte[] array, int start, int length) => Add(new ReadOnlyMemory<byte>(array, start, length));
 
-        public NetworkMessageSlice Add(ReadOnlyMemory<byte> data) {
-            lock (_segmentList) {
-                if (_readonly)
-                    throw new InvalidOperationException("Can't add new segments to this NetworkMessageSlice");
-                _segmentList.Add(data);
-                return this;
-            }
-        }
+        public NetworkMessageSlice Add(ReadOnlyMemory<byte> data) => new NetworkMessageSlice(Channel, DataList.Add(data));
 
         public NetworkMessageSlice WithChannel(ulong channel) => new NetworkMessageSlice(channel, DataList);
-
-        private readonly List<ReadOnlyMemory<byte>> _segmentList;
-
-        private ReadOnlySequence<byte> _dataList;
-
-        private bool _readonly;
-
-        public NetworkMessageSlice(ulong channel, ReadOnlySequence<byte> dataList) {
-            _segmentList = Enumerable.Empty<ReadOnlyMemory<byte>>().ToList();
-            _dataList = dataList;
-            _readonly = true;
-            Channel = channel;
-        }
-
-        private ReadOnlySequence<byte> BuildDataList() {
-            lock (_segmentList) {
-                _readonly = true;
-                var segments = _segmentList;
-                return segments.ToSequence();
-            }
-        }
-
-
     }
 }

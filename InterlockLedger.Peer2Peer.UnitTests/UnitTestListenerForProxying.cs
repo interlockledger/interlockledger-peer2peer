@@ -1,6 +1,6 @@
 /******************************************************************************************************************************
 
-Copyright (c) 2018-2020 InterlockLedger Network
+Copyright (c) 2018-2021 InterlockLedger Network
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -44,7 +43,7 @@ namespace InterlockLedger.Peer2Peer
     [TestClass]
     public class UnitTestListenerForProxying
     {
-        [TestMethod]
+        [TestMethod, DoNotParallelize]
         public void TestListenerForProxyingMinimally() {
             var fakeLogger = new FakeLogging();
             using var fakeDiscoverer = new FakeDiscoverer();
@@ -65,26 +64,27 @@ namespace InterlockLedger.Peer2Peer
                 WaitForOthers(100);
             var allInternalBytes = AllBytes(fakeInternalSocket);
             Assert.IsNotNull(fakeLogger.LastLog);
-            AssertHasSameItems<byte>(nameof(fakeInternalSocket.BytesSent), allInternalBytes.ToArray(), 240, 1);
+            AssertHasSameItems<byte>(nameof(fakeInternalSocket.BytesSent), allInternalBytes.ToArray(), _tag, 1, 240, 1);
+            WaitForOthers(100);
             fakeInternalSocket.ReleaseYourHorses();
-            max = 5;
+            max = 7;
             while (AllBytes(fakeExternalSocket).Length < 4 && max-- > 0)
                 WaitForOthers(100);
-            AssertHasSameItems<byte>(nameof(fakeExternalSocket.BytesSent), AllBytes(fakeExternalSocket).ToArray(), 241, 128);
+            AssertHasSameItems<byte>(nameof(fakeExternalSocket.BytesSent), AllBytes(fakeExternalSocket).ToArray(), _tag, 1, 241, 128);
             fakeSink.Reset();
             long lastIndex = allInternalBytes.Length - 1;
-            fakeSink.SinkAsync( allInternalBytes.Slice(0, lastIndex), new TestChannel(allInternalBytes.Slice(lastIndex).First.Span[0])).Wait();
+            fakeSink.SinkAsync(allInternalBytes.Slice(0, lastIndex), new TestChannel(allInternalBytes.Slice(lastIndex).First.Span[0])).Wait();
             max = 12;
             while (fakeSink.ChannelProcessed == 0ul && max-- > 0)
                 WaitForOthers(100);
-            WaitForOthers(100);
-            AssertHasSameItems<byte>(nameof(fakeSink.BytesProcessed), fakeSink.BytesProcessed.ToArray(), 240);
+            WaitForOthers(300);
+            AssertHasSameItems<byte>(nameof(fakeSink.BytesProcessed), fakeSink.BytesProcessed.ToArray(), _tag, 1, 240);
             Assert.AreEqual((ulong)1, fakeSink.ChannelProcessed);
             AssertHasLogLine(fakeLogger, "Debug: Sinked Message '8A' from Channel ProxyingClient#1@128 using new pair to Proxied Channel 1. Sent: True");
             AssertHasLogLine(fakeLogger, "Debug: Responded with Message '8Q' from Channel TLFPM@1 to External Channel 128. Sent: True");
         }
 
-        [TestMethod]
+        [TestMethod, DoNotParallelize]
         public void TestListenerForProxyingWithSomeRealSockets() {
             var fakeLogger = new FakeLogging();
             var fakeDiscoverer = new FakeDiscoverer();
@@ -120,7 +120,7 @@ namespace InterlockLedger.Peer2Peer
                 WaitForOthers(100);
             AssertHasSameItems<byte>(nameof(externalNodeSink.MessagesReceived), externalNodeSink.MessagesReceived.SelectMany(l => l.ToArray()), 242);
             AssertHasLogLine(fakeLogger, "Debug: Sinked Message 'Ag' from Channel ProxyingClient#1@2 using new pair to Proxied Channel 1. Sent: True");
-            AssertHasLogLine(fakeLogger, "Debug: Responded with Message 'DQHy' from Channel ListenerClient#1@1 to External Channel 2. Sent: True");
+            AssertHasLogLine(fakeLogger, "Debug: Responded with Message '8g' from Channel ListenerClient#1@1 to External Channel 2. Sent: True");
             lfp.Stop();
             retries = 10;
             while (lfp.Alive && retries-- > 0)
@@ -129,7 +129,7 @@ namespace InterlockLedger.Peer2Peer
             Assert.IsTrue(referenceListener.Alive, "External listener should stay alive after lfp having stopped");
         }
 
-        [TestMethod]
+        [TestMethod, DoNotParallelize]
         public void TestListenerForProxyingWithSomeRealSocketsWithBrokenConnections() {
             //TODO use event to reinstate proxying
             var fakeLogger = new FakeLogging();
@@ -166,7 +166,7 @@ namespace InterlockLedger.Peer2Peer
                 WaitForOthers(100);
             AssertHasSameItems<byte>(nameof(externalNodeSink.MessagesReceived), externalNodeSink.MessagesReceived.SelectMany(l => l.ToArray()), 242);
             AssertHasLogLine(fakeLogger, "Debug: Sinked Message 'Ag' from Channel ProxyingClient#1@2 using new pair to Proxied Channel 1. Sent: True");
-            AssertHasLogLine(fakeLogger, "Debug: Responded with Message 'DQHy' from Channel ListenerClient#1@1 to External Channel 2. Sent: True");
+            AssertHasLogLine(fakeLogger, "Debug: Responded with Message '8g' from Channel ListenerClient#1@1 to External Channel 2. Sent: True");
             lfp.Stop();
             retries = 10;
             while (lfp.Alive && retries-- > 0)

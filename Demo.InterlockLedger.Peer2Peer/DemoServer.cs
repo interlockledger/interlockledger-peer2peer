@@ -49,12 +49,12 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         public string Url => $"demo://{PublishAtAddress}:{PublishAtPortNumber}/";
 
-        public override Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
-            _queue.Enqueue((message, channel));
+        public override Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel) {
+            _queue.Enqueue((messageBytes, channel));
             return Task.FromResult(Success.Next);
         }
 
-        protected override Func<IEnumerable<byte>> AliveMessageBuilder { get; }
+        protected override Func<ReadOnlyMemory<byte>> AliveMessageBuilder { get; }
 
         protected override void Run(IPeerServices peerServices) {
             using var listener = (peerServices ?? throw new ArgumentNullException(nameof(peerServices))).CreateListenerFor(this);
@@ -71,11 +71,11 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
         }
 
-        private readonly ConcurrentQueue<(IEnumerable<byte> message, IActiveChannel activeChannel)> _queue = new ConcurrentQueue<(IEnumerable<byte> message, IActiveChannel activeChannel)>();
+        private readonly ConcurrentQueue<(ReadOnlyMemory<byte> message, IActiveChannel activeChannel)> _queue = new();
 
         private bool _stop = false;
 
-        private static byte[] FormatResponse(IEnumerable<byte> buffer, bool isLast)
+        private static byte[] FormatResponse(ReadOnlyMemory<byte> buffer, bool isLast)
             => ToMessageBytes(buffer.ToArray(), isLast);
 
         private static byte[] FormatTextResponse(string text, bool isLast) => FormatResponse(AsUTF8Bytes(text), isLast);
@@ -92,10 +92,10 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         private void Listener_InactiveConnectionDropped() => Console.WriteLine("Inactive Connection Dropped");
 
-        private async Task SinkAsServerWithDelayedResponsesAsync(IEnumerable<byte> message, IActiveChannel activeChannel) {
+        private async Task SinkAsServerWithDelayedResponsesAsync(ReadOnlyMemory<byte> message, IActiveChannel activeChannel) {
             var results = SinkAsServer(message, activeChannel.Channel, out bool silent);
             var channel = activeChannel.Channel;
-            if (results.Count() <= 1)
+            if (results.Count() == 1)
                 await SendAsync(activeChannel, results.First());
             else {
                 foreach (var r in results) {
@@ -106,7 +106,7 @@ namespace Demo.InterlockLedger.Peer2Peer
             if (!silent)
                 Console.WriteLine($"Done processing on channel {channel}");
 
-            static async Task SendAsync(IActiveChannel channel, byte[] bytes) {
+            static async Task SendAsync(IActiveChannel channel, ReadOnlyMemory<byte> bytes) {
                 try {
                     await channel.SendAsync(bytes);
                 } catch (SocketException) {
@@ -114,14 +114,14 @@ namespace Demo.InterlockLedger.Peer2Peer
                 }
             }
 
-            IEnumerable<byte[]> SinkAsServer(IEnumerable<byte> channelBytes, ulong channel, out bool silent) {
+            IEnumerable<ReadOnlyMemory<byte>> SinkAsServer(ReadOnlyMemory<byte> channelBytes, ulong channel, out bool silent) {
                 byte[] buffer = channelBytes.ToArray();
                 var command = (buffer.Length > 1) ? (char)buffer[1] : '\0';
                 silent = command == 'l';
-                return ProcessCommand(command, buffer.Skip(2), channel, silent).ToArray();
+                return ProcessCommand(command, buffer.Skip(2).ToArray(), channel, silent).ToArray();
             }
 
-            IEnumerable<byte[]> ProcessCommand(char command, IEnumerable<byte> text, ulong channel, bool silent) {
+            IEnumerable<ReadOnlyMemory<byte>> ProcessCommand(char command, ReadOnlyMemory<byte> text, ulong channel, bool silent) {
                 if (!silent)
                     Console.WriteLine($"Received command '{command}' on channel {channel}");
                 switch (command) {

@@ -40,13 +40,13 @@ namespace InterlockLedger.Peer2Peer
     {
         IConnection Connection { get; }
 
-        Action<IEnumerable<byte>, IActiveChannel, Exception> Errored { get; set; }
+        Action<ReadOnlyMemory<byte>, IActiveChannel, Exception> Errored { get; set; }
 
-        Action<IEnumerable<byte>, IActiveChannel, ulong, bool> Responded { get; set; }
+        Action<ReadOnlyMemory<byte>, IActiveChannel, ulong, bool> Responded { get; set; }
 
         string Route { get; }
 
-        Action<IEnumerable<byte>, IActiveChannel, bool, ulong, bool> Sinked { get; set; }
+        Action<ReadOnlyMemory<byte>, IActiveChannel, bool, ulong, bool> Sinked { get; set; }
 
         Task<IListenerForProxying> StartAsync();
     }

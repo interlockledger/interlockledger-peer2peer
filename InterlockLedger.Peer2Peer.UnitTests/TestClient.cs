@@ -65,15 +65,16 @@ namespace InterlockLedger.Peer2Peer
             return this;
         }
 
-        public async Task<bool> SendAsync(IEnumerable<byte> message) {
-            if (message != null)
-                await Pipeline?.SendAsync(new NetworkMessageSlice(Channel, message));
+        public async Task<bool> SendAsync(ReadOnlyMemory<byte> messageBytes) {
+            if (!messageBytes.IsEmpty)
+                await Pipeline?.SendAsync(new NetworkMessageSlice(Channel, messageBytes));
             return true;
         }
 
         public void SetDefaultSink(IChannelSink sink) => _sink = sink ?? throw new ArgumentNullException(nameof(sink));
 
-        public async Task<Success> SinkAsync(IEnumerable<byte> message) => await (_sink?.SinkAsync(message, this) ?? Task.FromResult(Success.Next));
+        public async Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes)
+            => await (_sink?.SinkAsync(messageBytes, this) ?? Task.FromResult(Success.Next));
 
         public void Stop() => Pipeline?.Stop();
 
@@ -85,6 +86,6 @@ namespace InterlockLedger.Peer2Peer
 
         public bool KeepingAlive => false;
 
-        public void SetupLivenessKeeping(Func<IEnumerable<byte>> buildAliveMessage) { }
+        public void SetupLivenessKeeping(Func<ReadOnlyMemory<byte>> buildAliveMessage) { }
     }
 }

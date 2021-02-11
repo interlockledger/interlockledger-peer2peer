@@ -30,6 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -43,12 +44,12 @@ namespace InterlockLedger.Peer2Peer
         IConnection Connection { get; }
         string Id { get; }
 
-        Task<Success> SinkAsync(IEnumerable<byte> message);
+        Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes);
         void Stop();
     }
 
     public interface ISender
     {
-        Task<bool> SendAsync(IEnumerable<byte> message);
+        Task<bool> SendAsync(ReadOnlyMemory<byte> messageBytes);
     }
 }

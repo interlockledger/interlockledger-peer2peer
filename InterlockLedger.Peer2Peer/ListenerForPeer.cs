@@ -47,8 +47,8 @@ namespace InterlockLedger.Peer2Peer
                     nodeSink ?? throw new ArgumentNullException(nameof(nodeSink)),
                     discoverer ?? throw new ArgumentNullException(nameof(discoverer)));
 
-        public override Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel)
-            => DoAsync(() => _nodeSink.SinkAsync(message, channel), Success.Exit);
+        public override Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel)
+            => DoAsync(() => _nodeSink.SinkAsync(messageBytes, channel), Success.Exit);
 
         protected override string HeaderText
             => $"listening {NetworkProtocolName} protocol in {NetworkName} network at {_route}!";

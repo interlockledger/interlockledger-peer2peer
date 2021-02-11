@@ -45,10 +45,11 @@ namespace InterlockLedger.Peer2Peer
         public string Id => $"{PeerConnection.Id}@{Channel}";
         public bool Connected => PeerConnection.Connected;
 
-        public async Task<bool> SendAsync(IEnumerable<byte> message)
-            => !Active || !IsValid(message) || await PeerConnection.SendAsync(new NetworkMessageSlice(Channel, message));
+        public async Task<bool> SendAsync(ReadOnlyMemory<byte> messageBytes)
+            => !Active || messageBytes.IsEmpty || await PeerConnection.SendAsync(new NetworkMessageSlice(Channel, messageBytes));
 
-        public async Task<Success> SinkAsync(IEnumerable<byte> message) => _stop ? Success.Next : await Sink.SinkAsync(message, this);
+        public async Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes)
+            => _stop ? Success.Next : await Sink.SinkAsync(messageBytes, this);
 
         public void Stop() => _stop = true;
 
@@ -63,7 +64,5 @@ namespace InterlockLedger.Peer2Peer
         internal ConnectionBase PeerConnection { get; }
         internal IChannelSink Sink { get; }
         private bool _stop;
-
-        private static bool IsValid(IEnumerable<byte> message) => message?.Any() == true;
     }
 }

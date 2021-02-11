@@ -66,7 +66,7 @@ namespace InterlockLedger.Peer2Peer
             Channel = channel;
         }
 
-        public byte[] AllBytes => DataList.SelectMany(m => m.ToArray()).ToArray();
+        public ReadOnlyMemory<byte> AllBytes => DataList.SelectMany(m => m.ToArray()).ToArray();
 
         public ulong Channel { get; }
 
@@ -90,7 +90,7 @@ namespace InterlockLedger.Peer2Peer
 
         public override bool Equals(object obj) => Equals((NetworkMessageSlice)obj);
 
-        public bool Equals(NetworkMessageSlice other) => EqualityComparer<byte[]>.Default.Equals(AllBytes, other.AllBytes) && Channel == other.Channel;
+        public bool Equals(NetworkMessageSlice other) => AllBytes.Equals(other.AllBytes) && Channel == other.Channel;
 
         public override int GetHashCode() => HashCode.Combine(AllBytes, Channel);
 

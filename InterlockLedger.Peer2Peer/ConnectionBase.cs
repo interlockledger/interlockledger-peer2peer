@@ -75,7 +75,7 @@ namespace InterlockLedger.Peer2Peer
             StopAllChannelSinks();
         }
 
-        public void SetupLivenessKeeping(Func<IEnumerable<byte>> buildAliveMessage) {
+        public void SetupLivenessKeeping(Func<ReadOnlyMemory<byte>> buildAliveMessage) {
             if (buildAliveMessage is not null) {
                 if (_livenessKeeper is null)
                     _livenessKeeper = new LivenessKeeper(buildAliveMessage, InactivityTimeoutInMinutes, AllocateChannel);
@@ -94,7 +94,7 @@ namespace InterlockLedger.Peer2Peer
         protected IChannelSink _sink;
         protected ISocket _socket;
 
-        protected ConnectionBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger, Func<IEnumerable<byte>> buildAliveMessage)
+        protected ConnectionBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger, Func<ReadOnlyMemory<byte>> buildAliveMessage)
             : base(id, config, source, logger) {
             _pipeline = null;
             SetupLivenessKeeping(buildAliveMessage);

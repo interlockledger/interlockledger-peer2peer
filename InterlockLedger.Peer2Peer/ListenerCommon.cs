@@ -54,7 +54,7 @@ namespace InterlockLedger.Peer2Peer
 
         public ushort ExternalPortNumber { get; protected set; }
 
-        public abstract Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel);
+        public abstract Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel);
 
         public IListener Start() {
             StartListeningAsync().Wait();

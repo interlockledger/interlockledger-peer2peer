@@ -46,7 +46,7 @@ namespace InterlockLedger.Peer2Peer
         IActiveChannel GetChannel(ulong channel);
 
         void SetDefaultSink(IChannelSink sink);
-        void SetupLivenessKeeping(Func<IEnumerable<byte>> buildAliveMessage);
+        void SetupLivenessKeeping(Func<ReadOnlyMemory<byte>> buildAliveMessage);
         void Stop();
     }
 }

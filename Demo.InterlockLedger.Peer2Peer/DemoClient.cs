@@ -55,10 +55,10 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         public bool DoneReceiving { get; set; } = false;
 
-        public override async Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel activeChannel)
-            => Received(await Process(message, activeChannel.Channel));
+        public override async Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel activeChannel)
+            => Received(await Process(messageBytes, activeChannel.Channel));
 
-        protected override Func<IEnumerable<byte>> AliveMessageBuilder => BuildAliveMessage;
+        protected override Func<ReadOnlyMemory<byte>> AliveMessageBuilder => BuildAliveMessage;
 
         protected override void Run(IPeerServices peerServices) {
             using var client = peerServices.GetClient("localhost", 8080);
@@ -86,12 +86,12 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         private bool _brokenConnection = false;
 
-        private static IEnumerable<byte> BuildAliveMessage() => _livenessBytes;
+        private static ReadOnlyMemory<byte> BuildAliveMessage() => _livenessBytes;
 
-        private static async Task<Success> Process(IEnumerable<byte> message, ulong channel) {
+        private static async Task<Success> Process(ReadOnlyMemory<byte> message, ulong channel) {
             await Task.Delay(1);
-            if (message.Any()) {
-                var response = Encoding.UTF8.GetString(message.Skip(1).ToArray());
+            if (!message.IsEmpty) {
+                var response = Encoding.UTF8.GetString(message.ToArray().Skip(1).ToArray());
                 Console.WriteLine($"[{channel}] {response}");
                 return response[0] == 0 ? Success.Exit : Success.Next;
             }
@@ -109,11 +109,11 @@ namespace Demo.InterlockLedger.Peer2Peer
 
             public bool Alive { get; private set; } = true;
 
-            public Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) => Task.FromResult(Success.Next);
+            public Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel) => Task.FromResult(Success.Next);
 
             private void Start(IActiveChannel channel)
                 => Task.Run(() => {
-                    byte[] livenessOnChannel0 = new NetworkMessageSlice(0, _livenessBytes).AllBytes;
+                    ReadOnlyMemory<byte> livenessOnChannel0 = new NetworkMessageSlice(0, _livenessBytes).AllBytes;
                     try {
                         while (channel.Connected) {
                             channel.SendAsync(livenessOnChannel0).Wait();

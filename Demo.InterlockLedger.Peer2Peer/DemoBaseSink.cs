@@ -50,7 +50,7 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         public override IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "Echo", "Who", "TripleEcho" };
 
-        public static string AsString(IEnumerable<byte> text) => Encoding.UTF8.GetString(text.ToArray());
+        public static string AsString(ReadOnlyMemory<byte> text) => Encoding.UTF8.GetString(text.ToArray());
 
         public static byte[] AsUTF8Bytes(string s) => Encoding.UTF8.GetBytes(s);
 
@@ -71,11 +71,11 @@ namespace Demo.InterlockLedger.Peer2Peer
             Run(peerServices);
         }
 
-        protected static readonly byte[] _encodedMessageTag = _messageTagCode.ILIntEncode();
+        protected static readonly ReadOnlyMemory<byte> _encodedMessageTag = _messageTagCode.ILIntEncode();
 
-        protected static readonly IEnumerable<byte> _haveMoreMarker = new byte[] { 1 };
+        protected static readonly ReadOnlyMemory<byte> _haveMoreMarker = new byte[] { 1 };
 
-        protected static readonly IEnumerable<byte> _isLastMarker = new byte[] { 0 };
+        protected static readonly ReadOnlyMemory<byte> _isLastMarker = new byte[] { 0 };
 
         [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "Disposed at DisposeManagedResources")]
         protected readonly CancellationTokenSource _source;
@@ -95,14 +95,14 @@ namespace Demo.InterlockLedger.Peer2Peer
             _source = new CancellationTokenSource();
         }
 
-        protected abstract Func<IEnumerable<byte>> AliveMessageBuilder { get; }
+        protected abstract Func<ReadOnlyMemory<byte>> AliveMessageBuilder { get; }
 
-        protected static NetworkMessageSlice ToMessage(IEnumerable<byte> bytes, bool isLast)
+        protected static NetworkMessageSlice ToMessage(ReadOnlyMemory<byte> bytes, bool isLast)
             => new NetworkMessageSlice(0, ToMessageBytes(bytes, isLast));
 
-        protected static byte[] ToMessageBytes(IEnumerable<byte> bytes, bool isLast) {
-            var prefixedBytes = (isLast ? _isLastMarker : _haveMoreMarker).Concat(bytes);
-            var messagebytes = _encodedMessageTag.Concat(((ulong)prefixedBytes.Count()).ILIntEncode()).Concat(prefixedBytes).ToArray();
+        protected static byte[] ToMessageBytes(ReadOnlyMemory<byte> bytes, bool isLast) {
+            var prefixedBytes = (isLast ? _isLastMarker : _haveMoreMarker).ToArray().Concat(bytes.ToArray());
+            var messagebytes = _encodedMessageTag.ToArray().Concat(((ulong)prefixedBytes.Count()).ILIntEncode()).Concat(prefixedBytes).ToArray();
             return messagebytes;
         }
 
@@ -115,7 +115,7 @@ namespace Demo.InterlockLedger.Peer2Peer
         private const ulong _messageTagCode = ':';
         private readonly string _message;
 
-        private static ServiceProvider Configure(INetworkConfig config, CancellationTokenSource source, short portDelta, Func<IEnumerable<byte>> buildAliveMessage)
+        private static ServiceProvider Configure(INetworkConfig config, CancellationTokenSource source, short portDelta, Func<ReadOnlyMemory<byte>> buildAliveMessage)
             => source == null
                 ? throw new ArgumentNullException(nameof(source))
                 : new ServiceCollection()

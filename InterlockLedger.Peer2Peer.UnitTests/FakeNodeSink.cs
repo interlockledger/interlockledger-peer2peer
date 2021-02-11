@@ -30,6 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -37,7 +38,7 @@ namespace InterlockLedger.Peer2Peer
 {
     internal class FakeNodeSink : AbstractDisposable, INodeSink
     {
-        public readonly List<IEnumerable<byte>> MessagesReceived = new List<IEnumerable<byte>>();
+        public readonly List<ReadOnlyMemory<byte>> MessagesReceived = new();
 
         public FakeNodeSink(ulong messageTag, ushort port, int inactivityTimeoutInMinutes, int maxConcurrentConnections, params byte[] response) {
             MessageTag = messageTag;
@@ -71,8 +72,8 @@ namespace InterlockLedger.Peer2Peer
             // Do nothing
         }
 
-        public virtual async Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
-            MessagesReceived.Add(message);
+        public virtual async Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel) {
+            MessagesReceived.Add(messageBytes);
             if (_response.Length > 0)
                 await channel.SendAsync(_response);
             return Success.Exit;

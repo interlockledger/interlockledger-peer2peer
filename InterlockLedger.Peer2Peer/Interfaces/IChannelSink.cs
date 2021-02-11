@@ -30,6 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -37,6 +38,6 @@ namespace InterlockLedger.Peer2Peer
 {
     public interface IChannelSink
     {
-        Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel);
+        Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel);
     }
 }

@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -39,7 +40,7 @@ namespace InterlockLedger.Peer2Peer
 {
     public class LivenessKeeper : AbstractDisposable
     {
-        public LivenessKeeper(Func<IEnumerable<byte>> buildAliveMessage, int inactivityTimeoutInMinutes, Func<IChannelSink, IActiveChannel> allocateChannel) {
+        public LivenessKeeper(Func<ReadOnlyMemory<byte>> buildAliveMessage, int inactivityTimeoutInMinutes, Func<IChannelSink, IActiveChannel> allocateChannel) {
             if (allocateChannel is null)
                 throw new ArgumentNullException(nameof(allocateChannel));
             _buildAliveMessage = buildAliveMessage ?? throw new ArgumentNullException(nameof(buildAliveMessage));
@@ -61,13 +62,13 @@ namespace InterlockLedger.Peer2Peer
 
         private static readonly IChannelSink _sink = new KeepAliveSink();
         private readonly IActiveChannel _activeChannel;
-        private readonly Func<IEnumerable<byte>> _buildAliveMessage;
+        private readonly Func<ReadOnlyMemory<byte>> _buildAliveMessage;
         private readonly Timer _timer;
 
         private void KeepAlive() {
             if (_activeChannel.Active) {
                 var aliveMessage = _buildAliveMessage();
-                if (_activeChannel.SendAsync(aliveMessage).Result)
+                if (_activeChannel.SendAsync(aliveMessage.ToArray()).Result)
                     return;
             }
             _timer?.Change(Timeout.Infinite, Timeout.Infinite);
@@ -75,7 +76,7 @@ namespace InterlockLedger.Peer2Peer
 
         private class KeepAliveSink : IChannelSink
         {
-            public Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) => Task.FromResult(Success.Next);
+            public Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel) => Task.FromResult(Success.Next);
         }
     }
 }

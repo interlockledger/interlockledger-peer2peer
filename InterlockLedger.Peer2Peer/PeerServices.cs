@@ -49,7 +49,7 @@ namespace InterlockLedger.Peer2Peer
                             SocketFactory socketFactory,
                             int inactivityTimeoutInMinutes,
                             int maxConcurrentConnections,
-                            Func<IEnumerable<byte>> buildAliveMessage) {
+                            Func<ReadOnlyMemory<byte>> buildAliveMessage) {
             MessageTag = messageTag;
             NetworkName = networkName ?? throw new ArgumentNullException(nameof(networkName));
             NetworkProtocolName = networkProtocolName ?? throw new ArgumentNullException(nameof(networkProtocolName));
@@ -148,7 +148,7 @@ namespace InterlockLedger.Peer2Peer
         private readonly ILogger _logger;
         private readonly ILoggerFactory _loggerFactory;
         private readonly SocketFactory _socketFactory;
-        private readonly Func<IEnumerable<byte>> _buildAliveMessage;
+        private readonly Func<ReadOnlyMemory<byte>> _buildAliveMessage;
         private CancellationTokenSource _source;
 
         private static string Framed(string nodeId) => $"[{nodeId}]";

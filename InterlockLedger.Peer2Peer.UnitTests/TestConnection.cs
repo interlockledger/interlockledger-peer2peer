@@ -30,6 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using System;
 using System.Threading;
 using Microsoft.Extensions.Logging;
 
@@ -37,7 +38,7 @@ namespace InterlockLedger.Peer2Peer
 {
     public class TestConnection : ConnectionBase
     {
-        public TestConnection(ISocket socket, IChannelSink sink, string id, INetworkConfig config, CancellationTokenSource source, ILogger logger, System.Func<System.Collections.Generic.IEnumerable<byte>> buildAliveMessage)
+        public TestConnection(ISocket socket, IChannelSink sink, string id, INetworkConfig config, CancellationTokenSource source, ILogger logger, Func<ReadOnlyMemory<byte>> buildAliveMessage)
             : base(id, config, source, logger, buildAliveMessage) {
             _socket = socket;
             _sink = sink;

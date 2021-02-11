@@ -32,9 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -65,39 +63,39 @@ namespace InterlockLedger.Peer2Peer
 
         public IConnection Connection { get; }
 
-        public Action<IEnumerable<byte>, IActiveChannel, Exception> Errored { get; set; }
+        public Action<ReadOnlyMemory<byte>, IActiveChannel, Exception> Errored { get; set; }
 
         public string HostedAddress { get; }
 
-        public Action<IEnumerable<byte>, IActiveChannel, ulong, bool> Responded { get; set; }
+        public Action<ReadOnlyMemory<byte>, IActiveChannel, ulong, bool> Responded { get; set; }
 
         public string Route => $"{ExternalAddress}:{ExternalPortNumber}";
 
-        public Action<IEnumerable<byte>, IActiveChannel, bool, ulong, bool> Sinked { get; set; }
+        public Action<ReadOnlyMemory<byte>, IActiveChannel, bool, ulong, bool> Sinked { get; set; }
 
-        public void LogError(IEnumerable<byte> message, IActiveChannel channel, Exception e)
-            => _logger.LogError(e, "Error processing Message '{0}' from Channel {1}:{2}", message?.ToUrlSafeBase64(), channel?.ToString() ?? "?", e.Message);
+        public void LogError(ReadOnlyMemory<byte> message, IActiveChannel channel, Exception e)
+            => _logger.LogError(e, "Error processing Message '{0}' from Channel {1}:{2}", message.ToUrlSafeBase64(), channel?.ToString() ?? "?", e.Message);
 
-        public void LogResponded(IEnumerable<byte> message, IActiveChannel channel, ulong externalChannelId, bool sent)
+        public void LogResponded(ReadOnlyMemory<byte> message, IActiveChannel channel, ulong externalChannelId, bool sent)
             => _logger.LogDebug("Responded with Message '{0}' from Channel {1} to External Channel {2}. Sent: {3}", message.ToUrlSafeBase64(), channel, externalChannelId, sent);
 
-        public void LogSinked(IEnumerable<byte> message, IActiveChannel channel, bool newPair, ulong proxiedChannelId, bool sent)
+        public void LogSinked(ReadOnlyMemory<byte> message, IActiveChannel channel, bool newPair, ulong proxiedChannelId, bool sent)
             => _logger.LogDebug("Sinked Message '{0}' from Channel {1} using {2} pair to Proxied Channel {3}. Sent: {4}", message.ToUrlSafeBase64(), channel, newPair ? "new" : "existing", proxiedChannelId, sent);
 
-        public override Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel)
+        public override Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel)
             => DoAsync(async () => {
                 try {
                     if (_channelMap.TryGetValue(channel.Id, out var pair)) {
-                        var sent = await pair.SendAsync(message);
-                        Sinked(message, channel, false, pair.ProxiedChannelId, sent);
+                        var sent = await pair.SendAsync(messageBytes);
+                        Sinked(messageBytes, channel, false, pair.ProxiedChannelId, sent);
                     } else {
                         var newPair = new ChannelPairing(channel, Connection, this);
                         _channelMap.TryAdd(channel.Id, newPair);
-                        var sent = await newPair.SendAsync(message);
-                        Sinked(message, channel, true, newPair.ProxiedChannelId, sent);
+                        var sent = await newPair.SendAsync(messageBytes);
+                        Sinked(messageBytes, channel, true, newPair.ProxiedChannelId, sent);
                     }
                 } catch (Exception e) {
-                    Errored(message, channel, e);
+                    Errored(messageBytes, channel, e);
                 }
                 return Success.Next;
             }, Success.Exit);
@@ -153,22 +151,21 @@ namespace InterlockLedger.Peer2Peer
 
             public ulong ProxiedChannelId => _proxied.Channel;
 
-            public async Task<bool> SendAsync(IEnumerable<byte> message) {
+            public async Task<bool> SendAsync(ReadOnlyMemory<byte> messageBytes) {
                 try {
-                    return await _proxied.SendAsync(WithTagAndLength(message));
+                    return await _proxied.SendAsync(messageBytes);
                 } catch (Exception e) {
-                    _parent.Errored(message, _proxied, e);
+                    _parent.Errored(messageBytes, _proxied, e);
                     return false;
                 }
             }
 
-            public async Task<Success> SinkAsync(IEnumerable<byte> message, IActiveChannel channel) {
+            public async Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel) {
                 try {
-                    var fullMessage = WithTagAndLength(message);
-                    var sent = await _external.SendAsync(fullMessage);
-                    _parent.Responded(fullMessage, channel, _external.Channel, sent);
+                    var sent = await _external.SendAsync(messageBytes);
+                    _parent.Responded(messageBytes, channel, _external.Channel, sent);
                 } catch (Exception e) {
-                    _parent.Errored(message, channel, e);
+                    _parent.Errored(messageBytes, channel, e);
                 }
                 return Success.Next;
             }
@@ -177,12 +174,6 @@ namespace InterlockLedger.Peer2Peer
             private readonly ListenerForProxying _parent;
             private readonly IActiveChannel _proxied;
             private readonly byte[] _tagAsILInt;
-
-            private static byte[] LengthAsILInt(IEnumerable<byte> message)
-                => ((ulong)message.LongCount()).AsILInt();
-
-            private IEnumerable<byte> WithTagAndLength(IEnumerable<byte> message)
-                => _tagAsILInt.Concat(LengthAsILInt(message)).Concat(message);
         }
     }
 }

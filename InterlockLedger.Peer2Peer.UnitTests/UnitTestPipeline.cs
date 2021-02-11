@@ -30,6 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -44,7 +45,7 @@ namespace InterlockLedger.Peer2Peer
         public void TestPipelineMinimally() {
             bool stopped = false;
             string stoppedId = null;
-            byte[] bytesProcessed = null;
+            ReadOnlyMemory<byte> bytesProcessed = new();
             ulong channelProcessed = 0;
             var fakeLogger = new FakeLogging();
             using var fakeDiscoverer = new FakeDiscoverer();
@@ -56,7 +57,7 @@ namespace InterlockLedger.Peer2Peer
                 bytesProcessed = channelBytes.AllBytes;
                 channelProcessed = channelBytes.Channel;
                 var activeChannel = fakeClient.GetChannel(channelProcessed);
-                await activeChannel.SendAsync(new byte[] { 13, 1, 128 });
+                await activeChannel.SendAsync(bytesProcessed);
                 await Task.Delay(1).ConfigureAwait(false);
                 return Success.Exit;
             }
@@ -75,15 +76,15 @@ namespace InterlockLedger.Peer2Peer
             pipeline.Stop();
             while (!pipeline.Stopped)
                 Thread.Sleep(1);
-            Assert.IsNotNull(bytesProcessed);
+            Assert.IsFalse(bytesProcessed.IsEmpty);
             Assert.IsNotNull(fakeLogger.LastLog);
             Assert.AreEqual(2ul, channelProcessed);
-            AssertHasSameItems<byte>(nameof(bytesProcessed), bytesProcessed, 128);
+            AssertHasSameItems<byte>(nameof(bytesProcessed), bytesProcessed.ToArray(), 128);
             Assert.IsTrue(stopped, "StopProcessor should have been called");
             Assert.IsNotNull(stoppedId);
             Assert.AreEqual(fakeClient.Id, stoppedId);
             Assert.IsNotNull(fakeSocket.BytesSent);
-            AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 13, 1, 128, 2);
+            AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 128, 2);
             Assert.IsTrue(fakeSocket.Disposed, "Socket should have been disposed");
         }
     }

@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -50,7 +51,7 @@ namespace InterlockLedger.Peer2Peer
             Assert.IsNotNull(fakeLogger.LastLog);
             AssertHasSameItems<byte>(nameof(fakeSink.BytesProcessed), fakeSink.BytesProcessed.ToArray(), 128);
             Assert.IsNotNull(fakeSocket.BytesSent);
-            AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 13, 1, 129, 2);
+            AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), fakeSocket.BytesSent.ToArray(), 13, 1, 129, 2);
             connection.AllocateChannel(fakeSink);
             Assert.AreEqual(1, connection.LastChannelUsed);
             Assert.AreEqual(2, connection.NumberOfActiveChannels);

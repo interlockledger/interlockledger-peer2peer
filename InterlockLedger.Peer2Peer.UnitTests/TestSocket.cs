@@ -31,8 +31,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -51,7 +51,7 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public int Available => _holdYourHorses ? 0 : _bytesReceived.Length - _receivedCount;
-        public IEnumerable<ReadOnlyMemory<byte>> BytesSent => _bytesSent;
+        public ReadOnlySequence<byte> BytesSent => _bytesSent.ToSequence();
         public bool Connected => _holdYourHorses || Available > 0;
         public EndPoint RemoteEndPoint => new IPEndPoint(IPAddress.Loopback, 13013);
 
@@ -71,9 +71,11 @@ namespace InterlockLedger.Peer2Peer
 
         public void ReleaseYourHorses() => _holdYourHorses = false;
 
-        public Task<int> SendBuffersAsync(IEnumerable<ReadOnlyMemory<byte>> buffers, CancellationToken token, SocketFlags socketFlags) {
-            _bytesSent.AddRange(buffers);
-            return Task.FromResult(buffers.Select(s => s.Length).Sum());
+        public Task<long> SendBuffersAsync(ReadOnlySequence<byte> buffers, CancellationToken token, SocketFlags socketFlags) {
+            var pos = buffers.Start;
+            while (buffers.TryGet(ref pos, out var mem))
+                _bytesSent.Add(mem);
+            return Task.FromResult(buffers.Length);
         }
 
         protected override void DisposeManagedResources() {
@@ -83,6 +85,5 @@ namespace InterlockLedger.Peer2Peer
         private readonly List<ReadOnlyMemory<byte>> _bytesSent = new List<ReadOnlyMemory<byte>>();
         private bool _holdYourHorses;
         private int _receivedCount;
-
     }
 }

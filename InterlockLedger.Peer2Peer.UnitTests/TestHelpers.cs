@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -50,13 +51,6 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public static string Joined<T>(IEnumerable<T> items) => items.Any() ? string.Join(", ", items.Select(b => b.ToString())) : "-";
-
-        public static IEnumerable<byte> ToBytes(IEnumerable<ReadOnlyMemory<byte>> bytesSent) {
-            foreach (var segment in bytesSent) {
-                foreach (var b in segment.ToArraySegment())
-                    yield return b;
-            }
-        }
 
         public static void WaitForOthers(int timeInMiliseconds) {
             Thread.Yield();

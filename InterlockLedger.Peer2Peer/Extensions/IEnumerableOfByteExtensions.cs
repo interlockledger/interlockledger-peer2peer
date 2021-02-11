@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -38,13 +39,15 @@ namespace InterlockLedger.Peer2Peer
 {
     public static class IEnumerableOfByteExtensions
     {
-        public static string ToUrlSafeBase64(this IEnumerable<byte> bytes)
-            => ToUrlSafeBase64(bytes.ToArray());
-
         public static string ToUrlSafeBase64(this byte[] bytes)
-            => Convert.ToBase64String(bytes ?? throw new ArgumentNullException(nameof(bytes))).Trim('=').Replace('+', '-').Replace('/', '_');
+            => Convert.ToBase64String(bytes ?? throw new ArgumentNullException(nameof(bytes)))
+                      .Trim('=')
+                      .Replace('+', '-')
+                      .Replace('/', '_');
 
-        public static string ToUrlSafeBase64(this ReadOnlyMemory<byte> readOnlyBytes)
-            => ToUrlSafeBase64(readOnlyBytes.ToArray());
+        public static string ToUrlSafeBase64(this ReadOnlySequence<byte> readOnlyBytes)
+            => readOnlyBytes.Length > 256
+                ? ToUrlSafeBase64(readOnlyBytes.Slice(0, 256).ToArray()) + "..."
+                : ToUrlSafeBase64(readOnlyBytes.ToArray());
     }
 }

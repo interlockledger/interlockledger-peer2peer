@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -60,18 +61,19 @@ namespace InterlockLedger.Peer2Peer
             WaitForOthers(100);
             fakeExternalSocket.ReleaseYourHorses();
             var max = 5;
-            while (AllBytes(fakeInternalSocket).Count() < 4 && max-- > 0)
+            while (AllBytes(fakeInternalSocket).Length < 4 && max-- > 0)
                 WaitForOthers(100);
             var allInternalBytes = AllBytes(fakeInternalSocket);
             Assert.IsNotNull(fakeLogger.LastLog);
-            AssertHasSameItems<byte>(nameof(fakeInternalSocket.BytesSent), allInternalBytes, 240, 1);
+            AssertHasSameItems<byte>(nameof(fakeInternalSocket.BytesSent), allInternalBytes.ToArray(), 240, 1);
             fakeInternalSocket.ReleaseYourHorses();
             max = 5;
-            while (AllBytes(fakeExternalSocket).Count() < 4 && max-- > 0)
+            while (AllBytes(fakeExternalSocket).Length < 4 && max-- > 0)
                 WaitForOthers(100);
-            AssertHasSameItems<byte>(nameof(fakeExternalSocket.BytesSent), AllBytes(fakeExternalSocket), 241, 128);
+            AssertHasSameItems<byte>(nameof(fakeExternalSocket.BytesSent), AllBytes(fakeExternalSocket).ToArray(), 241, 128);
             fakeSink.Reset();
-            fakeSink.SinkAsync(allInternalBytes.SkipLast(1).ToArray(), new TestChannel(allInternalBytes.Last())).Wait();
+            long lastIndex = allInternalBytes.Length - 1;
+            fakeSink.SinkAsync( allInternalBytes.Slice(0, lastIndex), new TestChannel(allInternalBytes.Slice(lastIndex).First.Span[0])).Wait();
             max = 12;
             while (fakeSink.ChannelProcessed == 0ul && max-- > 0)
                 WaitForOthers(100);
@@ -107,7 +109,7 @@ namespace InterlockLedger.Peer2Peer
             using var externalConnection = new ConnectionToPeer("ExternalMessage", internalNodeSink, lfp.ExternalAddress, lfp.ExternalPortNumber, source, fakeLogger, buildAliveMessage: null);
             externalConnection.AllocateChannel(externalNodeSink); // just to bump channel
             var outsideChannel = externalConnection.AllocateChannel(externalNodeSink);
-            outsideChannel.SendAsync(new byte[] { _tag, 1, 2 }).Wait();
+            outsideChannel.SendAsync(new ReadOnlySequence<byte>(new byte[] { _tag, 1, 2 })).Wait();
             retries = 10;
             while (fakeSink.ChannelProcessed == 0 && retries-- > 0)
                 WaitForOthers(100);
@@ -153,18 +155,21 @@ namespace InterlockLedger.Peer2Peer
             using var externalConnection = new ConnectionToPeer("ExternalMessage", internalNodeSink, lfp.ExternalAddress, lfp.ExternalPortNumber, source, fakeLogger, buildAliveMessage: null);
             externalConnection.AllocateChannel(externalNodeSink); // just to bump channel
             var outsideChannel = externalConnection.AllocateChannel(externalNodeSink);
-            outsideChannel.SendAsync(new byte[] { _tag, 1, 2 }).Wait();
-            while (fakeSink.ChannelProcessed == 0)
+            outsideChannel.SendAsync(new ReadOnlySequence<byte>(new byte[] { _tag, 1, 2 })).Wait();
+            retries = 10;
+            while (fakeSink.ChannelProcessed == 0 && retries-- > 0)
                 WaitForOthers(100);
             AssertHasSameItems<byte>(nameof(fakeSink.BytesProcessed), fakeSink.BytesProcessed.ToArray(), 2);
             Assert.AreEqual(1ul, fakeSink.ChannelProcessed);
-            while (externalNodeSink.MessagesReceived.Count == 0)
+            retries = 10;
+            while (externalNodeSink.MessagesReceived.Count == 0 && retries-- > 0)
                 WaitForOthers(100);
             AssertHasSameItems<byte>(nameof(externalNodeSink.MessagesReceived), externalNodeSink.MessagesReceived.SelectMany(l => l.ToArray()), 242);
             AssertHasLogLine(fakeLogger, "Debug: Sinked Message 'Ag' from Channel ProxyingClient#1@2 using new pair to Proxied Channel 1. Sent: True");
             AssertHasLogLine(fakeLogger, "Debug: Responded with Message 'DQHy' from Channel ListenerClient#1@1 to External Channel 2. Sent: True");
             lfp.Stop();
-            while (lfp.Alive)
+            retries = 10;
+            while (lfp.Alive && retries-- > 0)
                 WaitForOthers(100);
             WaitForOthers(300);
             Assert.IsTrue(referenceListener.Alive, "External listener should stay alive after lfp having stopped");
@@ -172,12 +177,12 @@ namespace InterlockLedger.Peer2Peer
 
         private const byte _tag = 13;
 
-        private static IEnumerable<byte> AllBytes(TestSocket fakeProxiedSocket)
-            => ToBytes(fakeProxiedSocket.BytesSent);
+        private static ReadOnlySequence<byte> AllBytes(TestSocket fakeProxiedSocket)
+            => fakeProxiedSocket.BytesSent;
 
         private class ProxyNodeSink : FakeNodeSink
         {
-            public static readonly byte[] ProxyRequest = new byte[] { _tag, 2, 128, 129 };
+            public static readonly ReadOnlySequence<byte> ProxyRequest = new ReadOnlySequence<byte>(new byte[] { _tag, 2, 128, 129 });
 
             public ProxyNodeSink(ulong messageTag, ushort port, FakeLogging fakeLogger, CancellationTokenSource source)
                 : base(messageTag, port, 10, 40) {
@@ -187,8 +192,8 @@ namespace InterlockLedger.Peer2Peer
 
             public ListenerForProxying ListenerForProxying { get; private set; }
 
-            public override Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel) {
-                if (messageBytes.ToArray().SequenceEqual(ProxyRequest.Skip(2))) {
+            public override Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel) {
+                if (messageBytes.ToArray().SequenceEqual(ProxyRequest.Slice(2).ToArray())) {
                     ListenerForProxying = new ListenerForProxying(HostAtAddress, HostAtAddress, (ushort)(HostAtPortNumber - 1), channel.Connection, new SocketFactory(_fakeLogger, 3), _source, _fakeLogger);
                     return Task.FromResult(Success.Next);
                 }
@@ -209,9 +214,9 @@ namespace InterlockLedger.Peer2Peer
             public IConnection Connection { get; }
             public string Id { get; }
 
-            public Task<bool> SendAsync(ReadOnlyMemory<byte> messageBytes) => Task.FromResult(true);
+            public Task<bool> SendAsync(ReadOnlySequence<byte> messageBytes) => Task.FromResult(true);
 
-            public Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes) => Task.FromResult(Success.Next);
+            public Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes) => Task.FromResult(Success.Next);
 
             public void Stop() {
             }

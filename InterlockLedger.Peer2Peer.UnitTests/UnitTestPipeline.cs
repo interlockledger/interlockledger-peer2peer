@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -45,7 +46,7 @@ namespace InterlockLedger.Peer2Peer
         public void TestPipelineMinimally() {
             bool stopped = false;
             string stoppedId = null;
-            ReadOnlyMemory<byte> bytesProcessed = new();
+            ReadOnlySequence<byte> bytesProcessed = ReadOnlySequence<byte>.Empty;
             ulong channelProcessed = 0;
             var fakeLogger = new FakeLogging();
             using var fakeDiscoverer = new FakeDiscoverer();
@@ -54,7 +55,7 @@ namespace InterlockLedger.Peer2Peer
             using var fakeClient = new TestClient("FakeTestClient");
 
             async Task<Success> processor(NetworkMessageSlice channelBytes) {
-                bytesProcessed = channelBytes.AllBytes;
+                bytesProcessed = channelBytes.DataList;
                 channelProcessed = channelBytes.Channel;
                 var activeChannel = fakeClient.GetChannel(channelProcessed);
                 await activeChannel.SendAsync(bytesProcessed);
@@ -84,7 +85,7 @@ namespace InterlockLedger.Peer2Peer
             Assert.IsNotNull(stoppedId);
             Assert.AreEqual(fakeClient.Id, stoppedId);
             Assert.IsNotNull(fakeSocket.BytesSent);
-            AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), ToBytes(fakeSocket.BytesSent), 128, 2);
+            AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), fakeSocket.BytesSent.ToArray(), 128, 2);
             Assert.IsTrue(fakeSocket.Disposed, "Socket should have been disposed");
         }
     }

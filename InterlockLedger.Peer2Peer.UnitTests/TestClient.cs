@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -65,7 +66,7 @@ namespace InterlockLedger.Peer2Peer
             return this;
         }
 
-        public async Task<bool> SendAsync(ReadOnlyMemory<byte> messageBytes) {
+        public async Task<bool> SendAsync(ReadOnlySequence<byte> messageBytes) {
             if (!messageBytes.IsEmpty)
                 await Pipeline?.SendAsync(new NetworkMessageSlice(Channel, messageBytes));
             return true;
@@ -73,7 +74,7 @@ namespace InterlockLedger.Peer2Peer
 
         public void SetDefaultSink(IChannelSink sink) => _sink = sink ?? throw new ArgumentNullException(nameof(sink));
 
-        public async Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes)
+        public async Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes)
             => await (_sink?.SinkAsync(messageBytes, this) ?? Task.FromResult(Success.Next));
 
         public void Stop() => Pipeline?.Stop();
@@ -86,6 +87,6 @@ namespace InterlockLedger.Peer2Peer
 
         public bool KeepingAlive => false;
 
-        public void SetupLivenessKeeping(Func<ReadOnlyMemory<byte>> buildAliveMessage) { }
+        public void SetupLivenessKeeping(Func<ReadOnlySequence<byte>> buildAliveMessage) { }
     }
 }

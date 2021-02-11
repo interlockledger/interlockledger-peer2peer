@@ -101,7 +101,7 @@ namespace InterlockLedger.Peer2Peer
             }
             int payloadIndex = 0;
             foreach (var channelBytes in results) {
-                var inputBytes = channelBytes.AllBytes;
+                var inputBytes = channelBytes.DataList;
                 Assert.AreEqual(expectedChannels[payloadIndex], channelBytes.Channel);
                 byte[] expectedPayload = expectedPayloads[payloadIndex++];
                 Assert.AreEqual(expectedPayload.Length, inputBytes.Length);

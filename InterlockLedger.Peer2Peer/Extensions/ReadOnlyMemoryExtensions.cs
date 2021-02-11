@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -43,10 +44,34 @@ namespace InterlockLedger.Peer2Peer
             => !MemoryMarshal.TryGetArray(memory, out var result)
                 ? throw new InvalidOperationException("Buffer backed by array was expected")
                 : result;
-        public static IEnumerable<ArraySegment<byte>> ToArraySegments(this IEnumerable<ReadOnlyMemory<byte>> readOnlyBytes)
-            => readOnlyBytes.Select(rob => rob.ToArraySegment());
 
         public static string ToBase64(this ReadOnlyMemory<byte> bytes) => Convert.ToBase64String(bytes.Span);
 
+        public static ReadOnlySequence<byte> ToSequence(this List<ReadOnlyMemory<byte>> segments) {
+            if (segments.Count == 0)
+                return new ReadOnlySequence<byte>();
+            if (segments.Count == 1)
+                return new ReadOnlySequence<byte>(segments[0]);
+            NmsSegment first = null;
+            NmsSegment current = null;
+            foreach (var segment in segments) {
+                var next = new NmsSegment(segment, current is null ? 0 : (current.RunningIndex + current.Memory.Length));
+                if (first is null)
+                    first = next;
+                current?.SetNext(next);
+                current = next;
+            }
+            return new ReadOnlySequence<byte>(first, 0, current, current.Memory.Length);
+        }
+
+        private class NmsSegment : ReadOnlySequenceSegment<byte>
+        {
+            public NmsSegment(ReadOnlyMemory<byte> segment, long runningIndex) {
+                Memory = segment;
+                RunningIndex = runningIndex;
+            }
+
+            public void SetNext(NmsSegment segment) => Next = segment;
+        }
     }
 }

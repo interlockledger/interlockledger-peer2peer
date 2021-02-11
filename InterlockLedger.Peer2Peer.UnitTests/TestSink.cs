@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -38,18 +39,18 @@ namespace InterlockLedger.Peer2Peer
 {
     public class TestSink : IChannelSink
     {
-        public ReadOnlyMemory<byte> BytesProcessed;
+        public ReadOnlySequence<byte> BytesProcessed;
         public ulong ChannelProcessed = 0;
 
         public TestSink(params byte[] response)
-            => _response = response ?? throw new ArgumentNullException(nameof(response));
+            => _response = new ReadOnlySequence<byte>(response ?? throw new ArgumentNullException(nameof(response)));
 
         public void Reset() {
-            BytesProcessed = null;
+            BytesProcessed = default;
             ChannelProcessed = 0;
         }
 
-        public async Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel) {
+        public async Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel) {
             BytesProcessed = messageBytes;
             ChannelProcessed = channel.Channel;
             if (_response.Length > 0)
@@ -58,6 +59,6 @@ namespace InterlockLedger.Peer2Peer
             return Success.Next;
         }
 
-        private readonly byte[] _response;
+        private readonly ReadOnlySequence<byte> _response;
     }
 }

@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -40,7 +41,7 @@ namespace InterlockLedger.Peer2Peer
 {
     public class LivenessKeeper : AbstractDisposable
     {
-        public LivenessKeeper(Func<ReadOnlyMemory<byte>> buildAliveMessage, int inactivityTimeoutInMinutes, Func<IChannelSink, IActiveChannel> allocateChannel) {
+        public LivenessKeeper(Func<ReadOnlySequence<byte>> buildAliveMessage, int inactivityTimeoutInMinutes, Func<IChannelSink, IActiveChannel> allocateChannel) {
             if (allocateChannel is null)
                 throw new ArgumentNullException(nameof(allocateChannel));
             _buildAliveMessage = buildAliveMessage ?? throw new ArgumentNullException(nameof(buildAliveMessage));
@@ -62,13 +63,13 @@ namespace InterlockLedger.Peer2Peer
 
         private static readonly IChannelSink _sink = new KeepAliveSink();
         private readonly IActiveChannel _activeChannel;
-        private readonly Func<ReadOnlyMemory<byte>> _buildAliveMessage;
+        private readonly Func<ReadOnlySequence<byte>> _buildAliveMessage;
         private readonly Timer _timer;
 
         private void KeepAlive() {
             if (_activeChannel.Active) {
                 var aliveMessage = _buildAliveMessage();
-                if (_activeChannel.SendAsync(aliveMessage.ToArray()).Result)
+                if (_activeChannel.SendAsync(aliveMessage).Result)
                     return;
             }
             _timer?.Change(Timeout.Infinite, Timeout.Infinite);
@@ -76,7 +77,7 @@ namespace InterlockLedger.Peer2Peer
 
         private class KeepAliveSink : IChannelSink
         {
-            public Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel) => Task.FromResult(Success.Next);
+            public Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel) => Task.FromResult(Success.Next);
         }
     }
 }

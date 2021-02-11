@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -49,8 +50,8 @@ namespace InterlockLedger.Peer2Peer
             => ReceiveAsync(memory, token, SocketFlags.None);
         Task<int> ReceiveAsync(Memory<byte> memory, CancellationToken token, SocketFlags socketFlags);
 
-        Task<int> SendBuffersAsync(IEnumerable<ReadOnlyMemory<byte>> buffers, CancellationToken token)
+        Task<long> SendBuffersAsync(ReadOnlySequence<byte> buffers, CancellationToken token)
             => SendBuffersAsync(buffers, token, SocketFlags.None);
-        Task<int> SendBuffersAsync(IEnumerable<ReadOnlyMemory<byte>> buffers, CancellationToken token, SocketFlags socketFlags);
+        Task<long> SendBuffersAsync(ReadOnlySequence<byte> buffers, CancellationToken token, SocketFlags socketFlags);
     }
 }

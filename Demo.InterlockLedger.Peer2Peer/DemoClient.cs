@@ -31,7 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
-using System.Collections.Generic;
+using System.Buffers;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -41,7 +41,7 @@ namespace Demo.InterlockLedger.Peer2Peer
 {
     internal class DemoClient : DemoBaseSink
     {
-        public static readonly byte[] _livenessBytes = ToMessageBytes(AsUTF8Bytes("l"), isLast: true);
+        public static readonly ReadOnlySequence<byte> LivenessBytes = ToMessageBytes(AsUTF8Bytes("l"), isLast: true);
 
         public DemoClient() : base("Client") {
         }
@@ -55,15 +55,15 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         public bool DoneReceiving { get; set; } = false;
 
-        public override async Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel activeChannel)
+        public override async Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel activeChannel)
             => Received(await Process(messageBytes, activeChannel.Channel));
 
-        protected override Func<ReadOnlyMemory<byte>> AliveMessageBuilder => BuildAliveMessage;
+        protected override Func<ReadOnlySequence<byte>> AliveMessageBuilder => BuildAliveMessage;
 
         protected override void Run(IPeerServices peerServices) {
             using var client = peerServices.GetClient("localhost", 8080);
             client.ConnectionStopped += (_) => _brokenConnection = true;
-            var liveness = new LivenessListener(client);
+            var liveness = new ClientLivenessListener(client);
             while (!_source.IsCancellationRequested && liveness.Alive && !_brokenConnection) {
                 Console.WriteLine();
                 Console.Write(Prompt);
@@ -80,20 +80,21 @@ namespace Demo.InterlockLedger.Peer2Peer
                 if (command == null || command.FirstOrDefault() == 'x')
                     break;
                 var channel = client.AllocateChannel(this);
-                channel.SendAsync(ToMessage(AsUTF8Bytes(command), isLast: true).AllBytes).Wait();
+                channel.SendAsync(ToMessage(AsUTF8Bytes(command), isLast: true).DataList).Wait();
             }
         }
 
         private bool _brokenConnection = false;
 
-        private static ReadOnlyMemory<byte> BuildAliveMessage() => _livenessBytes;
+        private static ReadOnlySequence<byte> BuildAliveMessage() => LivenessBytes;
 
-        private static async Task<Success> Process(ReadOnlyMemory<byte> message, ulong channel) {
+        private static async Task<Success> Process(ReadOnlySequence<byte> message, ulong channel) {
             await Task.Delay(1);
             if (!message.IsEmpty) {
-                var response = Encoding.UTF8.GetString(message.ToArray().Skip(1).ToArray());
+                byte[] messageBytes = message.ToArray();
+                var response = Encoding.UTF8.GetString(messageBytes.Skip(1).ToArray());
                 Console.WriteLine($"[{channel}] {response}");
-                return response[0] == 0 ? Success.Exit : Success.Next;
+                return messageBytes[0] == 0 ? Success.Exit : Success.Next;
             }
             return Success.Exit;
         }
@@ -102,28 +103,6 @@ namespace Demo.InterlockLedger.Peer2Peer
             DoneReceiving = success == Success.Exit;
             return success;
         }
-
-        private class LivenessListener : IChannelSink
-        {
-            public LivenessListener(IConnection client) => Start(client.AllocateChannel(this));
-
-            public bool Alive { get; private set; } = true;
-
-            public Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel) => Task.FromResult(Success.Next);
-
-            private void Start(IActiveChannel channel)
-                => Task.Run(() => {
-                    ReadOnlyMemory<byte> livenessOnChannel0 = new NetworkMessageSlice(0, _livenessBytes).AllBytes;
-                    try {
-                        while (channel.Connected) {
-                            channel.SendAsync(livenessOnChannel0).Wait();
-                            Task.Delay(1000).Wait();
-                        }
-                    } catch {
-                    } finally {
-                        Alive = false;
-                    }
-                }).RunOnThread("Liveness");
-        }
     }
+
 }

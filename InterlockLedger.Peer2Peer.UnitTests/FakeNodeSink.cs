@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -38,14 +39,14 @@ namespace InterlockLedger.Peer2Peer
 {
     internal class FakeNodeSink : AbstractDisposable, INodeSink
     {
-        public readonly List<ReadOnlyMemory<byte>> MessagesReceived = new();
+        public readonly List<ReadOnlySequence<byte>> MessagesReceived = new();
 
         public FakeNodeSink(ulong messageTag, ushort port, int inactivityTimeoutInMinutes, int maxConcurrentConnections, params byte[] response) {
             MessageTag = messageTag;
             HostAtPortNumber = port;
             InactivityTimeoutInMinutes = inactivityTimeoutInMinutes;
             MaxConcurrentConnections = maxConcurrentConnections;
-            _response = response;
+            _response = new ReadOnlySequence<byte>(response);
         }
 
         public ulong Channel { get; set; } = 0;
@@ -72,7 +73,7 @@ namespace InterlockLedger.Peer2Peer
             // Do nothing
         }
 
-        public virtual async Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel) {
+        public virtual async Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel) {
             MessagesReceived.Add(messageBytes);
             if (_response.Length > 0)
                 await channel.SendAsync(_response);
@@ -82,6 +83,6 @@ namespace InterlockLedger.Peer2Peer
         protected override void DisposeManagedResources() {
         }
 
-        private readonly byte[] _response;
+        private readonly ReadOnlySequence<byte> _response;
     }
 }

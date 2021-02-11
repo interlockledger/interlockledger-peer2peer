@@ -31,8 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Buffers;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
@@ -45,10 +44,10 @@ namespace InterlockLedger.Peer2Peer
         public string Id => $"{PeerConnection.Id}@{Channel}";
         public bool Connected => PeerConnection.Connected;
 
-        public async Task<bool> SendAsync(ReadOnlyMemory<byte> messageBytes)
+        public async Task<bool> SendAsync(ReadOnlySequence<byte> messageBytes)
             => !Active || messageBytes.IsEmpty || await PeerConnection.SendAsync(new NetworkMessageSlice(Channel, messageBytes));
 
-        public async Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes)
+        public async Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes)
             => _stop ? Success.Next : await Sink.SinkAsync(messageBytes, this);
 
         public void Stop() => _stop = true;

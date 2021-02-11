@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -75,7 +76,7 @@ namespace InterlockLedger.Peer2Peer
             StopAllChannelSinks();
         }
 
-        public void SetupLivenessKeeping(Func<ReadOnlyMemory<byte>> buildAliveMessage) {
+        public void SetupLivenessKeeping(Func<ReadOnlySequence<byte>> buildAliveMessage) {
             if (buildAliveMessage is not null) {
                 if (_livenessKeeper is null)
                     _livenessKeeper = new LivenessKeeper(buildAliveMessage, InactivityTimeoutInMinutes, AllocateChannel);
@@ -94,7 +95,7 @@ namespace InterlockLedger.Peer2Peer
         protected IChannelSink _sink;
         protected ISocket _socket;
 
-        protected ConnectionBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger, Func<ReadOnlyMemory<byte>> buildAliveMessage)
+        protected ConnectionBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger, Func<ReadOnlySequence<byte>> buildAliveMessage)
             : base(id, config, source, logger) {
             _pipeline = null;
             SetupLivenessKeeping(buildAliveMessage);
@@ -171,7 +172,7 @@ namespace InterlockLedger.Peer2Peer
 
         private async Task<Success> InnerSinkAsync(NetworkMessageSlice slice) {
             if (_channelSinks.TryGetValue(slice.Channel, out var channelSink)) {
-                var result = await channelSink.SinkAsync(slice.AllBytes);
+                var result = await channelSink.SinkAsync(slice.DataList);
                 if (result == Success.Exit) {
                     _channelSinks.TryRemove(slice.Channel, out _);
                     return Success.Next;
@@ -180,7 +181,7 @@ namespace InterlockLedger.Peer2Peer
             }
             if (_sink != null) {
                 var newChannel = _channelSinks[slice.Channel] = new ActiveChannel(slice.Channel, _sink, this);
-                return await newChannel.SinkAsync(slice.AllBytes);
+                return await newChannel.SinkAsync(slice.DataList);
             }
             return Success.Next;
         }

@@ -205,7 +205,7 @@ namespace InterlockLedger.Peer2Peer
                     if (!sequence.IsEmpty) {
                         _inactivity.Restart();
                         using (await senderSocketLock.LockAsync()) {
-                            var bytesCount = await _socket.SendBuffersAsync(sequence.ToBuffers(), _linkedToken);
+                            var bytesCount = await _socket.SendBuffersAsync(sequence, _linkedToken);
                             reader.AdvanceTo(sequence.End);
                             if (bytesCount < 0)
                                 _localSource.Cancel(false);

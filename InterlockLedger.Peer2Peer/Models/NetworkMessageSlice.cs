@@ -31,24 +31,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
-
-//#pragma warning disable S3887 // Mutable, non-private fields should not be "readonly"
 
 namespace InterlockLedger.Peer2Peer
 {
-    public struct NetworkMessageSlice : IEquatable<NetworkMessageSlice>
+    public struct NetworkMessageSlice
     {
-        public NetworkMessageSlice(ulong channel, IEnumerable<byte> bytes) : this(channel, bytes.ToArray()) {
-        }
-
-        public NetworkMessageSlice(ulong channel, MemoryStream ms) : this(channel, ms.ToArray()) {
-        }
-
-
         public NetworkMessageSlice(ulong channel, params byte[] array) : this(channel, array, 0, array.Length) {
         }
 
@@ -58,45 +48,59 @@ namespace InterlockLedger.Peer2Peer
         public NetworkMessageSlice(ulong channel, params ReadOnlyMemory<byte>[] data) : this(channel, (IEnumerable<ReadOnlyMemory<byte>>)data) {
         }
 
-        public NetworkMessageSlice(ulong channel, IEnumerable<ReadOnlyMemory<byte>> dataList) {
-            if (dataList == null)
-                throw new ArgumentNullException(nameof(dataList));
-            _segmentList = new List<ReadOnlyMemory<byte>>(dataList);
-            _dataList = null;
+        public NetworkMessageSlice(ulong channel, IEnumerable<ReadOnlyMemory<byte>> segmentList) {
+            if (segmentList == null)
+                throw new ArgumentNullException(nameof(segmentList));
+            _segmentList = new List<ReadOnlyMemory<byte>>(segmentList);
+            _dataList = ReadOnlySequence<byte>.Empty;
+            _readonly = false;
             Channel = channel;
         }
 
-        public ReadOnlyMemory<byte> AllBytes => DataList.SelectMany(m => m.ToArray()).ToArray();
-
         public ulong Channel { get; }
 
-        public IList<ReadOnlyMemory<byte>> DataList => _dataList ??= (_segmentList ?? new List<ReadOnlyMemory<byte>>()).AsReadOnly();
+        public ReadOnlySequence<byte> DataList => _readonly
+            ? _dataList
+            : _dataList = BuildDataList();
 
-        public bool IsEmpty => !DataList.Any(s => !s.IsEmpty);
+        public bool IsEmpty => _readonly ? DataList.IsEmpty : !_segmentList.Any(m => !m.IsEmpty);
 
-        public static bool operator !=(NetworkMessageSlice left, NetworkMessageSlice right) => !(left == right);
+        public NetworkMessageSlice Add(byte[] array) => Add(new ReadOnlyMemory<byte>(array));
 
-        public static bool operator ==(NetworkMessageSlice left, NetworkMessageSlice right) => left.Equals(right);
-
-        public NetworkMessageSlice Add(byte[] array) => Add(new ArraySegment<byte>(array));
-
-        public NetworkMessageSlice Add(byte[] array, int start, int length) => Add(new ArraySegment<byte>(array, start, length));
+        public NetworkMessageSlice Add(byte[] array, int start, int length) => Add(new ReadOnlyMemory<byte>(array, start, length));
 
         public NetworkMessageSlice Add(ReadOnlyMemory<byte> data) {
-            if (_dataList == null)
+            lock (_segmentList) {
+                if (_readonly)
+                    throw new InvalidOperationException("Can't add new segments to this NetworkMessageSlice");
                 _segmentList.Add(data);
-            return this;
+                return this;
+            }
         }
-
-        public override bool Equals(object obj) => Equals((NetworkMessageSlice)obj);
-
-        public bool Equals(NetworkMessageSlice other) => AllBytes.Equals(other.AllBytes) && Channel == other.Channel;
-
-        public override int GetHashCode() => HashCode.Combine(AllBytes, Channel);
 
         public NetworkMessageSlice WithChannel(ulong channel) => new NetworkMessageSlice(channel, DataList);
 
         private readonly List<ReadOnlyMemory<byte>> _segmentList;
-        private ReadOnlyCollection<ReadOnlyMemory<byte>> _dataList;
+
+        private ReadOnlySequence<byte> _dataList;
+
+        private bool _readonly;
+
+        public NetworkMessageSlice(ulong channel, ReadOnlySequence<byte> dataList) {
+            _segmentList = Enumerable.Empty<ReadOnlyMemory<byte>>().ToList();
+            _dataList = dataList;
+            _readonly = true;
+            Channel = channel;
+        }
+
+        private ReadOnlySequence<byte> BuildDataList() {
+            lock (_segmentList) {
+                _readonly = true;
+                var segments = _segmentList;
+                return segments.ToSequence();
+            }
+        }
+
+
     }
 }

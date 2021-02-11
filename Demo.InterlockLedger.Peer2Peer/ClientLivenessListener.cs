@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
@@ -30,18 +30,34 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using System;
 using System.Buffers;
-using System.Collections.Generic;
+using System.Threading.Tasks;
+using InterlockLedger.Peer2Peer;
 
-namespace InterlockLedger.Peer2Peer
+namespace Demo.InterlockLedger.Peer2Peer
 {
-    internal static class ReadOnlySequenceExtensions
+    public class ClientLivenessListener : IChannelSink
     {
+        public ClientLivenessListener(IConnection client) => Start(client.AllocateChannel(this));
 
-        public static IEnumerable<ReadOnlyMemory<byte>> ToBuffers(this ReadOnlySequence<byte> sequence) {
-            foreach (var buffer in sequence)
-                yield return buffer;
-        }
+        public bool Alive { get; private set; } = true;
+
+        public Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel)
+            => Task.FromResult(Success.Next);
+
+        private void Start(IActiveChannel channel)
+            => Task.Run(() => {
+                var livenessOnChannel0 = new NetworkMessageSlice(0, DemoClient.LivenessBytes).DataList;
+                try {
+                    while (channel.Connected) {
+                        channel.SendAsync(livenessOnChannel0).Wait();
+                        Task.Delay(1000).Wait();
+                    }
+                } catch {
+                } finally {
+                    Alive = false;
+                }
+            }).RunOnThread("Liveness");
     }
+
 }

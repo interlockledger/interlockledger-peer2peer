@@ -30,7 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -58,6 +58,6 @@ namespace InterlockLedger.Peer2Peer
 
         public abstract void PublishedAt(string address, ushort port);
 
-        public abstract Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel);
+        public abstract Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel);
     }
 }

@@ -31,7 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
-using System.Collections.Generic;
+using System.Buffers;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
@@ -47,9 +47,9 @@ namespace InterlockLedger.Peer2Peer
             RemoteEndPoint = _socket.RemoteEndPoint;
         }
 
-        public EndPoint RemoteEndPoint { get; }
         public int Available => Do(() => _socket.Available);
         public bool Connected => Do(() => _socket.Connected);
+        public EndPoint RemoteEndPoint { get; }
 
         public Task<int> ReceiveAsync(Memory<byte> memory, CancellationToken token, SocketFlags socketFlags = SocketFlags.None)
             => DoAsync(async ()
@@ -57,11 +57,14 @@ namespace InterlockLedger.Peer2Peer
                     ? 0
                     : await _socket.ReceiveAsync(memory, socketFlags, token).ConfigureAwait(false));
 
-
-        public Task<int> SendBuffersAsync(IEnumerable<ReadOnlyMemory<byte>> buffers, CancellationToken token, SocketFlags socketFlags)
+        public Task<long> SendBuffersAsync(ReadOnlySequence<byte> buffers, CancellationToken token, SocketFlags socketFlags)
             => DoAsync(async () => {
                 try {
-                    return await _socket.SendBuffersAsync(buffers, socketFlags, token).ConfigureAwait(false);
+                    long count = 0;
+                    var pos = buffers.Start;
+                    while (buffers.TryGet(ref pos, out var mem))
+                        count += await _socket.SendAsync(mem, socketFlags, token).ConfigureAwait(false);
+                    return count;
                 } catch (SocketException) {
                     return -1;
                 }
@@ -79,6 +82,5 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private readonly Socket _socket;
-
     }
 }

@@ -49,12 +49,12 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         public string Url => $"demo://{PublishAtAddress}:{PublishAtPortNumber}/";
 
-        public override Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel) {
+        public override Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel) {
             _queue.Enqueue((messageBytes, channel));
             return Task.FromResult(Success.Next);
         }
 
-        protected override Func<ReadOnlyMemory<byte>> AliveMessageBuilder { get; }
+        protected override Func<ReadOnlySequence<byte>> AliveMessageBuilder { get; }
 
         protected override void Run(IPeerServices peerServices) {
             using var listener = (peerServices ?? throw new ArgumentNullException(nameof(peerServices))).CreateListenerFor(this);
@@ -71,14 +71,15 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
         }
 
-        private readonly ConcurrentQueue<(ReadOnlyMemory<byte> message, IActiveChannel activeChannel)> _queue = new();
+        private readonly ConcurrentQueue<(ReadOnlySequence<byte> message, IActiveChannel activeChannel)> _queue = new();
 
         private bool _stop = false;
 
-        private static byte[] FormatResponse(ReadOnlyMemory<byte> buffer, bool isLast)
-            => ToMessageBytes(buffer.ToArray(), isLast);
+        private static ReadOnlySequence<byte> FormatResponse(ReadOnlySequence<byte> buffer, bool isLast)
+            => ToMessageBytes(buffer, isLast);
 
-        private static byte[] FormatTextResponse(string text, bool isLast) => FormatResponse(AsUTF8Bytes(text), isLast);
+        private static ReadOnlySequence<byte> FormatTextResponse(string text, bool isLast)
+            => FormatResponse(AsUTF8Bytes(text), isLast);
 
         private async Task Dequeue() {
             do {
@@ -92,7 +93,7 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         private void Listener_InactiveConnectionDropped() => Console.WriteLine("Inactive Connection Dropped");
 
-        private async Task SinkAsServerWithDelayedResponsesAsync(ReadOnlyMemory<byte> message, IActiveChannel activeChannel) {
+        private async Task SinkAsServerWithDelayedResponsesAsync(ReadOnlySequence<byte> message, IActiveChannel activeChannel) {
             var results = SinkAsServer(message, activeChannel.Channel, out bool silent);
             var channel = activeChannel.Channel;
             if (results.Count() == 1)
@@ -106,7 +107,7 @@ namespace Demo.InterlockLedger.Peer2Peer
             if (!silent)
                 Console.WriteLine($"Done processing on channel {channel}");
 
-            static async Task SendAsync(IActiveChannel channel, ReadOnlyMemory<byte> bytes) {
+            static async Task SendAsync(IActiveChannel channel, ReadOnlySequence<byte> bytes) {
                 try {
                     await channel.SendAsync(bytes);
                 } catch (SocketException) {
@@ -114,14 +115,14 @@ namespace Demo.InterlockLedger.Peer2Peer
                 }
             }
 
-            IEnumerable<ReadOnlyMemory<byte>> SinkAsServer(ReadOnlyMemory<byte> channelBytes, ulong channel, out bool silent) {
-                byte[] buffer = channelBytes.ToArray();
-                var command = (buffer.Length > 1) ? (char)buffer[1] : '\0';
+            IEnumerable<ReadOnlySequence<byte>> SinkAsServer(ReadOnlySequence<byte> channelBytes, ulong channel, out bool silent) {
+                var buffer = channelBytes;
+                var command = (buffer.Length > 1) ? (char)buffer.First.Span[1] : '\0';
                 silent = command == 'l';
-                return ProcessCommand(command, buffer.Skip(2).ToArray(), channel, silent).ToArray();
+                return ProcessCommand(command, buffer.Slice(2), channel, silent).ToArray();
             }
 
-            IEnumerable<ReadOnlyMemory<byte>> ProcessCommand(char command, ReadOnlyMemory<byte> text, ulong channel, bool silent) {
+            IEnumerable<ReadOnlySequence<byte>> ProcessCommand(char command, ReadOnlySequence<byte> text, ulong channel, bool silent) {
                 if (!silent)
                     Console.WriteLine($"Received command '{command}' on channel {channel}");
                 switch (command) {

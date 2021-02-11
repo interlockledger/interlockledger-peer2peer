@@ -31,8 +31,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net.Sockets;
@@ -54,7 +54,7 @@ namespace InterlockLedger.Peer2Peer
 
         public ushort ExternalPortNumber { get; protected set; }
 
-        public abstract Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel);
+        public abstract Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel);
 
         public IListener Start() {
             StartListeningAsync().Wait();

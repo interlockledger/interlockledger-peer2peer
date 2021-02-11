@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
@@ -29,24 +29,27 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
+
 using System;
-using System.Collections.Generic;
+using System.Buffers;
 
 namespace InterlockLedger.Peer2Peer
 {
     public interface IConnection : INetworkIdentity
     {
+        event Action<INetworkIdentity> ConnectionStopped;
+
         bool Connected { get; }
         bool KeepingAlive { get; }
-
-        event Action<INetworkIdentity> ConnectionStopped;
 
         IActiveChannel AllocateChannel(IChannelSink channelSink);
 
         IActiveChannel GetChannel(ulong channel);
 
         void SetDefaultSink(IChannelSink sink);
-        void SetupLivenessKeeping(Func<ReadOnlyMemory<byte>> buildAliveMessage);
+
+        void SetupLivenessKeeping(Func<ReadOnlySequence<byte>> buildAliveMessage);
+
         void Stop();
     }
 }

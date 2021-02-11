@@ -31,7 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
-using System.Collections.Generic;
+using System.Buffers;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -47,7 +47,7 @@ namespace InterlockLedger.Peer2Peer
                     nodeSink ?? throw new ArgumentNullException(nameof(nodeSink)),
                     discoverer ?? throw new ArgumentNullException(nameof(discoverer)));
 
-        public override Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel)
+        public override Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel)
             => DoAsync(() => _nodeSink.SinkAsync(messageBytes, channel), Success.Exit);
 
         protected override string HeaderText

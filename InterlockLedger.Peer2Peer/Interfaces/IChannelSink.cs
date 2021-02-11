@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
@@ -30,14 +30,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using System;
-using System.Collections.Generic;
+using System.Buffers;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
 {
     public interface IChannelSink
     {
-        Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes, IActiveChannel channel);
+        Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel);
     }
 }

@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
@@ -31,7 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************************************************************/
 
 using System;
-using System.Collections.Generic;
+using System.Buffers;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
@@ -40,13 +40,13 @@ namespace InterlockLedger.Peer2Peer
     {
         IConnection Connection { get; }
 
-        Action<ReadOnlyMemory<byte>, IActiveChannel, Exception> Errored { get; set; }
+        Action<ReadOnlySequence<byte>, IActiveChannel, Exception> Errored { get; set; }
 
-        Action<ReadOnlyMemory<byte>, IActiveChannel, ulong, bool> Responded { get; set; }
+        Action<ReadOnlySequence<byte>, IActiveChannel, ulong, bool> Responded { get; set; }
 
         string Route { get; }
 
-        Action<ReadOnlyMemory<byte>, IActiveChannel, bool, ulong, bool> Sinked { get; set; }
+        Action<ReadOnlySequence<byte>, IActiveChannel, bool, ulong, bool> Sinked { get; set; }
 
         Task<IListenerForProxying> StartAsync();
     }

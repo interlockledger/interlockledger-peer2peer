@@ -1,5 +1,5 @@
 /******************************************************************************************************************************
- 
+
 Copyright (c) 2018-2020 InterlockLedger Network
 All rights reserved.
 
@@ -30,8 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************************************************************/
 
-using System;
-using System.Collections.Generic;
+using System.Buffers;
 using System.Threading.Tasks;
 
 namespace InterlockLedger.Peer2Peer
@@ -44,12 +43,13 @@ namespace InterlockLedger.Peer2Peer
         IConnection Connection { get; }
         string Id { get; }
 
-        Task<Success> SinkAsync(ReadOnlyMemory<byte> messageBytes);
+        Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes);
+
         void Stop();
     }
 
     public interface ISender
     {
-        Task<bool> SendAsync(ReadOnlyMemory<byte> messageBytes);
+        Task<bool> SendAsync(ReadOnlySequence<byte> messageBytes);
     }
 }

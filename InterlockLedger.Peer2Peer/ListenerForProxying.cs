@@ -33,8 +33,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -153,7 +151,7 @@ namespace InterlockLedger.Peer2Peer
 
             public async Task<bool> SendAsync(ReadOnlySequence<byte> messageBytes) {
                 try {
-                    return await _proxied.SendAsync(WithTagAndLength(messageBytes));
+                    return await _proxied.SendAsync(PrependTagAndLength(messageBytes));
                 } catch (Exception e) {
                     _parent.Errored(messageBytes, _proxied, e);
                     return false;
@@ -162,7 +160,7 @@ namespace InterlockLedger.Peer2Peer
 
             public async Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel) {
                 try {
-                    var sent = await _external.SendAsync(WithTagAndLength(messageBytes));
+                    var sent = await _external.SendAsync(PrependTagAndLength(messageBytes));
                     _parent.Responded(messageBytes, channel, _external.Channel, sent);
                 } catch (Exception e) {
                     _parent.Errored(messageBytes, channel, e);
@@ -175,8 +173,8 @@ namespace InterlockLedger.Peer2Peer
             private readonly IActiveChannel _proxied;
             private readonly ReadOnlySequence<byte> _tagAsILInt;
 
-            private ReadOnlySequence<byte> WithTagAndLength(ReadOnlySequence<byte> message)
-                => _tagAsILInt.Add(((ulong)message.Length).AsILInt()).Add(message);
+            private ReadOnlySequence<byte> PrependTagAndLength(ReadOnlySequence<byte> message)
+                => message.Prepend(((ulong)message.Length).AsILInt()).Prepend(_tagAsILInt);
 
         }
     }

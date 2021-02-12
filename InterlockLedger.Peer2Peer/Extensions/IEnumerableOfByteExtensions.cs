@@ -32,7 +32,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Linq;
 
 namespace InterlockLedger.Peer2Peer

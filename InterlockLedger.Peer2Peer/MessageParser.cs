@@ -32,8 +32,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using InterlockLedger.Tags;
@@ -61,6 +59,45 @@ namespace InterlockLedger.Peer2Peer
             } finally {
                 Interlocked.Decrement(ref _parsingCount);
             }
+
+            SequencePosition InnerParse(ReadOnlySequence<byte> buffer) {
+                long current = 0;
+                if (!buffer.IsEmpty)
+                    while (current < buffer.Length) {
+                        switch (_state) {
+                        case State.Init:
+                            Step_Initialize();
+                            break;
+
+                        case State.ReadTag:
+                            AfterReadingILintDo(buffer, ref current, _tagReader, Step_CheckTag);
+                            break;
+
+                        case State.ReadLength:
+                            AfterReadingILintDo(buffer, ref current, _lengthReader, Step_CheckLengthToRead);
+                            break;
+
+                        case State.ReadBytes:
+                            (_lengthToRead, _body) = ReadBytes(buffer, ref current, _lengthToRead, _body);
+                            _state = _lengthToRead != 0 ? State.ReadBytes : State.ReadChannel;
+                            break;
+
+                        case State.SkipBytes:
+                            _lengthToRead = SkipBytes(buffer, ref current, _lengthToRead);
+                            _state = _lengthToRead != 0 ? State.SkipBytes : State.SkipChannel;
+                            break;
+
+                        case State.ReadChannel:
+                            AfterReadingILintDo(buffer, ref current, _channelReader, Step_ProcessMessageFor);
+                            break;
+
+                        case State.SkipChannel:
+                            AfterReadingILintDo(buffer, ref current, _channelReader, (_) => _state = State.Init);
+                            break;
+                        }
+                    }
+                return buffer.End;
+            }
         }
 
         private const ulong _maxBytesToRead = 16 * 1024 * 1024;
@@ -69,11 +106,22 @@ namespace InterlockLedger.Peer2Peer
         private readonly ILIntReader _lengthReader = new ILIntReader();
         private readonly ILogger _logger;
         private readonly Func<NetworkMessageSlice, Task<Success>> _messageProcessor;
-        private readonly List<ReadOnlyMemory<byte>> _segments = new List<ReadOnlyMemory<byte>>();
         private readonly ILIntReader _tagReader = new ILIntReader();
+        private ReadOnlySequence<byte> _body = ReadOnlySequence<byte>.Empty;
         private ulong _lengthToRead;
         private volatile int _parsingCount = 0;
         private State _state = State.Init;
+
+        private enum State
+        {
+            Init,
+            ReadTag,
+            ReadLength,
+            ReadBytes,
+            ReadChannel,
+            SkipBytes,
+            SkipChannel
+        }
 
         private static void AfterReadingILintDo(ReadOnlySequence<byte> buffer, ref long current, ILIntReader reader, Action<ulong> action) {
             var nextByte = buffer.Slice(current++, 1).First.Span[0];
@@ -81,58 +129,20 @@ namespace InterlockLedger.Peer2Peer
                 action(reader.Value);
         }
 
-        private static string BuildMessageBodyReceived(ulong channel, IEnumerable<ReadOnlyMemory<byte>> segments)
-            => $"Message body received on channel {channel}: {string.Join("|", segments.Select(b => b.Slice(0, 90).ToBase64()))}";
+        private static string BuildMessageBodyReceived(ulong channel, ReadOnlySequence<byte> body)
+            => $"Message body received on channel {channel}: {body.ToUrlSafeBase64()}";
 
-        private static ulong ReadBytes(ReadOnlySequence<byte> buffer, ref long current, ulong length, List<ReadOnlyMemory<byte>> segments = null) {
+        private static (ulong, ReadOnlySequence<byte>) ReadBytes(ReadOnlySequence<byte> buffer, ref long current, ulong length, ReadOnlySequence<byte> body) {
             long bytesToRead = Math.Min((long)length, buffer.Length - current);
-            if (segments != null) {
-                var slice = buffer.Slice(current, bytesToRead);
-                foreach (var segment in slice) {
-                    segments.Add(segment.ToArray());
-                }
-            }
+            body = body.Add(buffer.Slice(current, bytesToRead));
             current += bytesToRead;
-            return length - (ulong)bytesToRead;
+            return (length - (ulong)bytesToRead, body);
         }
 
-        private SequencePosition InnerParse(ReadOnlySequence<byte> buffer) {
-            long current = 0;
-            if (!buffer.IsEmpty)
-                while (current < buffer.Length) {
-                    switch (_state) {
-                    case State.Init:
-                        Step_Initialize();
-                        break;
-
-                    case State.ReadTag:
-                        AfterReadingILintDo(buffer, ref current, _tagReader, Step_CheckTag);
-                        break;
-
-                    case State.ReadLength:
-                        AfterReadingILintDo(buffer, ref current, _lengthReader, Step_CheckLengthToRead);
-                        break;
-
-                    case State.ReadBytes:
-                        _lengthToRead = ReadBytes(buffer, ref current, _lengthToRead, _segments);
-                        _state = _lengthToRead != 0 ? State.ReadBytes : State.ReadChannel;
-                        break;
-
-                    case State.SkipBytes:
-                        _lengthToRead = ReadBytes(buffer, ref current, _lengthToRead);
-                        _state = _lengthToRead != 0 ? State.SkipBytes : State.SkipChannel;
-                        break;
-
-                    case State.ReadChannel:
-                        AfterReadingILintDo(buffer, ref current, _channelReader, Step_ProcessMessageFor);
-                        break;
-
-                    case State.SkipChannel:
-                        AfterReadingILintDo(buffer, ref current, _channelReader, (_) => _state = State.Init);
-                        break;
-                    }
-                }
-            return buffer.End;
+        private static ulong SkipBytes(ReadOnlySequence<byte> buffer, ref long current, ulong length) {
+            long bytesToRead = Math.Min((long)length, buffer.Length - current);
+            current += bytesToRead;
+            return length - (ulong)bytesToRead;
         }
 
         private void LogTrace(string logMessage) => LogTrace(() => logMessage);
@@ -141,8 +151,6 @@ namespace InterlockLedger.Peer2Peer
             if (_logger.IsEnabled(LogLevel.Trace))
                 _logger.LogTrace(buildLogMessage());
         }
-
-        private async Task<Success> ProcessMessage(NetworkMessageSlice messageSlice) => await _messageProcessor(messageSlice).ConfigureAwait(false);
 
         private void Step_CheckLengthToRead(ulong lengthToRead) {
             _lengthToRead = lengthToRead;
@@ -171,33 +179,25 @@ namespace InterlockLedger.Peer2Peer
             _tagReader.Reset();
             _lengthReader.Reset();
             _channelReader.Reset();
-            _segments.Clear();
+            _body = ReadOnlySequence<byte>.Empty;
             _state = State.ReadTag;
             LastResult = Success.Next;
         }
 
         private void Step_ProcessMessageFor(ulong channel) {
             try {
-                if (_segments.Count > 0) {
-                    LogTrace(() => BuildMessageBodyReceived(channel, _segments));
-                    LastResult = ProcessMessage(new NetworkMessageSlice(channel, _segments)).Result;
+                if (!_body.IsEmpty) {
+                    LogTrace(() => BuildMessageBodyReceived(channel, _body));
+                    LastResult = ProcessMessage(new NetworkMessageSlice(channel, _body)).Result;
                 }
             } catch (Exception e) {
                 _logger.LogError(e, "Failed to process last message!");
             } finally {
                 _state = State.Init;
             }
-        }
 
-        private enum State
-        {
-            Init,
-            ReadTag,
-            ReadLength,
-            ReadBytes,
-            ReadChannel,
-            SkipBytes,
-            SkipChannel
+            async Task<Success> ProcessMessage(NetworkMessageSlice messageSlice)
+                => await _messageProcessor(messageSlice).ConfigureAwait(false);
         }
     }
 }

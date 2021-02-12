@@ -116,10 +116,9 @@ namespace Demo.InterlockLedger.Peer2Peer
             }
 
             IEnumerable<ReadOnlySequence<byte>> SinkAsServer(ReadOnlySequence<byte> channelBytes, ulong channel, out bool silent) {
-                var buffer = channelBytes;
-                var command = (buffer.Length > 1) ? (char)buffer.First.Span[1] : '\0';
+                var command = (channelBytes.Length > 1) ? (char)channelBytes.ToArray()[1] : '\0';
                 silent = command == 'l';
-                return ProcessCommand(command, buffer.Slice(2), channel, silent).ToArray();
+                return ProcessCommand(command, channelBytes.Slice(2), channel, silent).ToArray();
             }
 
             IEnumerable<ReadOnlySequence<byte>> ProcessCommand(char command, ReadOnlySequence<byte> text, ulong channel, bool silent) {

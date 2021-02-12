@@ -41,6 +41,7 @@ using InterlockLedger.Peer2Peer;
 using InterlockLedger.Tags;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 
 namespace Demo.InterlockLedger.Peer2Peer
 {
@@ -119,7 +120,11 @@ namespace Demo.InterlockLedger.Peer2Peer
                 : new ServiceCollection()
                     .AddLogging(builder =>
                         builder
-                            .AddConsole(c => c.DisableColors = false)
+                            .AddSimpleConsole(c => {
+                                c.ColorBehavior = LoggerColorBehavior.Disabled;
+                                c.SingleLine = false;
+                                c.IncludeScopes = false;
+                            })
                             .SetMinimumLevel(LogLevel.Information))
                     .AddSingleton(sp => new SocketFactory(sp.GetRequiredService<ILoggerFactory>(), portDelta, howManyPortsToTry: 7))
                     .AddSingleton<IExternalAccessDiscoverer, DummyExternalAccessDiscoverer>()

@@ -32,26 +32,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
 using System.Buffers;
-using System.Collections.Generic;
 
 namespace InterlockLedger.Peer2Peer
 {
     public readonly struct NetworkMessageSlice
     {
-        public NetworkMessageSlice(ulong channel, params byte[] array) : this(channel, array, 0, array.Length) {
-        }
-
-        public NetworkMessageSlice(ulong channel, byte[] array, int start, int length) : this(channel, new ReadOnlyMemory<byte>(array, start, length)) {
-        }
-
-        public NetworkMessageSlice(ulong channel, params ReadOnlyMemory<byte>[] data) : this(channel, (IEnumerable<ReadOnlyMemory<byte>>)data) {
-        }
-
-        public NetworkMessageSlice(ulong channel, IEnumerable<ReadOnlyMemory<byte>> segmentList) {
-            DataList = segmentList.ToSequence();
-            Channel = channel;
-        }
-
         public NetworkMessageSlice(ulong channel, ReadOnlySequence<byte> dataList) {
             DataList = dataList;
             Channel = channel;
@@ -63,11 +48,17 @@ namespace InterlockLedger.Peer2Peer
 
         public bool IsEmpty => DataList.IsEmpty;
 
-        public NetworkMessageSlice Add(byte[] array) => Add(new ReadOnlyMemory<byte>(array));
+        public NetworkMessageSlice Add(params byte[] array) => new NetworkMessageSlice(Channel, DataList.Add(array));
 
-        public NetworkMessageSlice Add(byte[] array, int start, int length) => Add(new ReadOnlyMemory<byte>(array, start, length));
+        public NetworkMessageSlice Add(byte[] array, int start, int length) => new NetworkMessageSlice(Channel, DataList.Add(array, start, length));
 
         public NetworkMessageSlice Add(ReadOnlyMemory<byte> data) => new NetworkMessageSlice(Channel, DataList.Add(data));
+
+        public NetworkMessageSlice Prepend(params byte[] array) => new NetworkMessageSlice(Channel, DataList.Prepend(array));
+
+        public NetworkMessageSlice Prepend(byte[] array, int start, int length) => new NetworkMessageSlice(Channel, DataList.Prepend(array, start, length));
+
+        public NetworkMessageSlice Prepend(ReadOnlyMemory<byte> data) => new NetworkMessageSlice(Channel, DataList.Prepend(data));
 
         public NetworkMessageSlice WithChannel(ulong channel) => new NetworkMessageSlice(channel, DataList);
     }

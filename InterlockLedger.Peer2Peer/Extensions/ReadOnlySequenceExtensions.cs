@@ -50,6 +50,18 @@ namespace InterlockLedger.Peer2Peer
         public static ReadOnlySequence<byte> Add(this ReadOnlySequence<byte> sequence, byte[] array, int start, int length)
             => sequence.Add(new ReadOnlyMemory<byte>(array, start, length));
 
+        public static ReadOnlySequence<byte> Prepend(this ReadOnlySequence<byte> sequence, ReadOnlySequence<byte> otherSequence)
+            => otherSequence.JoinTo(sequence).ToSequence();
+
+        public static ReadOnlySequence<byte> Prepend(this ReadOnlySequence<byte> sequence, ReadOnlyMemory<byte> memory)
+            => sequence.PrependMemory(memory).ToSequence();
+
+        public static ReadOnlySequence<byte> Prepend(this ReadOnlySequence<byte> sequence, byte[] array)
+            => sequence.Prepend(new ReadOnlyMemory<byte>(array));
+
+        public static ReadOnlySequence<byte> Prepend(this ReadOnlySequence<byte> sequence, byte[] array, int start, int length)
+            => sequence.Prepend(new ReadOnlyMemory<byte>(array, start, length));
+
         private static IEnumerable<ReadOnlyMemory<byte>> Append(this ReadOnlySequence<byte> sequence, ReadOnlyMemory<byte> memory) {
             var current = sequence.Start;
             while (sequence.TryGet(ref current, out var segment))
@@ -63,6 +75,13 @@ namespace InterlockLedger.Peer2Peer
                 yield return segment;
             current = otherSequence.Start;
             while (otherSequence.TryGet(ref current, out var segment))
+                yield return segment;
+        }
+
+        private static IEnumerable<ReadOnlyMemory<byte>> PrependMemory(this ReadOnlySequence<byte> sequence, ReadOnlyMemory<byte> memory) {
+            yield return memory;
+            var current = sequence.Start;
+            while (sequence.TryGet(ref current, out var segment))
                 yield return segment;
         }
     }

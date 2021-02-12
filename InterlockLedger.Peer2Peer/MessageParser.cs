@@ -42,8 +42,8 @@ namespace InterlockLedger.Peer2Peer
     public class MessageParser
     {
         public MessageParser(ulong expectedTag, ILogger logger, Func<NetworkMessageSlice, Task<Success>> messageProcessor) {
-            _messageProcessor = messageProcessor ?? throw new ArgumentNullException(nameof(messageProcessor));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _messageProcessor = messageProcessor.Required(nameof(messageProcessor));
+            _logger = logger.Required(nameof(logger));
             _expectedTag = expectedTag;
             LastResult = Success.Next;
             _state = State.Init;

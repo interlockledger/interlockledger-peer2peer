@@ -44,9 +44,7 @@ namespace InterlockLedger.Peer2Peer
     {
         public ConnectionToPeer(string id, INetworkConfig config, string networkAddress, int port, CancellationTokenSource source, ILogger logger, Func<ReadOnlySequence<byte>> buildAliveMessage)
             : base(id, config, source, logger, buildAliveMessage) {
-            if (string.IsNullOrWhiteSpace(networkAddress))
-                throw new ArgumentNullException(nameof(networkAddress));
-            NetworkAddress = networkAddress;
+            NetworkAddress = networkAddress.Required(nameof(networkAddress));
             NetworkPort = port;
         }
 

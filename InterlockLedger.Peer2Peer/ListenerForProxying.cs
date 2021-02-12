@@ -46,15 +46,13 @@ namespace InterlockLedger.Peer2Peer
     {
         public ListenerForProxying(string externalAddress, string hostedAddress, ushort firstPort, IConnection connection, SocketFactory socketFactory, CancellationTokenSource source, ILogger logger)
             : base(connection.Id, connection, CreateKindOfLinkedSource(source), logger) {
-            if (string.IsNullOrWhiteSpace(externalAddress))
-                throw new ArgumentException("message", nameof(externalAddress));
-            Connection = connection ?? throw new ArgumentNullException(nameof(connection));
+            ExternalAddress = externalAddress.Required(nameof(externalAddress));
+            Connection = connection.Required(nameof(connection));
             _socket = socketFactory.GetSocket(hostedAddress, firstPort);
             if (_socket is null)
                 throw new InterlockLedgerIOException($"Could not open a listening socket for proxying at {hostedAddress}:{firstPort}");
             ExternalPortNumber = (ushort)((IPEndPoint)_socket.LocalEndPoint).Port;
             HostedAddress = hostedAddress;
-            ExternalAddress = externalAddress;
             _channelMap = new ConcurrentDictionary<string, ChannelPairing>();
             Sinked = LogSinked;
             Responded = LogResponded;
@@ -141,8 +139,8 @@ namespace InterlockLedger.Peer2Peer
         private class ChannelPairing : IChannelSink, ISender
         {
             public ChannelPairing(IActiveChannel external, IConnection connection, ListenerForProxying parent) {
-                _external = external ?? throw new ArgumentNullException(nameof(external));
-                _parent = parent ?? throw new ArgumentNullException(nameof(parent));
+                _external = external.Required(nameof(external));
+                _parent = parent.Required(nameof(parent));
                 _tagAsILInt = new ReadOnlySequence<byte>(connection.MessageTag.AsILInt());
                 _proxied = connection.AllocateChannel(this);
             }

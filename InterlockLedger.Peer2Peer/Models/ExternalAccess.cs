@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -44,8 +44,8 @@ namespace InterlockLedger.Peer2Peer
         public readonly Socket Socket;
 
         public ExternalAccess(Socket socket, string internalAddress, ushort internalPort, string externalAddress = null, ushort? externalPort = null) {
-            Socket = socket ?? throw new ArgumentNullException(nameof(socket));
-            InternalAddress = internalAddress ?? throw new ArgumentNullException(nameof(internalAddress));
+            Socket = socket.Required(nameof(socket));
+            InternalAddress = internalAddress.Required(nameof(internalAddress));
             InternalPort = internalPort;
             ExternalAddress = externalAddress ?? internalAddress;
             ExternalPort = externalPort ?? internalPort;

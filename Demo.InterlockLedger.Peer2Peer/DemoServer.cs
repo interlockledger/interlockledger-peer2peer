@@ -57,7 +57,7 @@ namespace Demo.InterlockLedger.Peer2Peer
         protected override Func<ReadOnlySequence<byte>> AliveMessageBuilder { get; }
 
         protected override void Run(IPeerServices peerServices) {
-            using var listener = (peerServices ?? throw new ArgumentNullException(nameof(peerServices))).CreateListenerFor(this);
+            using var listener = (peerServices.Required(nameof(peerServices))).CreateListenerFor(this);
             try {
                 _ = listener.Start();
                 listener.ExcessConnectionRejected += Listener_ExcessConnectionRejected;

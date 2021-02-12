@@ -56,8 +56,8 @@ namespace InterlockLedger.Peer2Peer
 
         internal ActiveChannel(ulong channel, IChannelSink sink, ConnectionBase peerConnection) {
             Channel = channel;
-            PeerConnection = peerConnection ?? throw new ArgumentNullException(nameof(peerConnection));
-            Sink = sink ?? throw new ArgumentNullException(nameof(sink));
+            PeerConnection = peerConnection.Required(nameof(peerConnection));
+            Sink = sink.Required(nameof(sink));
         }
 
         internal ConnectionBase PeerConnection { get; }

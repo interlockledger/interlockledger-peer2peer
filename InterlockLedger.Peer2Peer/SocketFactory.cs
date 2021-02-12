@@ -42,7 +42,7 @@ namespace InterlockLedger.Peer2Peer
     public static class ILoggerFactoryExtensions
     {
         public static ILogger<T> NewLogger<T>(this ILoggerFactory loggerFactory)
-        => (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory))).CreateLogger<T>();
+        => (loggerFactory.Required(nameof(loggerFactory))).CreateLogger<T>();
     }
 
     public sealed class SocketFactory

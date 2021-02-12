@@ -45,7 +45,7 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public TestSocket(bool holdYourHorses, params byte[] bytesReceived) {
-            _bytesReceived = bytesReceived ?? throw new ArgumentNullException(nameof(bytesReceived));
+            _bytesReceived = bytesReceived.Required(nameof(bytesReceived));
             _holdYourHorses = holdYourHorses;
         }
 

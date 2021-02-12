@@ -42,7 +42,7 @@ namespace InterlockLedger.Peer2Peer
     public class DummyExternalAccessDiscoverer : AbstractExternalAccessDiscoverer
     {
         public DummyExternalAccessDiscoverer(SocketFactory socketFactory, ILoggerFactory loggerFactory) {
-            _socketFactory = socketFactory ?? throw new ArgumentNullException(nameof(socketFactory));
+            _socketFactory = socketFactory.Required(nameof(socketFactory));
             _logger = loggerFactory.NewLogger<DummyExternalAccessDiscoverer>();
         }
 

@@ -39,7 +39,7 @@ namespace InterlockLedger.Peer2Peer
     public class TestSink : IChannelSink
     {
         public TestSink(params byte[] response)
-            => _response = new ReadOnlySequence<byte>(response ?? throw new ArgumentNullException(nameof(response)));
+            => _response = new ReadOnlySequence<byte>(response.Required(nameof(response)));
 
         public ReadOnlySequence<byte> BytesProcessed { get; private set; } = ReadOnlySequence<byte>.Empty;
         public ulong ChannelProcessed { get; private set; } = 0;

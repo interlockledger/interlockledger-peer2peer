@@ -53,12 +53,10 @@ namespace InterlockLedger.Peer2Peer
         protected internal bool Abandon => _source.IsCancellationRequested || Disposed;
 
         protected ListenerBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger) {
-            if (string.IsNullOrWhiteSpace(id))
-                throw new ArgumentNullException(nameof(id));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _source = source ?? throw new ArgumentNullException(nameof(source));
-            Id = id;
-            _config = config ?? throw new ArgumentNullException(nameof(config));
+            Id = id.Required(nameof(id));
+            _logger = logger.Required(nameof(logger));
+            _source = source.Required(nameof(source));
+            _config = config.Required(nameof(config));
             _source.Token.Register(Dispose);
         }
 

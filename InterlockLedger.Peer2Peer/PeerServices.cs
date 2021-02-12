@@ -51,13 +51,13 @@ namespace InterlockLedger.Peer2Peer
                             int maxConcurrentConnections,
                             Func<ReadOnlySequence<byte>> buildAliveMessage) {
             MessageTag = messageTag;
-            NetworkName = networkName ?? throw new ArgumentNullException(nameof(networkName));
-            NetworkProtocolName = networkProtocolName ?? throw new ArgumentNullException(nameof(networkProtocolName));
+            NetworkName = networkName.Required(nameof(networkName));
+            NetworkProtocolName = networkProtocolName.Required(nameof(networkProtocolName));
             ListeningBufferSize = Math.Max(512, listeningBufferSize);
             InactivityTimeoutInMinutes = Math.Max(inactivityTimeoutInMinutes, 0);
-            _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-            _discoverer = discoverer ?? throw new ArgumentNullException(nameof(discoverer));
-            _socketFactory = socketFactory ?? throw new ArgumentNullException(nameof(socketFactory));
+            _loggerFactory = loggerFactory.Required(nameof(loggerFactory));
+            _discoverer = discoverer.Required(nameof(discoverer));
+            _socketFactory = socketFactory.Required(nameof(socketFactory));
             _knownNodes = new ConcurrentDictionary<string, (string address, int port, bool retain)>();
             _clients = new ConcurrentDictionary<string, IConnection>();
             _logger = LoggerNamed(nameof(PeerServices));
@@ -76,19 +76,11 @@ namespace InterlockLedger.Peer2Peer
         public CancellationTokenSource Source => _source ?? throw new InvalidOperationException("CancellationTokenSource was not set yet!");
 
         void IKnownNodesServices.Add(string nodeId, string address, int port, bool retain)
-            => Do(() => {
-                if (string.IsNullOrWhiteSpace(nodeId))
-                    throw new ArgumentNullException(nameof(nodeId));
-                if (string.IsNullOrWhiteSpace(address))
-                    throw new ArgumentNullException(nameof(address));
-                _knownNodes[nodeId] = (address, port, retain);
-            });
+            => Do(() => _knownNodes[nodeId.Required(nameof(nodeId))] = (address.Required(nameof(address)), port, retain));
 
         void IKnownNodesServices.Add(string nodeId, IConnection connection, bool retain)
             => Do(() => {
-                if (string.IsNullOrWhiteSpace(nodeId))
-                    throw new ArgumentNullException(nameof(nodeId));
-                _knownNodes[nodeId] = (nodeId, 0, retain);
+                _knownNodes[nodeId] = (nodeId.Required(nameof(nodeId)), 0, retain);
                 _clients[Framed(nodeId)] = connection;
             });
 
@@ -129,7 +121,7 @@ namespace InterlockLedger.Peer2Peer
         bool IKnownNodesServices.IsKnown(string nodeId) => Do(() => _knownNodes.ContainsKey(nodeId));
 
         public IPeerServices WithCancellationTokenSource(CancellationTokenSource source) {
-            _source = source ?? throw new ArgumentNullException(nameof(source));
+            _source = source.Required(nameof(source));
             return this;
         }
 

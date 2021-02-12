@@ -43,9 +43,7 @@ namespace InterlockLedger.Peer2Peer
     {
         public ListenerForPeer(INodeSink nodeSink, IExternalAccessDiscoverer discoverer, CancellationTokenSource source, ILogger logger)
             : base(nodeSink.NodeId, nodeSink, source, logger)
-            => (_nodeSink, _socket, _route) = DetermineExternalAccess(
-                    nodeSink ?? throw new ArgumentNullException(nameof(nodeSink)),
-                    discoverer ?? throw new ArgumentNullException(nameof(discoverer)));
+            => (_nodeSink, _socket, _route) = DetermineExternalAccess(nodeSink.Required(nameof(nodeSink)), discoverer.Required(nameof(discoverer)));
 
         public override Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel)
             => DoAsync(() => _nodeSink.SinkAsync(messageBytes, channel), Success.Exit);

@@ -89,7 +89,7 @@ namespace Demo.InterlockLedger.Peer2Peer
             NetworkName = "Demo";
             NetworkProtocolName = "DemoPeer2Peer";
             NodeId = "Local Node";
-            _message = message ?? throw new ArgumentNullException(nameof(message));
+            _message = message.Required(nameof(message));
             _source = new CancellationTokenSource();
         }
 
@@ -113,27 +113,27 @@ namespace Demo.InterlockLedger.Peer2Peer
         private const ulong _messageTagCode = ':';
         private readonly string _message;
 
-        private static ServiceProvider Configure(INetworkConfig config, CancellationTokenSource source, short portDelta, Func<ReadOnlySequence<byte>> buildAliveMessage)
-            => source == null
-                ? throw new ArgumentNullException(nameof(source))
-                : new ServiceCollection()
-                    .AddLogging(builder =>
-                        builder
-                            .AddSimpleConsole(c => {
-                                c.ColorBehavior = LoggerColorBehavior.Disabled;
-                                c.SingleLine = false;
-                                c.IncludeScopes = false;
-                            })
-                            .SetMinimumLevel(LogLevel.Information))
-                    .AddSingleton(sp => new SocketFactory(sp.GetRequiredService<ILoggerFactory>(), portDelta, howManyPortsToTry: 7))
-                    .AddSingleton<IExternalAccessDiscoverer, DummyExternalAccessDiscoverer>()
-                    .AddSingleton(sp =>
-                        new PeerServices(
-                            config.MessageTag, config.NetworkName, config.NetworkProtocolName, config.ListeningBufferSize,
-                            sp.GetRequiredService<ILoggerFactory>(),
-                            sp.GetRequiredService<IExternalAccessDiscoverer>(),
-                            sp.GetRequiredService<SocketFactory>(), 10, 2, buildAliveMessage).WithCancellationTokenSource(source))
-                    .BuildServiceProvider();
+        private static ServiceProvider Configure(INetworkConfig config, CancellationTokenSource source, short portDelta, Func<ReadOnlySequence<byte>> buildAliveMessage) {
+            source.Required(nameof(source));
+            return new ServiceCollection()
+                .AddLogging(builder =>
+                    builder
+                        .AddSimpleConsole(c => {
+                            c.ColorBehavior = LoggerColorBehavior.Disabled;
+                            c.SingleLine = false;
+                            c.IncludeScopes = false;
+                        })
+                        .SetMinimumLevel(LogLevel.Information))
+                .AddSingleton(sp => new SocketFactory(sp.GetRequiredService<ILoggerFactory>(), portDelta, howManyPortsToTry: 7))
+                .AddSingleton<IExternalAccessDiscoverer, DummyExternalAccessDiscoverer>()
+                .AddSingleton(sp =>
+                    new PeerServices(
+                        config.MessageTag, config.NetworkName, config.NetworkProtocolName, config.ListeningBufferSize,
+                        sp.GetRequiredService<ILoggerFactory>(),
+                        sp.GetRequiredService<IExternalAccessDiscoverer>(),
+                        sp.GetRequiredService<SocketFactory>(), 10, 2, buildAliveMessage).WithCancellationTokenSource(source))
+                .BuildServiceProvider();
+        }
 
         private CancellationTokenSource PrepareConsole(string message) {
             void Cancel(object sender, ConsoleCancelEventArgs e) {

@@ -49,8 +49,8 @@ namespace InterlockLedger.Peer2Peer
 
             var mp = new MessageParser(15, this, messageProcessor);
             Assert.IsNotNull(mp);
-            Assert.ThrowsException<ArgumentNullException>(() => new MessageParser(15, null, messageProcessor));
-            Assert.ThrowsException<ArgumentNullException>(() => new MessageParser(15, this, null));
+            Assert.ThrowsException<ArgumentException>(() => new MessageParser(15, null, messageProcessor));
+            Assert.ThrowsException<ArgumentException>(() => new MessageParser(15, this, null));
         }
 
         [TestMethod]

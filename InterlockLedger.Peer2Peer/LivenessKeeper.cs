@@ -40,10 +40,8 @@ namespace InterlockLedger.Peer2Peer
     public class LivenessKeeper : AbstractDisposable
     {
         public LivenessKeeper(Func<ReadOnlySequence<byte>> buildAliveMessage, int inactivityTimeoutInMinutes, Func<IChannelSink, IActiveChannel> allocateChannel) {
-            if (allocateChannel is null)
-                throw new ArgumentNullException(nameof(allocateChannel));
-            _buildAliveMessage = buildAliveMessage ?? throw new ArgumentNullException(nameof(buildAliveMessage));
-            _activeChannel = allocateChannel(_sink) ?? throw new InvalidOperationException("Channel could not be allocated for LivenessKeeper");
+            _buildAliveMessage = buildAliveMessage.Required(nameof(buildAliveMessage));
+            _activeChannel = allocateChannel.Required(nameof(allocateChannel))(_sink) ?? throw new InvalidOperationException("Channel could not be allocated for LivenessKeeper");
             _timer = CreateTimer(Math.Max(inactivityTimeoutInMinutes, 1));
 
             Timer CreateTimer(int InactivityTimeoutInMinutes) {

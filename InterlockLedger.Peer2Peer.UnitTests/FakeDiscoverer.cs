@@ -44,9 +44,10 @@ namespace InterlockLedger.Peer2Peer
         public ushort PortDelta { get; }
 
         public Task<ExternalAccess> DetermineExternalAccessAsync(INodeSink nodeSink)
-            => nodeSink == null
-                ? throw new ArgumentNullException(nameof(nodeSink))
-                : DetermineExternalAccessAsync(nodeSink.HostAtAddress, nodeSink.HostAtPortNumber, nodeSink.PublishAtAddress, nodeSink.PublishAtPortNumber);
+            => DetermineExternalAccessAsync(nodeSink.Required(nameof(nodeSink)).HostAtAddress,
+                                            nodeSink.HostAtPortNumber,
+                                            nodeSink.PublishAtAddress,
+                                            nodeSink.PublishAtPortNumber);
 
         public Task<ExternalAccess> DetermineExternalAccessAsync(string hostAtAddress, ushort hostAtPortNumber, string publishAtAddress, ushort? publishAtPortNumber) {
             var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);

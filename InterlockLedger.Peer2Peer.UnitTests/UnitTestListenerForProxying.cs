@@ -186,8 +186,8 @@ namespace InterlockLedger.Peer2Peer
 
             public ProxyNodeSink(ulong messageTag, ushort port, FakeLogging fakeLogger, CancellationTokenSource source)
                 : base(messageTag, port, 10, 40) {
-                _fakeLogger = fakeLogger ?? throw new ArgumentNullException(nameof(fakeLogger));
-                _source = source ?? throw new ArgumentNullException(nameof(source));
+                _fakeLogger = fakeLogger.Required(nameof(fakeLogger));
+                _source = source.Required(nameof(source));
             }
 
             public ListenerForProxying ListenerForProxying { get; private set; }

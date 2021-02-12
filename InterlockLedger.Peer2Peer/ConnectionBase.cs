@@ -72,7 +72,7 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public void SetDefaultSink(IChannelSink sink) {
-            _sink = sink ?? throw new ArgumentNullException(nameof(sink));
+            _sink = sink.Required(nameof(sink));
             StopAllChannelSinks();
         }
 

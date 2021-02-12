@@ -40,7 +40,7 @@ namespace InterlockLedger.Peer2Peer
     {
         public Pipeline Pipeline;
 
-        public TestClient(string id) => Id = id ?? throw new ArgumentNullException(nameof(id));
+        public TestClient(string id) => Id = id.Required(nameof(id));
 
         public event Action<INetworkIdentity> ConnectionStopped;
 
@@ -71,7 +71,7 @@ namespace InterlockLedger.Peer2Peer
             return true;
         }
 
-        public void SetDefaultSink(IChannelSink sink) => _sink = sink ?? throw new ArgumentNullException(nameof(sink));
+        public void SetDefaultSink(IChannelSink sink) => _sink = sink.Required(nameof(sink));
 
         public async Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes)
             => await (_sink?.SinkAsync(messageBytes, this) ?? Task.FromResult(Success.Next));

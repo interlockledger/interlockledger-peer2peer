@@ -43,7 +43,7 @@ namespace InterlockLedger.Peer2Peer
     public class NetSocket : AbstractDisposable, ISocket
     {
         public NetSocket(Socket socket) {
-            _socket = socket ?? throw new ArgumentNullException(nameof(socket));
+            _socket = socket.Required(nameof(socket));
             RemoteEndPoint = _socket.RemoteEndPoint;
         }
 

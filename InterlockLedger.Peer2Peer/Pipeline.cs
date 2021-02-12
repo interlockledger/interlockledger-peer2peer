@@ -45,16 +45,16 @@ namespace InterlockLedger.Peer2Peer
         public Pipeline(ISocket socket, CancellationTokenSource source, ulong messageTag,
             int minimumBufferSize, Func<NetworkMessageSlice, Task<Success>> sliceProcessor,
             Action stopProcessor, ILogger logger, int inactivityTimeoutInMinutes) {
-            _socket = socket ?? throw new ArgumentNullException(nameof(socket));
+            _socket = socket.Required(nameof(socket));
             _queue = new SendingQueue();
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            var parentSource = source ?? throw new ArgumentNullException(nameof(source));
+            _logger = logger.Required(nameof(logger));
+            var parentSource = source.Required(nameof(source));
             _localSource = new CancellationTokenSource();
             _linkedToken = CancellationTokenSource.CreateLinkedTokenSource(parentSource.Token, _localSource.Token).Token;
             _messageTag = messageTag;
             _minimumBufferSize = minimumBufferSize;
-            _sliceProcessor = sliceProcessor ?? throw new ArgumentNullException(nameof(sliceProcessor));
-            _stopProcessor = stopProcessor ?? throw new ArgumentNullException(nameof(stopProcessor));
+            _sliceProcessor = sliceProcessor.Required(nameof(sliceProcessor));
+            _stopProcessor = stopProcessor.Required(nameof(stopProcessor));
             _inactivity = new TimeoutManager(inactivityTimeoutInMinutes);
         }
 

@@ -38,8 +38,8 @@ namespace InterlockLedger.Peer2Peer
     {
         public FakeConfig(ulong messageTag, string networkName, string networkProtocolName, int listeningBufferSize, int inactivityTimeoutInMinutes, int maxConcurrentConnections) {
             MessageTag = messageTag;
-            NetworkName = networkName ?? throw new ArgumentNullException(nameof(networkName));
-            NetworkProtocolName = networkProtocolName ?? throw new ArgumentNullException(nameof(networkProtocolName));
+            NetworkName = networkName.Required(nameof(networkName));
+            NetworkProtocolName = networkProtocolName.Required(nameof(networkProtocolName));
             ListeningBufferSize = listeningBufferSize;
             InactivityTimeoutInMinutes = inactivityTimeoutInMinutes;
             MaxConcurrentConnections = maxConcurrentConnections;

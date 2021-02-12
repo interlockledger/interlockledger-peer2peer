@@ -55,12 +55,9 @@ namespace InterlockLedger.Peer2Peer
             => SendBuffersAsync(socket, buffers, SocketFlags.None, token);
 
         public static async Task<int> SendBuffersAsync(this Socket socket, IEnumerable<ReadOnlyMemory<byte>> buffers, SocketFlags socketFlags, CancellationToken token) {
-            if (socket is null)
-                throw new ArgumentNullException(nameof(socket));
-            if (buffers is null)
-                throw new ArgumentNullException(nameof(buffers));
+            socket.Required(nameof(socket));
             var total = 0;
-            foreach (var buffer in buffers) {
+            foreach (var buffer in buffers.Required(nameof(buffers))) {
                 var expected = buffer.Length;
                 var sent = await SocketTaskExtensions.SendAsync(socket, buffer, socketFlags, token);
                 total += sent;

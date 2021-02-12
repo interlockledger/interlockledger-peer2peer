@@ -41,24 +41,16 @@ namespace InterlockLedger.Peer2Peer
         public static void RunOnThread(this Task task, string name) => Start(name, task.Wait);
 
         public static void RunOnThread(this Task task, string name, Action done) {
-            if (done is null)
-                throw new ArgumentNullException(nameof(done));
+            done.Required(nameof(done));
             Start(name, () => {
                 task.Wait();
                 done();
             });
         }
 
-        private static void Start(string name, ThreadStart action) {
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentNullException(nameof(name));
-            if (action is null)
-                throw new ArgumentNullException(nameof(action));
-            var thread = new Thread(action) {
-                Name = name,
-                Priority = ThreadPriority.Normal
-            };
-            thread.Start();
-        }
+        private static void Start(string name, ThreadStart action) => new Thread(action.Required(nameof(action))) {
+            Name = name.Required(nameof(name)),
+            Priority = ThreadPriority.Normal
+        }.Start();
     }
 }

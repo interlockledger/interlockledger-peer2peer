@@ -90,9 +90,9 @@ namespace InterlockLedger.Peer2Peer
             var socketFactory = new SocketFactory(fakeLogger, 10);
             var fakeDiscoverer = new FakeDiscoverer();
             using INodeSink fakeNodeSink = new FakeNodeSink(_messageTag, 2003, 10, 40);
-            Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(_messageTag, "UnitTest", "unit", 4096, null, fakeDiscoverer, socketFactory, 10, 40, buildAliveMessage: null));
-            Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(_messageTag, "UnitTest", "unit", 4096, fakeLogger, null, socketFactory, 10, 40, buildAliveMessage: null));
-            Assert.ThrowsException<ArgumentNullException>(() => new PeerServices(_messageTag, "UnitTest", "unit", 4096, fakeLogger, fakeDiscoverer, null, 10, 40, buildAliveMessage: null));
+            Assert.ThrowsException<ArgumentException>(() => new PeerServices(_messageTag, "UnitTest", "unit", 4096, null, fakeDiscoverer, socketFactory, 10, 40, buildAliveMessage: null));
+            Assert.ThrowsException<ArgumentException>(() => new PeerServices(_messageTag, "UnitTest", "unit", 4096, fakeLogger, null, socketFactory, 10, 40, buildAliveMessage: null));
+            Assert.ThrowsException<ArgumentException>(() => new PeerServices(_messageTag, "UnitTest", "unit", 4096, fakeLogger, fakeDiscoverer, null, 10, 40, buildAliveMessage: null));
             IPeerServices peerServices = new PeerServices(_messageTag, "UnitTest", "unit", 4096, fakeLogger, fakeDiscoverer, socketFactory, 10, 40, buildAliveMessage: null);
             Assert.IsNotNull(peerServices);
             Assert.IsNotNull(peerServices.ProxyingServices);
@@ -101,7 +101,7 @@ namespace InterlockLedger.Peer2Peer
             Assert.IsNull(peerServices.GetClient("localhost", 80));
             Assert.IsNotNull(fakeLogger.LastLog);
             Assert.ThrowsException<InvalidOperationException>(() => peerServices.CreateListenerFor(fakeNodeSink));
-            Assert.ThrowsException<ArgumentNullException>(() => peerServices.WithCancellationTokenSource(null));
+            Assert.ThrowsException<ArgumentException>(() => peerServices.WithCancellationTokenSource(null));
             peerServices.WithCancellationTokenSource(new CancellationTokenSource());
             Assert.IsNotNull(peerServices.Source);
             var client = peerServices.GetClient("localhost", 80);

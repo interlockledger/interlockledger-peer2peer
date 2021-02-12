@@ -41,9 +41,7 @@ namespace InterlockLedger.Peer2Peer
     {
         public ConnectionInitiatedByPeer(string id, INetworkConfig config, ISocket socket, IChannelSink sink, CancellationTokenSource source, ILogger logger)
             : base(id, config, source, logger, buildAliveMessage: null) {
-            if (socket is null)
-                throw new ArgumentNullException(nameof(socket));
-            var ipEndPoint = (IPEndPoint)socket.RemoteEndPoint;
+            var ipEndPoint = (IPEndPoint)socket.Required(nameof(socket)).RemoteEndPoint;
             NetworkAddress = ipEndPoint.Address.ToString();
             NetworkPort = ipEndPoint.Port;
             _socket = socket;

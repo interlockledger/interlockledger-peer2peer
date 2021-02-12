@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -38,11 +38,11 @@ namespace InterlockLedger.Peer2Peer
 {
     public class TestSink : IChannelSink
     {
-        public ReadOnlySequence<byte> BytesProcessed;
-        public ulong ChannelProcessed = 0;
-
         public TestSink(params byte[] response)
             => _response = new ReadOnlySequence<byte>(response ?? throw new ArgumentNullException(nameof(response)));
+
+        public ReadOnlySequence<byte> BytesProcessed { get; private set; } = ReadOnlySequence<byte>.Empty;
+        public ulong ChannelProcessed { get; private set; } = 0;
 
         public void Reset() {
             BytesProcessed = default;
@@ -50,11 +50,11 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public async Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel) {
-            BytesProcessed = messageBytes;
+            BytesProcessed = messageBytes.Realloc();
             ChannelProcessed = channel.Channel;
             if (_response.Length > 0)
                 await channel.SendAsync(_response);
-            await Task.Delay(50);
+            await Task.Delay(150);
             return Success.Next;
         }
 

@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -61,6 +61,12 @@ namespace InterlockLedger.Peer2Peer
 
         public static ReadOnlySequence<byte> Prepend(this ReadOnlySequence<byte> sequence, byte[] array, int start, int length)
             => sequence.Prepend(new ReadOnlyMemory<byte>(array, start, length));
+
+        public static ReadOnlySequence<byte> Realloc(this ReadOnlySequence<byte> body) {
+            var newBuffer = new byte[body.Length];
+            body.CopyTo(newBuffer.AsSpan());
+            return new ReadOnlySequence<byte>(newBuffer);
+        }
 
         private static IEnumerable<ReadOnlyMemory<byte>> Append(this ReadOnlySequence<byte> sequence, ReadOnlyMemory<byte> memory) {
             var current = sequence.Start;

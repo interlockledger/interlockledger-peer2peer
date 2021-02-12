@@ -46,10 +46,10 @@ namespace InterlockLedger.Peer2Peer
             var connection = Setup(10, out var fakeLogger, out var fakeSocket, out var fakeSink);
             Assert.IsNotNull(connection);
             Thread.Sleep(400);
-            Assert.IsNotNull(fakeSink.BytesProcessed);
+            Assert.IsFalse(fakeSink.BytesProcessed.IsEmpty);
             Assert.IsNotNull(fakeLogger.LastLog);
             AssertHasSameItems<byte>(nameof(fakeSink.BytesProcessed), fakeSink.BytesProcessed.ToArray(), 128);
-            Assert.IsNotNull(fakeSocket.BytesSent);
+            Assert.IsFalse(fakeSocket.BytesSent.IsEmpty);
             AssertHasSameItems<byte>(nameof(fakeSocket.BytesSent), fakeSocket.BytesSent.ToArray(), 13, 1, 129, 2);
             connection.AllocateChannel(fakeSink);
             Assert.AreEqual(1, connection.LastChannelUsed);

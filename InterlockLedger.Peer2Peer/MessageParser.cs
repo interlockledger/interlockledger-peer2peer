@@ -96,9 +96,11 @@ namespace InterlockLedger.Peer2Peer
                             break;
                         }
                     }
+                _body = _body.Realloc();
                 return buffer.End;
             }
         }
+
 
         private const ulong _maxBytesToRead = 16 * 1024 * 1024;
         private readonly ILIntReader _channelReader = new ILIntReader();

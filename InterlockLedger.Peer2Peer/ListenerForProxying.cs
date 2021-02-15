@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -148,22 +148,30 @@ namespace InterlockLedger.Peer2Peer
             public ulong ProxiedChannelId => _proxied.Channel;
 
             public async Task<bool> SendAsync(ReadOnlySequence<byte> messageBytes) {
-                try {
-                    return await _proxied.SendAsync(PrependTagAndLength(messageBytes));
-                } catch (Exception e) {
-                    _parent.Errored(messageBytes, _proxied, e);
-                    return false;
+                return await SendThisAsync(messageBytes.Realloc());
+
+                async Task<bool> SendThisAsync(ReadOnlySequence<byte> messageBytes) {
+                    try {
+                        return await _proxied.SendAsync(PrependTagAndLength(messageBytes));
+                    } catch (Exception e) {
+                        _parent.Errored(messageBytes, _proxied, e);
+                        return false;
+                    }
                 }
             }
 
             public async Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel) {
-                try {
-                    var sent = await _external.SendAsync(PrependTagAndLength(messageBytes));
-                    _parent.Responded(messageBytes, channel, _external.Channel, sent);
-                } catch (Exception e) {
-                    _parent.Errored(messageBytes, channel, e);
+                return await SinkThisAsync(messageBytes.Realloc(), channel);
+
+                async Task<Success> SinkThisAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel) {
+                    try {
+                        var sent = await _external.SendAsync(PrependTagAndLength(messageBytes));
+                        _parent.Responded(messageBytes, channel, _external.Channel, sent);
+                    } catch (Exception e) {
+                        _parent.Errored(messageBytes, channel, e);
+                    }
+                    return Success.Next;
                 }
-                return Success.Next;
             }
 
             private readonly IActiveChannel _external;
@@ -173,7 +181,6 @@ namespace InterlockLedger.Peer2Peer
 
             private ReadOnlySequence<byte> PrependTagAndLength(ReadOnlySequence<byte> message)
                 => message.Prepend(((ulong)message.Length).AsILInt()).Prepend(_tagAsILInt);
-
         }
     }
 }

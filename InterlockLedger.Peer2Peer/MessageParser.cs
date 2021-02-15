@@ -70,11 +70,11 @@ namespace InterlockLedger.Peer2Peer
                             break;
 
                         case State.ReadTag:
-                            AfterReadingILintDo(buffer, ref current, _tagReader, Step_CheckTag);
+                            AfterReadingILIntDo(buffer, ref current, _tagReader, Step_CheckTag);
                             break;
 
                         case State.ReadLength:
-                            AfterReadingILintDo(buffer, ref current, _lengthReader, Step_CheckLengthToRead);
+                            AfterReadingILIntDo(buffer, ref current, _lengthReader, Step_CheckLengthToRead);
                             break;
 
                         case State.ReadBytes:
@@ -88,11 +88,11 @@ namespace InterlockLedger.Peer2Peer
                             break;
 
                         case State.ReadChannel:
-                            AfterReadingILintDo(buffer, ref current, _channelReader, Step_ProcessMessageFor);
+                            AfterReadingILIntDo(buffer, ref current, _channelReader, Step_ProcessMessageFor);
                             break;
 
                         case State.SkipChannel:
-                            AfterReadingILintDo(buffer, ref current, _channelReader, (_) => _state = State.Init);
+                            AfterReadingILIntDo(buffer, ref current, _channelReader, (_) => _state = State.Init);
                             break;
                         }
                     }
@@ -125,7 +125,7 @@ namespace InterlockLedger.Peer2Peer
             SkipChannel
         }
 
-        private static void AfterReadingILintDo(ReadOnlySequence<byte> buffer, ref long current, ILIntReader reader, Action<ulong> action) {
+        private static void AfterReadingILIntDo(ReadOnlySequence<byte> buffer, ref long current, ILIntReader reader, Action<ulong> action) {
             var nextByte = buffer.Slice(current++, 1).First.Span[0];
             if (reader.Done(nextByte))
                 action(reader.Value);

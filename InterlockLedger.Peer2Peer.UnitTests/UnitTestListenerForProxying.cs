@@ -89,7 +89,7 @@ namespace InterlockLedger.Peer2Peer
             var fakeLogger = new FakeLogging();
             var fakeDiscoverer = new FakeDiscoverer();
             var source = new CancellationTokenSource();
-            var fakeSink = new TestSink(_tag, 1, 242);
+            var fakeSink = new TestSink(_tag, 10, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250);
             var externalNodeSink = new ProxyNodeSink(_tag, 4000, fakeLogger, source);
             var internalNodeSink = new FakeNodeSink(_tag, 3000, 10, 40);
             using var referenceListener = new ListenerForPeer(externalNodeSink, fakeDiscoverer, source, fakeLogger);
@@ -109,18 +109,18 @@ namespace InterlockLedger.Peer2Peer
             using var externalConnection = new ConnectionToPeer("ExternalMessage", internalNodeSink, lfp.ExternalAddress, lfp.ExternalPortNumber, source, fakeLogger, buildAliveMessage: null);
             externalConnection.AllocateChannel(externalNodeSink); // just to bump channel
             var outsideChannel = externalConnection.AllocateChannel(externalNodeSink);
-            outsideChannel.SendAsync(new ReadOnlySequence<byte>(new byte[] { _tag, 1, 2 })).Wait();
+            outsideChannel.SendAsync(new ReadOnlySequence<byte>(new byte[] { _tag, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 })).Wait();
             retries = 10;
             while (fakeSink.ChannelProcessed == 0 && retries-- > 0)
                 WaitForOthers(100);
-            AssertHasSameItems<byte>(nameof(fakeSink.BytesProcessed), fakeSink.BytesProcessed.ToArray(), 2);
+            AssertHasSameItems<byte>(nameof(fakeSink.BytesProcessed), fakeSink.BytesProcessed.ToArray(), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
             Assert.AreEqual(1ul, fakeSink.ChannelProcessed);
             retries = 10;
             while (externalNodeSink.MessagesReceived.Count == 0 && retries-- > 0)
                 WaitForOthers(100);
-            AssertHasSameItems<byte>(nameof(externalNodeSink.MessagesReceived), externalNodeSink.MessagesReceived.SelectMany(l => l.ToArray()), 242);
-            AssertHasLogLine(fakeLogger, "Debug: Sinked Message 'Ag' from Channel ProxyingClient#1@2 using new pair to Proxied Channel 1. Sent: True");
-            AssertHasLogLine(fakeLogger, "Debug: Responded with Message '8g' from Channel ListenerClient#1@1 to External Channel 2. Sent: True");
+            AssertHasSameItems<byte>(nameof(externalNodeSink.MessagesReceived), externalNodeSink.MessagesReceived.SelectMany(l => l.ToArray()), 241, 242, 243, 244, 245, 246, 247, 248, 249, 250);
+            AssertHasLogLine(fakeLogger,"Debug: Sinked Message 'AQIDBAUGBwgJCg' from Channel ProxyingClient#1@2 using new pair to Proxied Channel 1. Sent: True");
+            AssertHasLogLine(fakeLogger, "Debug: Responded with Message '8fLz9PX29_j5-g' from Channel ListenerClient#1@1 to External Channel 2. Sent: True");
             lfp.Stop();
             retries = 10;
             while (lfp.Alive && retries-- > 0)

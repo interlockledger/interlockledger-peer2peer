@@ -119,7 +119,7 @@ namespace InterlockLedger.Peer2Peer
             while (externalNodeSink.MessagesReceived.Count == 0 && retries-- > 0)
                 WaitForOthers(100);
             AssertHasSameItems<byte>(nameof(externalNodeSink.MessagesReceived), externalNodeSink.MessagesReceived.SelectMany(l => l.ToArray()), 241, 242, 243, 244, 245, 246, 247, 248, 249, 250);
-            AssertHasLogLine(fakeLogger,"Debug: Sinked Message 'AQIDBAUGBwgJCg' from Channel ProxyingClient#1@2 using new pair to Proxied Channel 1. Sent: True");
+            AssertHasLogLine(fakeLogger, "Debug: Sinked Message 'AQIDBAUGBwgJCg' from Channel ProxyingClient#1@2 using new pair to Proxied Channel 1. Sent: True");
             AssertHasLogLine(fakeLogger, "Debug: Responded with Message '8fLz9PX29_j5-g' from Channel ListenerClient#1@1 to External Channel 2. Sent: True");
             lfp.Stop();
             retries = 10;

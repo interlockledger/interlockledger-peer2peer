@@ -48,18 +48,18 @@ namespace InterlockLedger.Peer2Peer
 
         public bool IsEmpty => DataList.IsEmpty;
 
-        public NetworkMessageSlice Add(params byte[] array) => new NetworkMessageSlice(Channel, DataList.Add(array));
+        public NetworkMessageSlice Add(params byte[] array) => new(Channel, DataList.Add(array));
 
-        public NetworkMessageSlice Add(byte[] array, int start, int length) => new NetworkMessageSlice(Channel, DataList.Add(array, start, length));
+        public NetworkMessageSlice Add(byte[] array, int start, int length) => new(Channel, DataList.Add(array, start, length));
 
-        public NetworkMessageSlice Add(ReadOnlyMemory<byte> data) => new NetworkMessageSlice(Channel, DataList.Add(data));
+        public NetworkMessageSlice Add(ReadOnlyMemory<byte> data) => new(Channel, DataList.Add(data));
 
-        public NetworkMessageSlice Prepend(params byte[] array) => new NetworkMessageSlice(Channel, DataList.Prepend(array));
+        public NetworkMessageSlice Prepend(params byte[] array) => new(Channel, DataList.Prepend(array));
 
-        public NetworkMessageSlice Prepend(byte[] array, int start, int length) => new NetworkMessageSlice(Channel, DataList.Prepend(array, start, length));
+        public NetworkMessageSlice Prepend(byte[] array, int start, int length) => new(Channel, DataList.Prepend(array, start, length));
 
-        public NetworkMessageSlice Prepend(ReadOnlyMemory<byte> data) => new NetworkMessageSlice(Channel, DataList.Prepend(data));
+        public NetworkMessageSlice Prepend(ReadOnlyMemory<byte> data) => new(Channel, DataList.Prepend(data));
 
-        public NetworkMessageSlice WithChannel(ulong channel) => new NetworkMessageSlice(channel, DataList);
+        public NetworkMessageSlice WithChannel(ulong channel) => new(channel, DataList);
     }
 }

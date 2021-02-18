@@ -146,7 +146,7 @@ namespace InterlockLedger.Peer2Peer
         private static string Framed(string nodeId) => $"[{nodeId}]";
 
         private ConnectionToPeer BuildClient(string address, int port, string id)
-            => new ConnectionToPeer(id, this, address, port, Source, LoggerForClient(id), _buildAliveMessage);
+            => new(id, this, address, port, Source, LoggerForClient(id), _buildAliveMessage);
 
         private IConnection GetResponder(string nodeId)
             => _knownNodes.TryGetValue(nodeId, out var n) ? n.port != 0 ? GetClient(n.address, n.port) : GetClient(nodeId) : null;

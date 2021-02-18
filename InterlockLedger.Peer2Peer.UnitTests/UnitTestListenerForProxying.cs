@@ -182,7 +182,7 @@ namespace InterlockLedger.Peer2Peer
 
         private class ProxyNodeSink : FakeNodeSink
         {
-            public static readonly ReadOnlySequence<byte> ProxyRequest = new ReadOnlySequence<byte>(new byte[] { _tag, 2, 128, 129 });
+            public static readonly ReadOnlySequence<byte> ProxyRequest = new(new byte[] { _tag, 2, 128, 129 });
 
             public ProxyNodeSink(ulong messageTag, ushort port, FakeLogging fakeLogger, CancellationTokenSource source)
                 : base(messageTag, port, 10, 40) {

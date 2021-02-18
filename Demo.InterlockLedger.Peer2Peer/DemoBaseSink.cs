@@ -52,7 +52,7 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         public static string AsString(ReadOnlySequence<byte> text) => Encoding.UTF8.GetString(text.ToArray());
 
-        public static ReadOnlySequence<byte> AsUTF8Bytes(string s) => new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(s));
+        public static ReadOnlySequence<byte> AsUTF8Bytes(string s) => new(Encoding.UTF8.GetBytes(s));
 
         public override void HostedAt(string address, ushort port) {
             HostAtAddress = address;
@@ -96,7 +96,7 @@ namespace Demo.InterlockLedger.Peer2Peer
         protected abstract Func<ReadOnlySequence<byte>> AliveMessageBuilder { get; }
 
         protected static NetworkMessageSlice ToMessage(ReadOnlySequence<byte> bytes, bool isLast)
-            => new NetworkMessageSlice(0, ToMessageBytes(bytes, isLast));
+            => new(0, ToMessageBytes(bytes, isLast));
 
         protected static ReadOnlySequence<byte> ToMessageBytes(ReadOnlySequence<byte> bytes, bool isLast) {
             var prefixedBytes = (isLast ? _isLastMarker : _haveMoreMarker).ToArray().Concat(bytes.ToArray());

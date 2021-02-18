@@ -91,7 +91,7 @@ namespace InterlockLedger.Peer2Peer
 
         internal Task<Success> SinkAsync(NetworkMessageSlice slice) => DoAsync(() => InnerSinkAsync(slice));
 
-        protected readonly ConcurrentDictionary<ulong, IActiveChannel> _channelSinks = new ConcurrentDictionary<ulong, IActiveChannel>();
+        protected readonly ConcurrentDictionary<ulong, IActiveChannel> _channelSinks = new();
         protected IChannelSink _sink;
         protected ISocket _socket;
 
@@ -124,8 +124,8 @@ namespace InterlockLedger.Peer2Peer
         protected void StartPipeline() => _ = Pipeline;
 
         private const int _hoursOfSilencedDuplicateErrors = 8;
-        private static readonly Dictionary<string, DateTimeOffset> _errors = new Dictionary<string, DateTimeOffset>();
-        private readonly AsyncLock _pipelineLock = new AsyncLock();
+        private static readonly Dictionary<string, DateTimeOffset> _errors = new();
+        private readonly AsyncLock _pipelineLock = new();
         private long _lastChannelUsed = 0;
         private LivenessKeeper _livenessKeeper;
         private Pipeline _pipeline;

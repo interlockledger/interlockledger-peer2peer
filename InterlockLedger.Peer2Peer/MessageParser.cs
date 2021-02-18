@@ -103,12 +103,12 @@ namespace InterlockLedger.Peer2Peer
 
 
         private const ulong _maxBytesToRead = 16 * 1024 * 1024;
-        private readonly ILIntReader _channelReader = new ILIntReader();
+        private readonly ILIntReader _channelReader = new();
         private readonly ulong _expectedTag;
-        private readonly ILIntReader _lengthReader = new ILIntReader();
+        private readonly ILIntReader _lengthReader = new();
         private readonly ILogger _logger;
         private readonly Func<NetworkMessageSlice, Task<Success>> _messageProcessor;
-        private readonly ILIntReader _tagReader = new ILIntReader();
+        private readonly ILIntReader _tagReader = new();
         private ReadOnlySequence<byte> _body = ReadOnlySequence<byte>.Empty;
         private ulong _lengthToRead;
         private volatile int _parsingCount = 0;

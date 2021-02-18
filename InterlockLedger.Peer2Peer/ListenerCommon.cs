@@ -101,7 +101,7 @@ namespace InterlockLedger.Peer2Peer
                 await Task.Yield();
         }
 
-        private readonly ConcurrentDictionary<string, ConnectionInitiatedByPeer> _connections = new ConcurrentDictionary<string, ConnectionInitiatedByPeer>();
+        private readonly ConcurrentDictionary<string, ConnectionInitiatedByPeer> _connections = new();
         private long _lastIdUsed = 0;
         private Socket _listenSocket;
 
@@ -140,7 +140,7 @@ namespace InterlockLedger.Peer2Peer
                 Dispose();
             }
             ConnectionInitiatedByPeer ConnectToPeerUsing(ISocket socket)
-                => new ConnectionInitiatedByPeer(BuildId(), this, socket, this, _source, _logger);
+                => new(BuildId(), this, socket, this, _source, _logger);
 
             void RemoveConnection(INetworkIdentity inid) {
                 if (_connections.TryRemove(inid.Id, out _))

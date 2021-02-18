@@ -39,7 +39,7 @@ namespace InterlockLedger.Peer2Peer
 {
     public class FakeLogging : AbstractDisposable, ILoggerFactory, ILogger
     {
-        public readonly List<string> Logs = new List<string>();
+        public readonly List<string> Logs = new();
 
         public string LastLog => Logs.LastOrDefault();
 

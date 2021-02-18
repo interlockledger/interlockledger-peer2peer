@@ -62,7 +62,7 @@ namespace InterlockLedger.Peer2Peer
 
         public void Stop() => _shouldExit = true;
 
-        private readonly ConcurrentQueue<NetworkMessageSlice> _responses = new ConcurrentQueue<NetworkMessageSlice>();
+        private readonly ConcurrentQueue<NetworkMessageSlice> _responses = new();
         private bool _shouldExit;
     }
 }

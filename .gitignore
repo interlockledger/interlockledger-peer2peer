@@ -11,8 +11,14 @@
 
 # build-il2 test/build dumps
 *.testbuild
+*.testbuild.summary
 *.build
 
+# generated html
+docs/InterlockLedger\ Node\ REST\ API\ v*.html
+
+# dotnet tools binlogs
+*.binlog
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -308,3 +314,9 @@ __pycache__/
 OpenCover/
 
 MigrationBackup/
+*.pdf
+
+stylelint.report
+il2-node.xml
+*.mht
+/docs/d.html

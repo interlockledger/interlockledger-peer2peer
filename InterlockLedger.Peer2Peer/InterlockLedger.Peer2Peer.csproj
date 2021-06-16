@@ -2,25 +2,25 @@
 
     <PropertyGroup>
         <TargetFramework>net5.0</TargetFramework>
-        <Version>6.2.6</Version>
+        <Version>6.2.7</Version>
         <Authors>Rafael Teixeira</Authors>
         <Company>InterlockLedger Network</Company>
         <Product>InterlockLedger</Product>
         <Description>This library implements the backbone of a P2P network in .NET, with peer discoverability and routing. Plug your network protocol and defaults into it to have a working node.</Description>
-        <Copyright>Copyright (c) 2017-2019 InterlockLedger Network</Copyright>
+        <Copyright>Copyright (c) 2017-2021 InterlockLedger Network</Copyright>
         <PackageLicenseUrl></PackageLicenseUrl>
         <PackageProjectUrl>https://interlockledger.network/</PackageProjectUrl>
         <RepositoryUrl>https://github.com/interlockledger/interlockledger-peer2peer.git</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageReleaseNotes>Upgrade to il2-tags-ilint 3.0.3 and il2-commons 1.2.5</PackageReleaseNotes>
+        <PackageReleaseNotes>Upgrade to il2-tags-ilint 3.0.4</PackageReleaseNotes>
         <LangVersion>preview</LangVersion>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="InterlockLedger.Commons" Version="1.2.5" />
-        <PackageReference Include="InterlockLedger.Tags.ILInt" Version="3.0.3" />
+        <PackageReference Include="InterlockLedger.Tags.ILInt" Version="3.0.4" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" />
         <PackageReference Include="System.IO.Pipelines" Version="5.0.1" />
     </ItemGroup>

@@ -31,6 +31,12 @@
             <PackagePath></PackagePath>
         </None>
     </ItemGroup>
+
+    <ItemGroup>
+      <Reference Include="InterlockLedger.Commons">
+        <HintPath>..\..\interlockledger-commons\InterlockLedger.Commons\bin\Debug\net5.0\InterlockLedger.Commons.dll</HintPath>
+      </Reference>
+    </ItemGroup>
     
     <Target Name="PublishLocally" AfterTargets="Pack" Condition="Exists('$(INTERLOCK_LOCAL_NUGETS_FOLDER)')">
         <ItemGroup>

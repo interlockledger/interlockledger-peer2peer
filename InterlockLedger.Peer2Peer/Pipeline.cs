@@ -105,7 +105,7 @@ namespace InterlockLedger.Peer2Peer
                 try {
                     if (_socket.Available > 0) {
                         _inactivity.Restart();
-                        _logger.LogTrace($"Getting {_minimumBufferSize} bytes to receive in the socket");
+                        _logger.LogTrace("Getting {_minimumBufferSize} bytes to receive in the socket", _minimumBufferSize);
                         var memory = writer.GetMemory(_minimumBufferSize);
                         int bytesRead = await _socket.ReceiveAsync(memory, SocketFlags.None, _linkedToken);
                         if (bytesRead > 0) {
@@ -232,7 +232,7 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private Task UsePipes(EndPoint remoteEndPoint) {
-            _logger.LogTrace($"[{remoteEndPoint}]: connected");
+            _logger.LogTrace("[{remoteEndPoint}]: connected", remoteEndPoint);
             try {
                 var parser = new MessageParser(_messageTag, _logger, _sliceProcessor);
                 var listeningPipe = new Pipe();
@@ -247,7 +247,7 @@ namespace InterlockLedger.Peer2Peer
                 // just ignore
                 return Task.CompletedTask;
             } catch (Exception e) {
-                _logger.LogError(e, $"[{remoteEndPoint}]: Exception while processing on the pipeline");
+                _logger.LogError(e, "[{remoteEndPoint}]: Exception while processing on the pipeline", remoteEndPoint);
                 return Task.FromException(e);
             }
         }

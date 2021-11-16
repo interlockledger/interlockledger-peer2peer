@@ -66,7 +66,7 @@ namespace InterlockLedger.Peer2Peer
                 : throw new ArgumentOutOfRangeException(nameof(channel), string.Format(ExceptionChannelNotFoundFormat, channel));
 
         public virtual void OnPipelineStopped() {
-            _logger.LogTrace($"Stopping pipeline on client {Id}");
+            _logger.LogTrace("Stopping pipeline on client {Id}", Id);
             ConnectionStopped?.Invoke(this);
             Dispose();
         }
@@ -114,6 +114,7 @@ namespace InterlockLedger.Peer2Peer
             _socket?.Dispose();
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2254:Template should be a static expression", Justification = "Nope")]
         protected void LogError(string message) {
             if (!(_errors.TryGetValue(message, out var dateTime) && (DateTimeOffset.Now - dateTime).Hours < _hoursOfSilencedDuplicateErrors)) {
                 _logger.LogError(message);
@@ -186,7 +187,7 @@ namespace InterlockLedger.Peer2Peer
             return Success.Next;
         }
 
-        private void PipelineThreadDone() => _logger.LogDebug($"Pipeline {Id} thread stopped");
+        private void PipelineThreadDone() => _logger.LogDebug("Pipeline {Id} thread stopped", Id);
 
         private void StopAllChannelSinks() {
             foreach (var cs in _channelSinks.Values)

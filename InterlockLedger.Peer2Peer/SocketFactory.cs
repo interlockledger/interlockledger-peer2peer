@@ -30,12 +30,8 @@
 //
 // ******************************************************************************************************************************
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using Microsoft.Extensions.Logging;
 
 namespace InterlockLedger.Peer2Peer
 {
@@ -65,7 +61,7 @@ namespace InterlockLedger.Peer2Peer
                            ? (new IPAddress[] { address })
                            : Dns.GetHostEntry(name).AddressList.Where(ip => IsIPV4(ip.AddressFamily));
                 } catch (SocketException e) {
-                    _logger.LogError(e, $"Couldn't get addresses for '{name}'");
+                    _logger.LogError(e, "Couldn't get addresses for '{name}'", name);
                     return Enumerable.Empty<IPAddress>();
                 }
                 static bool IsIPV4(AddressFamily family) => family == AddressFamily.InterNetwork;
@@ -89,10 +85,10 @@ namespace InterlockLedger.Peer2Peer
                         listenSocket.Listen(120);
                         return listenSocket;
                     } catch (ArgumentOutOfRangeException aore) {
-                        _logger.LogError(aore, $"-- Bad port number while trying to bind a socket to listen at {localaddr}:{port}");
+                        _logger.LogError(aore, "-- Bad port number while trying to bind a socket to listen at {localaddr}:{port}", localaddr, port);
                         return null;
                     } catch (SocketException e) {
-                        _logger.LogError(e, $"-- Error while trying to bind a socket to listen at {localaddr}:{port}");
+                        _logger.LogError(e, "-- Error while trying to bind a socket to listen at {localaddr}:{port}", localaddr, port);
                         return null;
                     }
                 }

@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net5.0</TargetFramework>
-        <Version>6.4.0</Version>
+        <TargetFramework>net6.0</TargetFramework>
+        <Version>7.0.0</Version>
         <Authors>Rafael Teixeira</Authors>
         <Company>InterlockLedger Network</Company>
         <Product>InterlockLedger</Product>
@@ -13,16 +13,25 @@
         <RepositoryUrl>https://github.com/interlockledger/interlockledger-peer2peer.git</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageReleaseNotes>Upgrading to il2-tags-ilint 4.0.0, InterlockLedger.Commons v1.3.1</PackageReleaseNotes>
+        <PackageReleaseNotes>Moving to .Net 6.0/C# 10 - Upgrading to il2-tags-ilint v5.0.0, InterlockLedger.Commons v2.0.0</PackageReleaseNotes>
         <LangVersion>preview</LangVersion>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="InterlockLedger.Commons" Version="1.3.1" />
-        <PackageReference Include="InterlockLedger.Tags.ILInt" Version="4.0.0" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" />
-        <PackageReference Include="System.IO.Pipelines" Version="5.0.1" />
+        <PackageReference Include="InterlockLedger.Commons" Version="2.0.0" />
+        <PackageReference Include="InterlockLedger.Tags.ILInt" Version="5.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.0" />
+        <PackageReference Include="System.IO.Pipelines" Version="6.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="System.Buffers"/>
+        <Using Include="System.Threading"/>
+        <Using Include="System.Threading.Tasks"/>
+        <Using Include="InterlockLedger.Tags"/>
+        <Using Include="Microsoft.Extensions.Logging"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -30,12 +39,6 @@
             <Pack>True</Pack>
             <PackagePath></PackagePath>
         </None>
-    </ItemGroup>
-
-    <ItemGroup>
-      <Reference Include="InterlockLedger.Commons">
-        <HintPath>..\..\interlockledger-commons\InterlockLedger.Commons\bin\Debug\net5.0\InterlockLedger.Commons.dll</HintPath>
-      </Reference>
     </ItemGroup>
     
     <Target Name="PublishLocally" AfterTargets="Pack" Condition="Exists('$(INTERLOCK_LOCAL_NUGETS_FOLDER)')">

@@ -149,9 +149,10 @@ namespace InterlockLedger.Peer2Peer
 
         private void LogTrace(string logMessage) => LogTrace(() => logMessage);
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2254:Template should be a static expression", Justification = "Nope")]
         private void LogTrace(Func<string> buildLogMessage) {
             if (_logger.IsEnabled(LogLevel.Trace))
-                _logger.LogTrace(buildLogMessage());
+                _logger.LogTrace(buildLogMessage.Required()());
         }
 
         private void Step_CheckLengthToRead(ulong lengthToRead) {

@@ -85,10 +85,10 @@ namespace InterlockLedger.Peer2Peer
             });
 
         public IListener CreateListenerFor(INodeSink nodeSink)
-            => Do(() => new ListenerForPeer(nodeSink, _discoverer, Source, LoggerNamed($"{nameof(ListenerForPeer)}#{nodeSink.MessageTag}")));
+            => UnsafeDo(() => new ListenerForPeer(nodeSink, _discoverer, Source, LoggerNamed($"{nameof(ListenerForPeer)}#{nodeSink.MessageTag}")));
 
         IListenerForProxying IProxyingServices.CreateListenerForProxying(string externalAddress, string hostedAddress, ushort firstPort, IConnection connection)
-            => Do(() => new ListenerForProxying(externalAddress, hostedAddress, firstPort, connection, _socketFactory, _source, LoggerNamed($"{nameof(ListenerForProxying)}#{connection.MessageTag}|from:{connection.Id}")));
+            => UnsafeDo(() => new ListenerForProxying(externalAddress, hostedAddress, firstPort, connection, _socketFactory, _source, LoggerNamed($"{nameof(ListenerForProxying)}#{connection.MessageTag}|from:{connection.Id}")));
 
         void IKnownNodesServices.Forget(string nodeId) => Do(() => _ = _knownNodes.TryRemove(nodeId, out _));
 
@@ -103,17 +103,17 @@ namespace InterlockLedger.Peer2Peer
                         return newClient;
                     newClient.Dispose();
                 } catch (Exception e) {
-                    _logger.LogError(e, "Could not build PeerClient for {0}!", id);
+                    _logger.LogError(e, "Could not build PeerClient for {id}!", id);
                 }
                 return null;
             }
-            return Do(Lookup);
+            return UnsafeDo(Lookup);
         }
 
         public IConnection GetClient(string nodeId)
-            => Do(() => _clients.TryGetValue(Framed(nodeId), out var existingClient) ? existingClient : null);
+            => UnsafeDo(() => _clients.TryGetValue(Framed(nodeId), out var existingClient) ? existingClient : null);
 
-        IConnection IKnownNodesServices.GetClient(string nodeId) => Do(() => GetResponder(nodeId));
+        IConnection IKnownNodesServices.GetClient(string nodeId) => UnsafeDo(() => GetResponder(nodeId));
 
         IConnection IProxyingServices.GetClientForProxying(string address, int port)
             => BuildClient(address, port, $"{address}:{port}#{MessageTag}/proxying");
@@ -153,6 +153,6 @@ namespace InterlockLedger.Peer2Peer
 
         private ILogger LoggerForClient(string id) => LoggerNamed($"{nameof(ConnectionToPeer)}@{id}");
 
-        private ILogger LoggerNamed(string categoryName) => Do(() => _loggerFactory.CreateLogger(categoryName));
+        private ILogger LoggerNamed(string categoryName) => UnsafeDo(() => _loggerFactory.CreateLogger(categoryName));
     }
 }

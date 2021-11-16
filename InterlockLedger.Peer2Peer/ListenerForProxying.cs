@@ -71,6 +71,8 @@ namespace InterlockLedger.Peer2Peer
 
         public Action<ReadOnlySequence<byte>, IActiveChannel, bool, ulong, bool> Sinked { get; set; }
 
+#pragma warning disable CA2253 // Named placeholders should not be numeric values
+
         public void LogError(ReadOnlySequence<byte> message, IActiveChannel channel, Exception e)
             => _logger.LogError(e, "Error processing Message '{0}' from Channel {1}:{2}", message.ToUrlSafeBase64(), channel?.ToString() ?? "?", e.Message);
 
@@ -79,6 +81,8 @@ namespace InterlockLedger.Peer2Peer
 
         public void LogSinked(ReadOnlySequence<byte> message, IActiveChannel channel, bool newPair, ulong proxiedChannelId, bool sent)
             => _logger.LogDebug("Sinked Message '{0}' from Channel {1} using {2} pair to Proxied Channel {3}. Sent: {4}", message.ToUrlSafeBase64(), channel, newPair ? "new" : "existing", proxiedChannelId, sent);
+
+#pragma warning restore CA2253 // Named placeholders should not be numeric values
 
         public override Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel)
             => DoAsync(async () => {

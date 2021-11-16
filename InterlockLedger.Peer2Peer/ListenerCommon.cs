@@ -92,7 +92,7 @@ namespace InterlockLedger.Peer2Peer
             base.DisposeManagedResources();
         }
 
-        protected void LogHeader(string verb) => _logger.LogInformation($"-- {verb} " + HeaderText);
+        protected void LogHeader(string verb) => _logger.LogInformation("-- {verb} {HeaderText}", verb, HeaderText);
 
         protected async Task StartListeningAsync() {
             if (!_source.IsCancellationRequested)

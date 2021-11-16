@@ -47,7 +47,7 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        public bool TimedOut => !(_watch is null) && _watch.Elapsed > Timeout;
+        public bool TimedOut => _watch is not null && _watch.Elapsed > Timeout;
         public TimeSpan Timeout { get; }
 
         public void Restart() => _watch?.Restart();

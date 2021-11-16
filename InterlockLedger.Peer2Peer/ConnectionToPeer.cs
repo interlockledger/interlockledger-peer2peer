@@ -54,7 +54,7 @@ namespace InterlockLedger.Peer2Peer
             var socket = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             socket.Connect(new IPEndPoint(ipAddress, NetworkPort));
             socket.LingerState = new LingerOption(true, 1);
-            _logger.LogTrace($"Client connecting into address {NetworkAddress}:{NetworkPort}");
+            _logger.LogTrace("Client connecting into address {NetworkAddress}:{NetworkPort}", NetworkAddress, NetworkPort);
             return _socket = new NetSocket(socket);
         }
     }

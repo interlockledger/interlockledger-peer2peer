@@ -58,8 +58,7 @@ namespace InterlockLedger.Peer2Peer
                 try {
                     return _socketFactory.GetSocket(hostingAddress, hostAtPortNumber);
                 } catch (SocketException se) {
-                    var message = $"Could not open a listening socket for {hostingAddress}:{hostAtPortNumber}";
-                    _logger.LogError(se, message);
+                    _logger.LogError(se, "Could not open a listening socket for {hostingAddress}:{hostAtPortNumber}", hostingAddress, hostAtPortNumber);
                     throw new InterlockLedgerIOException($"Could not open a listening socket for {hostingAddress}:{hostAtPortNumber}");
                 }
             }

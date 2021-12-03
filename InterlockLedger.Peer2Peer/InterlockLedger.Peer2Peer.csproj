@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
-        <Version>7.0.0</Version>
+        <Version>7.0.1</Version>
         <Authors>Rafael Teixeira</Authors>
         <Company>InterlockLedger Network</Company>
         <Product>InterlockLedger</Product>
@@ -13,25 +13,25 @@
         <RepositoryUrl>https://github.com/interlockledger/interlockledger-peer2peer.git</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageReleaseNotes>Moving to .Net 6.0/C# 10 - Upgrading to il2-tags-ilint v5.0.0, InterlockLedger.Commons v2.0.0</PackageReleaseNotes>
+        <PackageReleaseNotes>Upgrading to il2-tags-ilint v5.0.1, InterlockLedger.Commons v2.0.1</PackageReleaseNotes>
         <LangVersion>preview</LangVersion>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="InterlockLedger.Commons" Version="2.0.0" />
-        <PackageReference Include="InterlockLedger.Tags.ILInt" Version="5.0.0" />
+        <PackageReference Include="InterlockLedger.Commons" Version="2.0.1" />
+        <PackageReference Include="InterlockLedger.Tags.ILInt" Version="5.0.1" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.0" />
         <PackageReference Include="System.IO.Pipelines" Version="6.0.0" />
     </ItemGroup>
 
     <ItemGroup>
-        <Using Include="System.Buffers"/>
-        <Using Include="System.Threading"/>
-        <Using Include="System.Threading.Tasks"/>
-        <Using Include="InterlockLedger.Tags"/>
-        <Using Include="Microsoft.Extensions.Logging"/>
+        <Using Include="System.Buffers" />
+        <Using Include="System.Threading" />
+        <Using Include="System.Threading.Tasks" />
+        <Using Include="InterlockLedger.Tags" />
+        <Using Include="Microsoft.Extensions.Logging" />
     </ItemGroup>
 
     <ItemGroup>

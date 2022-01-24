@@ -33,7 +33,9 @@
 using System.Buffers;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+
 using static InterlockLedger.Peer2Peer.TestHelpers;
 
 namespace InterlockLedger.Peer2Peer
@@ -66,7 +68,7 @@ namespace InterlockLedger.Peer2Peer
                 fakeClient.OnPipelineStopped();
             }
             fakeClient.ConnectionStopped += (i) => stoppedId = i.Id;
-            var pipeline = new Pipeline(fakeSocket, source, 13, 4096, processor, stopProcessor, fakeLogger, 10);
+            var pipeline = new Pipeline(fakeSocket, source, 13, 1, 4096, processor, stopProcessor, fakeLogger, 10);
             Assert.IsNotNull(pipeline);
             fakeClient.Pipeline = pipeline;
             Assert.IsNull(fakeLogger.LastLog);

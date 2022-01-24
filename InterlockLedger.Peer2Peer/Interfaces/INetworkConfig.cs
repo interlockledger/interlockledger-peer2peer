@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -30,8 +30,6 @@
 //
 // ******************************************************************************************************************************
 
-using System;
-
 namespace InterlockLedger.Peer2Peer
 {
     /// <summary>
@@ -51,6 +49,12 @@ namespace InterlockLedger.Peer2Peer
         int ListeningBufferSize { get; }
 
         /// <summary>
+        /// Tag identifier for liveness messages, all liveness messages must begin with the value encoded as an ILInt
+        /// Must be different from <see cref="MessageTag"/>
+        /// </summary>
+        ulong LivenessMessageTag { get; }
+
+        /// <summary>
         /// Maximum number of concurrent connections
         /// </summary>
         int MaxConcurrentConnections { get; }
@@ -59,7 +63,6 @@ namespace InterlockLedger.Peer2Peer
         /// Tag identifier for messages, all messages must begin with the value encoded as an ILInt
         /// </summary>
         ulong MessageTag { get; }
-
         /// <summary>
         /// Network name, multiple networks can coexist using the same protocol
         /// </summary>

@@ -47,6 +47,7 @@ namespace InterlockLedger.Peer2Peer
             InactivityTimeoutInMinutes = inactivityTimeoutInMinutes;
             MaxConcurrentConnections = maxConcurrentConnections;
             _response = new ReadOnlySequence<byte>(response);
+            LivenessMessageTag = 0;
         }
 
         public ulong Channel { get; set; } = 0;
@@ -64,6 +65,7 @@ namespace InterlockLedger.Peer2Peer
         public string PublishAtAddress => HostAtAddress;
         public ushort? PublishAtPortNumber => HostAtPortNumber;
         public IEnumerable<string> SupportedNetworkProtocolFeatures { get; } = new string[] { "None" };
+        public ulong LivenessMessageTag { get; }
 
         public void HostedAt(string address, ushort port) {
             // Do nothing

@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -30,11 +30,6 @@
 //
 // ******************************************************************************************************************************
 
-using System;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-
 namespace InterlockLedger.Peer2Peer
 {
     public abstract class AbstractNodeSink : AbstractDisposable, INodeSink
@@ -45,6 +40,7 @@ namespace InterlockLedger.Peer2Peer
         public string Id => NodeId;
         public int InactivityTimeoutInMinutes { get; protected set; }
         public int ListeningBufferSize { get; protected set; }
+        public ulong LivenessMessageTag { get; protected set; }
         public abstract IEnumerable<string> LocalResources { get; }
         public int MaxConcurrentConnections { get; protected set; }
         public ulong MessageTag { get; protected set; }

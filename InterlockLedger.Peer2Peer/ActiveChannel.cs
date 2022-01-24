@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -30,19 +30,15 @@
 //
 // ******************************************************************************************************************************
 
-using System;
-using System.Buffers;
-using System.Threading.Tasks;
-
 namespace InterlockLedger.Peer2Peer
 {
     internal class ActiveChannel : IActiveChannel
     {
         public bool Active => !(PeerConnection.Abandon || _stop);
         public ulong Channel { get; }
+        public bool Connected => PeerConnection.Connected;
         public IConnection Connection => PeerConnection;
         public string Id => $"{PeerConnection.Id}@{Channel}";
-        public bool Connected => PeerConnection.Connected;
 
         public async Task<bool> SendAsync(ReadOnlySequence<byte> messageBytes)
             => !Active || messageBytes.IsEmpty || await PeerConnection.SendAsync(new NetworkMessageSlice(Channel, messageBytes));

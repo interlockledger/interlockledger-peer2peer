@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -30,28 +30,46 @@
 //
 // ******************************************************************************************************************************
 
-using System;
 using System.Diagnostics;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public readonly struct TimeoutManager
+    public sealed class TimeoutManager : IAsyncDisposable, IDisposable
     {
-        public TimeoutManager(int minutes) {
+        public TimeoutManager(int minutes, Func<ulong, Task> sendLivenessMessageAsync) {
+            sendLivenessMessageAsync.Required();
             if (minutes > 0) {
-                Timeout = new TimeSpan(0, minutes, 0);
+                TimeOut = new TimeSpan(0, minutes, 0);
+                PingTime = TimeOut.Divide(4);
                 _watch = Stopwatch.StartNew();
             } else {
-                Timeout = TimeSpan.Zero;
+                TimeOut = TimeSpan.Zero;
+                PingTime = TimeSpan.Zero;
                 _watch = null;
             }
+            if (PingTime.TotalMinutes > 1)
+                PingTime = new TimeSpan(0, 1, 0);
+            _timer = new Timer((_) => sendLivenessMessageAsync(1).Wait(), null, PingTime, PingTime);
         }
 
-        public bool TimedOut => _watch is not null && _watch.Elapsed > Timeout;
-        public TimeSpan Timeout { get; }
+        public TimeSpan PingTime { get; }
+        public bool TimedOut => _watch is not null && _watch.Elapsed > TimeOut;
+        public TimeSpan TimeOut { get; }
 
-        public void Restart() => _watch?.Restart();
+        public void Dispose() => DisposeAsync().AsTask().Wait();
 
+        public async ValueTask DisposeAsync() {
+            _watch?.Stop();
+            await _timer.DisposeAsync();
+        }
+
+        public Task RestartAsync() {
+            _timer.Change(PingTime, PingTime);
+            _watch?.Restart();
+            return Task.CompletedTask;
+        }
+
+        private readonly Timer _timer;
         private readonly Stopwatch _watch;
     }
 }

@@ -30,15 +30,8 @@
 //
 // ******************************************************************************************************************************
 
-using System;
-using System.Buffers;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace InterlockLedger.Peer2Peer
 {
@@ -51,7 +44,7 @@ namespace InterlockLedger.Peer2Peer
         public event Action<INetworkIdentity> ConnectionStopped;
 
         public bool Connected => Pipeline.Connected;
-        public bool KeepingAlive => _livenessKeeper is not null;
+        public bool KeepingAlive => _pipeline is not null;
         public long LastChannelUsed => _lastChannelUsed;
         public int NumberOfActiveChannels => _channelSinks.Count;
 
@@ -76,14 +69,7 @@ namespace InterlockLedger.Peer2Peer
             StopAllChannelSinks();
         }
 
-        public void SetupLivenessKeeping(Func<ReadOnlySequence<byte>> buildAliveMessage) {
-            if (buildAliveMessage is not null) {
-                if (_livenessKeeper is null)
-                    _livenessKeeper = new LivenessKeeper(buildAliveMessage, InactivityTimeoutInMinutes, AllocateChannel);
-            }
-        }
-
-        public override void Stop() => _pipeline?.Stop();
+         public override void Stop() => _pipeline?.Stop();
 
         internal Pipeline Pipeline => GetPipelineAsync().Result;
 
@@ -95,11 +81,8 @@ namespace InterlockLedger.Peer2Peer
         protected IChannelSink _sink;
         protected ISocket _socket;
 
-        protected ConnectionBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger, Func<ReadOnlySequence<byte>> buildAliveMessage)
-            : base(id, config, source, logger) {
-            _pipeline = null;
-            SetupLivenessKeeping(buildAliveMessage);
-        }
+        protected ConnectionBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger)
+            : base(id, config, source, logger) => _pipeline = null;
 
         protected string NetworkAddress { get; set; }
         protected int NetworkPort { get; set; }
@@ -107,7 +90,6 @@ namespace InterlockLedger.Peer2Peer
         protected abstract ISocket BuildSocket();
 
         protected override void DisposeManagedResources() {
-            _livenessKeeper?.Dispose();
             base.DisposeManagedResources();
             StopAllChannelSinks();
             Stop();
@@ -128,15 +110,14 @@ namespace InterlockLedger.Peer2Peer
         private static readonly Dictionary<string, DateTimeOffset> _errors = new();
         private readonly AsyncLock _pipelineLock = new();
         private long _lastChannelUsed = 0;
-        private LivenessKeeper _livenessKeeper;
         private Pipeline _pipeline;
 
         private async Task<Pipeline> GetPipelineAsync() {
             try {
-                if (_pipeline is null)
+                if (_pipeline is null || _pipeline.Stopped)
                     using (await _pipelineLock.LockAsync()) {
                         var socket = BuildSocket();
-                        _pipeline = new Pipeline(socket, _source, MessageTag, ListeningBufferSize, SinkAsync, OnPipelineStopped, _logger, InactivityTimeoutInMinutes); ;
+                        _pipeline = new Pipeline(socket, _source, MessageTag, LivenessMessageTag, ListeningBufferSize, SinkAsync, OnPipelineStopped, _logger, InactivityTimeoutInMinutes); ;
                         _pipeline.ListenAsync().RunOnThread($"Pipeline {Id} to {socket.RemoteEndPoint}", PipelineThreadDone);
                     }
                 return _pipeline;

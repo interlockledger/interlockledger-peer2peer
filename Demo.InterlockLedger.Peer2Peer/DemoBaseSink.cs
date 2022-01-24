@@ -66,7 +66,7 @@ namespace Demo.InterlockLedger.Peer2Peer
 
         public void Run() {
             PrepareConsole(_message);
-            var serviceProvider = Configure(this, _source, portDelta: -4, buildAliveMessage: AliveMessageBuilder);
+            var serviceProvider = Configure(this, _source, portDelta: -4);
             using var peerServices = serviceProvider.GetRequiredService<IPeerServices>();
             Run(peerServices);
         }
@@ -113,7 +113,7 @@ namespace Demo.InterlockLedger.Peer2Peer
         private const ulong _messageTagCode = ':';
         private readonly string _message;
 
-        private static ServiceProvider Configure(INetworkConfig config, CancellationTokenSource source, short portDelta, Func<ReadOnlySequence<byte>> buildAliveMessage) {
+        private static ServiceProvider Configure(INetworkConfig config, CancellationTokenSource source, short portDelta) {
             source.Required(nameof(source));
             return new ServiceCollection()
                 .AddLogging(builder =>
@@ -128,10 +128,10 @@ namespace Demo.InterlockLedger.Peer2Peer
                 .AddSingleton<IExternalAccessDiscoverer, DummyExternalAccessDiscoverer>()
                 .AddSingleton(sp =>
                     new PeerServices(
-                        config.MessageTag, config.NetworkName, config.NetworkProtocolName, config.ListeningBufferSize,
+                        config.MessageTag, config.LivenessMessageTag, config.NetworkName, config.NetworkProtocolName, config.ListeningBufferSize,
                         sp.GetRequiredService<ILoggerFactory>(),
                         sp.GetRequiredService<IExternalAccessDiscoverer>(),
-                        sp.GetRequiredService<SocketFactory>(), 10, 2, buildAliveMessage).WithCancellationTokenSource(source))
+sp.GetRequiredService<SocketFactory>(), 10, 2).WithCancellationTokenSource(source))
                 .BuildServiceProvider();
         }
 

@@ -30,17 +30,14 @@
 //
 // ******************************************************************************************************************************
 
-using System;
 using System.Net;
-using System.Threading;
-using Microsoft.Extensions.Logging;
 
 namespace InterlockLedger.Peer2Peer
 {
     public sealed class ConnectionInitiatedByPeer : ConnectionBase
     {
         public ConnectionInitiatedByPeer(string id, INetworkConfig config, ISocket socket, IChannelSink sink, CancellationTokenSource source, ILogger logger)
-            : base(id, config, source, logger, buildAliveMessage: null) {
+            : base(id, config, source, logger) {
             var ipEndPoint = (IPEndPoint)socket.Required(nameof(socket)).RemoteEndPoint;
             NetworkAddress = ipEndPoint.Address.ToString();
             NetworkPort = ipEndPoint.Port;

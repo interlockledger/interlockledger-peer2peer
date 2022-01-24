@@ -30,9 +30,6 @@
 //
 // ******************************************************************************************************************************
 
-using System;
-using System.Threading.Tasks;
-
 namespace InterlockLedger.Peer2Peer
 {
     public abstract class AbstractExternalAccessDiscoverer : AbstractDisposable, IExternalAccessDiscoverer

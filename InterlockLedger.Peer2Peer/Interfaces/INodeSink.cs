@@ -30,8 +30,6 @@
 //
 // ******************************************************************************************************************************
 
-using System.Collections.Generic;
-
 namespace InterlockLedger.Peer2Peer
 {
     public interface INodeSink : IChannelSink, INetworkIdentity

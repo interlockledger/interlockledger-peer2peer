@@ -30,10 +30,6 @@
 //
 // ******************************************************************************************************************************
 
-using System;
-using System.Threading;
-using Microsoft.Extensions.Logging;
-
 namespace InterlockLedger.Peer2Peer
 {
     public abstract class ListenerBase : AbstractDisposable, INetworkIdentity
@@ -43,6 +39,7 @@ namespace InterlockLedger.Peer2Peer
         public int ListeningBufferSize => _config.ListeningBufferSize;
         public int MaxConcurrentConnections => _config.MaxConcurrentConnections;
         public ulong MessageTag => _config.MessageTag;
+        public ulong LivenessMessageTag => _config.LivenessMessageTag;
         public string NetworkName => _config.NetworkName;
         public string NetworkProtocolName => _config.NetworkProtocolName;
 

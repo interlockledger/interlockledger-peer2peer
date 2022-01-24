@@ -30,20 +30,15 @@
 //
 // ******************************************************************************************************************************
 
-using System;
-using System.Buffers;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
-using Microsoft.Extensions.Logging;
 
 namespace InterlockLedger.Peer2Peer
 {
     public sealed class ConnectionToPeer : ConnectionBase
     {
-        public ConnectionToPeer(string id, INetworkConfig config, string networkAddress, int port, CancellationTokenSource source, ILogger logger, Func<ReadOnlySequence<byte>> buildAliveMessage)
-            : base(id, config, source, logger, buildAliveMessage) {
+        public ConnectionToPeer(string id, INetworkConfig config, string networkAddress, int port, CancellationTokenSource source, ILogger logger)
+            : base(id, config, source, logger) {
             NetworkAddress = networkAddress.Required(nameof(networkAddress));
             NetworkPort = port;
         }

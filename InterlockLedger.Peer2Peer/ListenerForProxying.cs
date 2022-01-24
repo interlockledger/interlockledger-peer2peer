@@ -30,15 +30,9 @@
 //
 // ******************************************************************************************************************************
 
-using System;
-using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
-using InterlockLedger.Tags;
-using Microsoft.Extensions.Logging;
 
 namespace InterlockLedger.Peer2Peer
 {

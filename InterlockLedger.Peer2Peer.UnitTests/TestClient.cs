@@ -86,6 +86,7 @@ namespace InterlockLedger.Peer2Peer
 
         public bool KeepingAlive => false;
 
-        public void SetupLivenessKeeping(Func<ReadOnlySequence<byte>> buildAliveMessage) { }
+        public ulong LivenessMessageTag { get; }
+
     }
 }

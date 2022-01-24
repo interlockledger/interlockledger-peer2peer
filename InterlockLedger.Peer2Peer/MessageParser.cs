@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -30,21 +30,16 @@
 //
 // ******************************************************************************************************************************
 
-using System;
-using System.Buffers;
-using System.Threading;
-using System.Threading.Tasks;
-using InterlockLedger.Tags;
-using Microsoft.Extensions.Logging;
-
 namespace InterlockLedger.Peer2Peer
 {
     public class MessageParser
     {
-        public MessageParser(ulong expectedTag, ILogger logger, Func<NetworkMessageSlice, Task<Success>> messageProcessor) {
-            _messageProcessor = messageProcessor.Required(nameof(messageProcessor));
-            _logger = logger.Required(nameof(logger));
+        public MessageParser(ulong expectedTag, ulong livenessMessageTag, ILogger logger, Func<NetworkMessageSlice, Task<Success>> messageProcessor, Func<ulong, Task> livenessProcessorAsync) {
+            _messageProcessor = messageProcessor.Required();
+            _livenessProcessorAsync = livenessProcessorAsync.Required();
+            _logger = logger.Required();
             _expectedTag = expectedTag;
+            _livenessMessageTag = livenessMessageTag;
             LastResult = Success.Next;
             _state = State.Init;
         }
@@ -94,6 +89,10 @@ namespace InterlockLedger.Peer2Peer
                         case State.SkipChannel:
                             AfterReadingILIntDo(buffer, ref current, _channelReader, (_) => _state = State.Init);
                             break;
+
+                        case State.ProcessLiveness:
+                            AfterReadingILIntDo(buffer, ref current, _livenessReader, Step_ProcessLivenessMessage);
+                            break;
                         }
                     }
                 _body = _body.Realloc();
@@ -101,11 +100,13 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-
         private const ulong _maxBytesToRead = 16 * 1024 * 1024;
         private readonly ILIntReader _channelReader = new();
         private readonly ulong _expectedTag;
         private readonly ILIntReader _lengthReader = new();
+        private readonly ulong _livenessMessageTag;
+        private readonly Func<ulong, Task> _livenessProcessorAsync;
+        private readonly ILIntReader _livenessReader = new();
         private readonly ILogger _logger;
         private readonly Func<NetworkMessageSlice, Task<Success>> _messageProcessor;
         private readonly ILIntReader _tagReader = new();
@@ -122,7 +123,8 @@ namespace InterlockLedger.Peer2Peer
             ReadBytes,
             ReadChannel,
             SkipBytes,
-            SkipChannel
+            SkipChannel,
+            ProcessLiveness
         }
 
         private static void AfterReadingILIntDo(ReadOnlySequence<byte> buffer, ref long current, ILIntReader reader, Action<ulong> action) {
@@ -168,12 +170,15 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private void Step_CheckTag(ulong tag) {
-            if (tag != _expectedTag) {
-                LogTrace($"Ignoring bad tag {tag}");
-                _state = State.Init;
-            } else {
+            if (tag == _expectedTag) {
                 LogTrace("Receiving new message");
                 _state = State.ReadLength;
+            } else if (tag == _livenessMessageTag) {
+                LogTrace("Receiving new liveness message");
+                _state = State.ProcessLiveness;
+            } else {
+                LogTrace($"Ignoring bad tag {tag}");
+                _state = State.Init;
             }
         }
 
@@ -182,9 +187,20 @@ namespace InterlockLedger.Peer2Peer
             _tagReader.Reset();
             _lengthReader.Reset();
             _channelReader.Reset();
+            _livenessReader.Reset();
             _body = ReadOnlySequence<byte>.Empty;
             _state = State.ReadTag;
             LastResult = Success.Next;
+        }
+
+        private void Step_ProcessLivenessMessage(ulong liveness) {
+            try {
+                _livenessProcessorAsync(liveness);
+            } catch (Exception e) {
+                _logger.LogError(e, "Failed to process last liveness message!");
+            } finally {
+                _state = State.Init;
+            }
         }
 
         private void Step_ProcessMessageFor(ulong channel) {

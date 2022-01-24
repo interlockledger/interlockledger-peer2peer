@@ -30,17 +30,14 @@
 //
 // ******************************************************************************************************************************
 
-using System;
-using System.Buffers;
 using System.Collections.Concurrent;
-using System.Threading;
-using Microsoft.Extensions.Logging;
 
 namespace InterlockLedger.Peer2Peer
 {
     public sealed class PeerServices : AbstractDisposable, IPeerServices, IKnownNodesServices, IProxyingServices
     {
         public PeerServices(ulong messageTag,
+                            ulong livenessMessageTag,
                             string networkName,
                             string networkProtocolName,
                             int listeningBufferSize,
@@ -48,9 +45,11 @@ namespace InterlockLedger.Peer2Peer
                             IExternalAccessDiscoverer discoverer,
                             SocketFactory socketFactory,
                             int inactivityTimeoutInMinutes,
-                            int maxConcurrentConnections,
-                            Func<ReadOnlySequence<byte>> buildAliveMessage) {
-            MessageTag = messageTag;
+                            int maxConcurrentConnections) {
+            if (messageTag == livenessMessageTag)
+                throw new ArgumentException($"{nameof(livenessMessageTag)} (value: {livenessMessageTag}) must be different from {nameof(messageTag)} (value: {messageTag})! ");
+            MessageTag = messageTag; 
+            LivenessMessageTag = livenessMessageTag;
             NetworkName = networkName.Required(nameof(networkName));
             NetworkProtocolName = networkProtocolName.Required(nameof(networkProtocolName));
             ListeningBufferSize = Math.Max(512, listeningBufferSize);
@@ -62,7 +61,6 @@ namespace InterlockLedger.Peer2Peer
             _clients = new ConcurrentDictionary<string, IConnection>();
             _logger = LoggerNamed(nameof(PeerServices));
             MaxConcurrentConnections = Math.Max(maxConcurrentConnections, 0);
-            _buildAliveMessage = buildAliveMessage;
         }
 
         public int InactivityTimeoutInMinutes { get; }
@@ -74,6 +72,8 @@ namespace InterlockLedger.Peer2Peer
         public string NetworkProtocolName { get; }
         public IProxyingServices ProxyingServices => this;
         public CancellationTokenSource Source => _source ?? throw new InvalidOperationException("CancellationTokenSource was not set yet!");
+
+        public ulong LivenessMessageTag { get; }
 
         void IKnownNodesServices.Add(string nodeId, string address, int port, bool retain)
             => Do(() => _knownNodes[nodeId.Required(nameof(nodeId))] = (address.Required(nameof(address)), port, retain));
@@ -140,13 +140,12 @@ namespace InterlockLedger.Peer2Peer
         private readonly ILogger _logger;
         private readonly ILoggerFactory _loggerFactory;
         private readonly SocketFactory _socketFactory;
-        private readonly Func<ReadOnlySequence<byte>> _buildAliveMessage;
         private CancellationTokenSource _source;
 
         private static string Framed(string nodeId) => $"[{nodeId}]";
 
         private ConnectionToPeer BuildClient(string address, int port, string id)
-            => new(id, this, address, port, Source, LoggerForClient(id), _buildAliveMessage);
+            => new(id, this, address, port, Source, LoggerForClient(id));
 
         private IConnection GetResponder(string nodeId)
             => _knownNodes.TryGetValue(nodeId, out var n) ? n.port != 0 ? GetClient(n.address, n.port) : GetClient(nodeId) : null;

@@ -30,21 +30,23 @@
 //
 // ******************************************************************************************************************************
 
-using System;
 using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace InterlockLedger.Peer2Peer
 {
     public class Pipeline
     {
-        public Pipeline(ISocket socket, CancellationTokenSource source, ulong messageTag,
-            int minimumBufferSize, Func<NetworkMessageSlice, Task<Success>> sliceProcessor,
-            Action stopProcessor, ILogger logger, int inactivityTimeoutInMinutes) {
+        public Pipeline(ISocket socket,
+                        CancellationTokenSource source,
+                        ulong messageTag,
+                        ulong livenessMessageTag,
+                        int minimumBufferSize,
+                        Func<NetworkMessageSlice, Task<Success>> sliceProcessor,
+                        Action stopProcessor,
+                        ILogger logger,
+                        int inactivityTimeoutInMinutes) {
             _socket = socket.Required(nameof(socket));
             _queue = new SendingQueue();
             _logger = logger.Required(nameof(logger));
@@ -52,10 +54,22 @@ namespace InterlockLedger.Peer2Peer
             _localSource = new CancellationTokenSource();
             _linkedToken = CancellationTokenSource.CreateLinkedTokenSource(parentSource.Token, _localSource.Token).Token;
             _messageTag = messageTag;
+            _livenessMessageTag = livenessMessageTag;
             _minimumBufferSize = minimumBufferSize;
             _sliceProcessor = sliceProcessor.Required(nameof(sliceProcessor));
             _stopProcessor = stopProcessor.Required(nameof(stopProcessor));
-            _inactivity = new TimeoutManager(inactivityTimeoutInMinutes);
+            _inactivity = new TimeoutManager(inactivityTimeoutInMinutes, SendLivenessMessageAsync);
+        }
+        private async Task LivenessProcessorAsync(ulong livenessCode) {
+            if (livenessCode == 0)
+                await _inactivity.RestartAsync();
+            else
+                await SendLivenessMessageAsync(0);
+        }
+
+        private Task SendLivenessMessageAsync(ulong livenessCode) {
+            _queue.Enqueue(new NetworkMessageSlice(livenessCode, _livenessMessageTag));
+            return Task.CompletedTask;
         }
 
         public bool Connected => _socket.Connected;
@@ -92,6 +106,7 @@ namespace InterlockLedger.Peer2Peer
         private readonly CancellationTokenSource _localSource;
         private readonly ILogger _logger;
         private readonly ulong _messageTag;
+        private readonly ulong _livenessMessageTag;
         private readonly int _minimumBufferSize;
         private readonly SendingQueue _queue;
         private readonly Func<NetworkMessageSlice, Task<Success>> _sliceProcessor;
@@ -104,7 +119,7 @@ namespace InterlockLedger.Peer2Peer
             while (_active) {
                 try {
                     if (_socket.Available > 0) {
-                        _inactivity.Restart();
+                        await _inactivity.RestartAsync();
                         _logger.LogTrace("Getting {_minimumBufferSize} bytes to receive in the socket", _minimumBufferSize);
                         var memory = writer.GetMemory(_minimumBufferSize);
                         int bytesRead = await _socket.ReceiveAsync(memory, SocketFlags.None, _linkedToken);
@@ -203,7 +218,6 @@ namespace InterlockLedger.Peer2Peer
                         break;
                     var sequence = result.Buffer;
                     if (!sequence.IsEmpty) {
-                        _inactivity.Restart();
                         using (await senderSocketLock.LockAsync()) {
                             var bytesCount = await _socket.SendBuffersAsync(sequence, _linkedToken);
                             reader.AdvanceTo(sequence.End);
@@ -234,7 +248,7 @@ namespace InterlockLedger.Peer2Peer
         private Task UsePipes(EndPoint remoteEndPoint) {
             _logger.LogTrace("[{remoteEndPoint}]: connected", remoteEndPoint);
             try {
-                var parser = new MessageParser(_messageTag, _logger, _sliceProcessor);
+                var parser = new MessageParser(_messageTag, _livenessMessageTag, _logger, _sliceProcessor, LivenessProcessorAsync);
                 var listeningPipe = new Pipe();
                 var respondingPipe = new Pipe();
                 return Task.WhenAll(

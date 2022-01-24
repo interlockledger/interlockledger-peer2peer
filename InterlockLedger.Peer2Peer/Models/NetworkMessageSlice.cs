@@ -30,9 +30,6 @@
 //
 // ******************************************************************************************************************************
 
-using System;
-using System.Buffers;
-
 namespace InterlockLedger.Peer2Peer
 {
     public readonly struct NetworkMessageSlice
@@ -41,6 +38,9 @@ namespace InterlockLedger.Peer2Peer
             DataList = dataList;
             Channel = channel;
         }
+
+        public NetworkMessageSlice(ulong livenessCode, ulong livenessMessageTag)
+            : this(livenessCode, ReadOnlySequence<byte>.Empty.Add(livenessMessageTag.ILIntEncode())) {}
 
         public ulong Channel { get; }
 

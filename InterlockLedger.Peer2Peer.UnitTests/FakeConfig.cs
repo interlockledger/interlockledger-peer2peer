@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -43,10 +43,12 @@ namespace InterlockLedger.Peer2Peer
             ListeningBufferSize = listeningBufferSize;
             InactivityTimeoutInMinutes = inactivityTimeoutInMinutes;
             MaxConcurrentConnections = maxConcurrentConnections;
+            LivenessMessageTag = 0;
         }
 
         public int InactivityTimeoutInMinutes { get; }
         public int ListeningBufferSize { get; }
+        public ulong LivenessMessageTag { get; }
         public int MaxConcurrentConnections { get; }
         public ulong MessageTag { get; }
         public string NetworkName { get; }

@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -35,6 +35,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -43,36 +44,17 @@ namespace InterlockLedger.Peer2Peer
     [TestClass]
     public sealed class UnitTestMessageParser : ILogger, IDisposable
     {
+        IDisposable ILogger.BeginScope<TState>(TState state) => this;
+
         [TestMethod]
         public void Creation() {
             static Task<Success> messageProcessor(NetworkMessageSlice channelBytes) => Task.FromResult(Success.Exit);
 
-            var mp = new MessageParser(15, this, messageProcessor);
+            var mp = new MessageParser(_expectedTag, _livenessMessageTag, this, messageProcessor, livenessProcessorAsync);
             Assert.IsNotNull(mp);
-            Assert.ThrowsException<ArgumentException>(() => new MessageParser(15, null, messageProcessor));
-            Assert.ThrowsException<ArgumentException>(() => new MessageParser(15, this, null));
+            Assert.ThrowsException<ArgumentException>(() => new MessageParser(_expectedTag, _livenessMessageTag, null, messageProcessor, livenessProcessorAsync));
+            Assert.ThrowsException<ArgumentException>(() => new MessageParser(_expectedTag, _livenessMessageTag, this, null, livenessProcessorAsync));
         }
-
-        [TestMethod]
-        public void Parsing() => DoNiceParsing(7, 15, 3, 1, 2, 3, 7);
-
-        [TestMethod]
-        public void ParsingOffsetBy1ByteAndBegginingOfSecondMessage()
-            => DoRawParsing(new ulong[] { 7 }, ToSequences(new byte[] { 1, 15, 3, 1, 2, 3, 7, 15, 1 }), 15, new byte[] { 1, 2, 3 });
-
-        [TestMethod]
-        public void ParsingOffsetBy3Bytes()
-            => DoRawParsing(new ulong[] { 7 }, ToSequences(new byte[] { 1, 2, 3, 15, 3, 1, 2, 3, 7 }), 15, new byte[] { 1, 2, 3 });
-
-        [TestMethod]
-        public void ParsingTwoMessagesInDifferentChannels()
-            => DoRawParsing(new ulong[] { 7, 13 }, ToSequences(new byte[] { 15, 3, 1, 2, 3, 7, 15, 1, 10, 13 }), 15, new byte[] { 1, 2, 3 }, new byte[] { 10 });
-
-        [TestMethod]
-        public void ParsingTwoMessagesInDifferentChannelsMultipleSequences()
-            => DoRawParsing(new ulong[] { 7, 13 }, ToSequences(new byte[] { 15, 3, 1, 2 }, new byte[] { 3, 7, 15, 1, 10, 13 }), 15, new byte[] { 1, 2, 3 }, new byte[] { 10 });
-
-        IDisposable ILogger.BeginScope<TState>(TState state) => this;
 
         public void Dispose() {
             // DO NOTHING
@@ -80,9 +62,50 @@ namespace InterlockLedger.Peer2Peer
 
         bool ILogger.IsEnabled(LogLevel logLevel) => logLevel > LogLevel.Warning;
 
+        [TestMethod]
+        public void LivenessParsing() {
+            ulong livenessCodeReceived = 0;
+            bool noCommonMessage = true;
+            Task<Success> messageProcessor(NetworkMessageSlice channelBytes) {
+                noCommonMessage = false;
+                return Task.FromResult(Success.Exit);
+            }
+            Task livenessProcessorAsync(ulong livenessCode) {
+                livenessCodeReceived = livenessCode;
+                return Task.CompletedTask;
+            }
+
+            var mp = new MessageParser(_expectedTag, _livenessMessageTag, this, messageProcessor, livenessProcessorAsync);
+            mp.Parse(new ReadOnlySequence<byte>(new byte[] { _livenessMessageTag, 77 }));
+            Assert.AreEqual((ulong)77, livenessCodeReceived);
+            Assert.IsTrue(noCommonMessage, nameof(noCommonMessage));
+        }
+
         void ILogger.Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter) {
             // DO NOTHING
         }
+
+        [TestMethod]
+        public void Parsing() => DoNiceParsing(7, _expectedTag, 3, 1, 2, 3, 7);
+
+        [TestMethod]
+        public void ParsingOffsetBy1ByteAndBegginingOfSecondMessage()
+            => DoRawParsing(new ulong[] { 7 }, ToSequences(new byte[] { 1, _expectedTag, 3, 1, 2, 3, 7, _expectedTag, 1 }), _expectedTag, new byte[] { 1, 2, 3 });
+
+        [TestMethod]
+        public void ParsingOffsetBy3Bytes()
+            => DoRawParsing(new ulong[] { 7 }, ToSequences(new byte[] { 1, 2, 3, _expectedTag, 3, 1, 2, 3, 7 }), _expectedTag, new byte[] { 1, 2, 3 });
+
+        [TestMethod]
+        public void ParsingTwoMessagesInDifferentChannels()
+            => DoRawParsing(new ulong[] { 7, 13 }, ToSequences(new byte[] { _expectedTag, 3, 1, 2, 3, 7, _expectedTag, 1, 10, 13 }), _expectedTag, new byte[] { 1, 2, 3 }, new byte[] { 10 });
+
+        [TestMethod]
+        public void ParsingTwoMessagesInDifferentChannelsMultipleSequences()
+            => DoRawParsing(new ulong[] { 7, 13 }, ToSequences(new byte[] { _expectedTag, 3, 1, 2 }, new byte[] { 3, 7, _expectedTag, 1, 10, 13 }), _expectedTag, new byte[] { 1, 2, 3 }, new byte[] { 10 });
+
+        private const byte _expectedTag = 15;
+        private const byte _livenessMessageTag = 21;
 
         private static IEnumerable<ReadOnlySequence<byte>> ToSequences(params byte[][] arraysToParse) => arraysToParse.Select(a => new ReadOnlySequence<byte>(a));
 
@@ -95,7 +118,7 @@ namespace InterlockLedger.Peer2Peer
                 results.Add(channelBytes);
                 return Task.FromResult(results.Count < expectedPayloads.Length ? Success.Next : Success.Exit);
             }
-            var mp = new MessageParser(expectedTag, this, messageProcessor);
+            var mp = new MessageParser(expectedTag, _livenessMessageTag, this, messageProcessor, livenessProcessorAsync);
             foreach (var sequence in sequencesToParse) {
                 mp.Parse(sequence);
             }
@@ -108,5 +131,7 @@ namespace InterlockLedger.Peer2Peer
                 Assert.IsTrue(expectedPayload.SequenceEqual(inputBytes.ToArray()));
             }
         }
+
+        private Task livenessProcessorAsync(ulong livenessCode) => Task.CompletedTask;
     }
 }

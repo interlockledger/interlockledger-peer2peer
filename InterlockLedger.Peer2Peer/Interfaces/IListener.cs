@@ -30,8 +30,6 @@
 //
 // ******************************************************************************************************************************
 
-using System;
-
 namespace InterlockLedger.Peer2Peer
 {
     public interface IListener : INetworkIdentity

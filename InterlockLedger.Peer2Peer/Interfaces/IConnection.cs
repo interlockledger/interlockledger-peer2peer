@@ -30,9 +30,6 @@
 //
 // ******************************************************************************************************************************
 
-using System;
-using System.Buffers;
-
 namespace InterlockLedger.Peer2Peer
 {
     public interface IConnection : INetworkIdentity
@@ -47,8 +44,6 @@ namespace InterlockLedger.Peer2Peer
         IActiveChannel GetChannel(ulong channel);
 
         void SetDefaultSink(IChannelSink sink);
-
-        void SetupLivenessKeeping(Func<ReadOnlySequence<byte>> buildAliveMessage);
 
         void Stop();
     }

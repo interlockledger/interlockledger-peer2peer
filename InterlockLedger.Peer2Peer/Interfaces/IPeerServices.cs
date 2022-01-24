@@ -30,8 +30,6 @@
 //
 // ******************************************************************************************************************************
 
-using System.Threading;
-
 namespace InterlockLedger.Peer2Peer
 {
     public interface IPeerServices : INetworkConfig

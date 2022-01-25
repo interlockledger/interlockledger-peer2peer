@@ -97,7 +97,12 @@ namespace InterlockLedger.Peer2Peer
                 var id = $"{address}:{port}#{MessageTag}";
                 try {
                     if (_clients.TryGetValue(id, out var existingClient))
-                        return existingClient;
+                        if (existingClient.Connected)
+                            return existingClient;
+                        else {
+                            _clients.TryRemove(id, out _);
+                            existingClient.Dispose();
+                        }
                     var newClient = BuildClient(address, port, id);
                     if (_clients.TryAdd(id, newClient))
                         return newClient;

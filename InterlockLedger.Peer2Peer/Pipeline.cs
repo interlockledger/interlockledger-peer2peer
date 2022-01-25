@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -30,6 +30,9 @@
 //
 // ******************************************************************************************************************************
 
+#nullable enable
+
+using System.Collections.Concurrent;
 using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
@@ -46,30 +49,22 @@ namespace InterlockLedger.Peer2Peer
                         Func<NetworkMessageSlice, Task<Success>> sliceProcessor,
                         Action stopProcessor,
                         ILogger logger,
-                        int inactivityTimeoutInMinutes) {
+                        int inactivityTimeoutInMinutes,
+                        ConcurrentQueue<NetworkMessageSlice> queue) {
+            _messageTag = messageTag;
+            _livenessMessageTag = livenessMessageTag;
+            if (_messageTag == _livenessMessageTag)
+                throw new InvalidOperationException($"{nameof(messageTag)} (value {messageTag}) must be different from {nameof(livenessMessageTag)} (value {livenessMessageTag})");
             _socket = socket.Required(nameof(socket));
-            _queue = new SendingQueue();
+            _queue = queue.Required();
             _logger = logger.Required(nameof(logger));
             var parentSource = source.Required(nameof(source));
             _localSource = new CancellationTokenSource();
             _linkedToken = CancellationTokenSource.CreateLinkedTokenSource(parentSource.Token, _localSource.Token).Token;
-            _messageTag = messageTag;
-            _livenessMessageTag = livenessMessageTag;
             _minimumBufferSize = minimumBufferSize;
             _sliceProcessor = sliceProcessor.Required(nameof(sliceProcessor));
             _stopProcessor = stopProcessor.Required(nameof(stopProcessor));
             _inactivity = new TimeoutManager(inactivityTimeoutInMinutes, SendLivenessMessageAsync);
-        }
-        private async Task LivenessProcessorAsync(ulong livenessCode) {
-            if (livenessCode == 0)
-                await _inactivity.RestartAsync();
-            else
-                await SendLivenessMessageAsync(0);
-        }
-
-        private Task SendLivenessMessageAsync(ulong livenessCode) {
-            _queue.Enqueue(new NetworkMessageSlice(livenessCode, _livenessMessageTag));
-            return Task.CompletedTask;
         }
 
         public bool Connected => _socket.Connected;
@@ -78,11 +73,12 @@ namespace InterlockLedger.Peer2Peer
 
         public async Task ListenAsync() {
             try {
-                if (_socket.Connected) {
+                if (Connected) {
                     await UsePipes(_socket.RemoteEndPoint);
                     await Task.Delay(10);
                 }
             } finally {
+                _stopping = true;
                 _socket.Dispose();
                 try {
                     _stopProcessor();
@@ -91,29 +87,40 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        public Task SendAsync(NetworkMessageSlice slice) {
-            if (!slice.IsEmpty)
+        public Task<bool> SendAsync(NetworkMessageSlice slice) {
+            if (!slice.IsEmpty) {
                 _queue.Enqueue(slice);
-            return Task.CompletedTask;
+                return Task.FromResult(true);
+            }
+            return Task.FromResult(false);
         }
 
         public void Stop() {
-            _queue.Stop();
+            _stopping = true;
             _localSource.Cancel(false);
         }
 
+        private readonly TimeoutManager _inactivity;
         private readonly CancellationToken _linkedToken;
+        private readonly ulong _livenessMessageTag;
         private readonly CancellationTokenSource _localSource;
         private readonly ILogger _logger;
         private readonly ulong _messageTag;
-        private readonly ulong _livenessMessageTag;
         private readonly int _minimumBufferSize;
-        private readonly SendingQueue _queue;
+        private readonly ConcurrentQueue<NetworkMessageSlice> _queue;
         private readonly Func<NetworkMessageSlice, Task<Success>> _sliceProcessor;
         private readonly ISocket _socket;
         private readonly Action _stopProcessor;
-        private readonly TimeoutManager _inactivity;
-        private bool _active => !_linkedToken.IsCancellationRequested;
+        private bool _stopping;
+
+        private bool _active => !_stopping && !_linkedToken.IsCancellationRequested;
+
+        private async Task LivenessProcessorAsync(ulong livenessCode) {
+            if (livenessCode == 0)
+                await _inactivity.RestartAsync();
+            else
+                await SendLivenessMessageAsync(0);
+        }
 
         private async Task PipeFillAsync(PipeWriter writer) {
             while (_active) {
@@ -186,10 +193,10 @@ namespace InterlockLedger.Peer2Peer
             var senderWriterLock = new AsyncLock();
             while (_active) {
                 try {
-                    if (_queue.Exit)
+                    if (_stopping)
                         break;
                     using (await senderWriterLock.LockAsync()) {
-                        var response = await _queue.DequeueAsync(_linkedToken);
+                        var response = await DequeueAsync(_linkedToken);
                         if (!await writer.WriteResponseAsync(response, _linkedToken))
                             break;
                     }
@@ -207,6 +214,14 @@ namespace InterlockLedger.Peer2Peer
                 }
             }
             writer.Complete();
+
+            async Task<NetworkMessageSlice> DequeueAsync(CancellationToken token) {
+                NetworkMessageSlice slice = default;
+                while (!_stopping && !token.IsCancellationRequested && !_queue.TryDequeue(out slice)) {
+                    await Task.Delay(1, token);
+                }
+                return slice;
+            }
         }
 
         private async Task SendingPipeSendAsync(PipeReader reader) {
@@ -225,7 +240,7 @@ namespace InterlockLedger.Peer2Peer
                                 _localSource.Cancel(false);
                         }
                     }
-                    if (_queue.Exit)
+                    if (_stopping)
                         _localSource.Cancel(false);
                     if (result.IsCompleted)
                         break;
@@ -243,6 +258,12 @@ namespace InterlockLedger.Peer2Peer
                 }
             }
             reader.Complete();
+        }
+
+        private Task SendLivenessMessageAsync(ulong livenessCode) {
+            if (!_stopping)
+                _queue.Enqueue(new NetworkMessageSlice(livenessCode, _livenessMessageTag));
+            return Task.CompletedTask;
         }
 
         private Task UsePipes(EndPoint remoteEndPoint) {

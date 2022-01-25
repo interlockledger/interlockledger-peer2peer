@@ -31,6 +31,7 @@
 // ******************************************************************************************************************************
 
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -68,7 +69,8 @@ namespace InterlockLedger.Peer2Peer
                 fakeClient.OnPipelineStopped();
             }
             fakeClient.ConnectionStopped += (i) => stoppedId = i.Id;
-            var pipeline = new Pipeline(fakeSocket, source, 13, 1, 4096, processor, stopProcessor, fakeLogger, 10);
+            var queue = new ConcurrentQueue<NetworkMessageSlice>();
+            var pipeline = new Pipeline(fakeSocket, source, 13, 1, 4096, processor, stopProcessor, fakeLogger, 10, queue);
             Assert.IsNotNull(pipeline);
             fakeClient.Pipeline = pipeline;
             Assert.IsNull(fakeLogger.LastLog);

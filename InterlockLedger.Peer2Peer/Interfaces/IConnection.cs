@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -36,8 +36,8 @@ namespace InterlockLedger.Peer2Peer
     {
         event Action<INetworkIdentity> ConnectionStopped;
 
+        bool CanReconnect { get; }
         bool Connected { get; }
-        bool KeepingAlive { get; }
 
         IActiveChannel AllocateChannel(IChannelSink channelSink);
 

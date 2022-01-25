@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -42,6 +42,8 @@ namespace InterlockLedger.Peer2Peer
             NetworkAddress = networkAddress.Required(nameof(networkAddress));
             NetworkPort = port;
         }
+
+        public override bool CanReconnect => true;
 
         protected override ISocket BuildSocket() {
             var ipHostInfo = Dns.GetHostEntry(NetworkAddress);

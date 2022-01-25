@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -43,8 +43,8 @@ namespace InterlockLedger.Peer2Peer
 
         public event Action<INetworkIdentity> ConnectionStopped;
 
-        public bool Connected => Pipeline.Connected;
-        public bool KeepingAlive => _pipeline is not null;
+        public abstract bool CanReconnect { get; }
+        public bool Connected => !_stopping && GetPipelineAsync().Result.Connected;
         public long LastChannelUsed => _lastChannelUsed;
         public int NumberOfActiveChannels => _channelSinks.Count;
 
@@ -58,20 +58,15 @@ namespace InterlockLedger.Peer2Peer
                 ? activeChannel
                 : throw new ArgumentOutOfRangeException(nameof(channel), string.Format(ExceptionChannelNotFoundFormat, channel));
 
-        public virtual void OnPipelineStopped() {
-            _logger.LogTrace("Stopping pipeline on client {Id}", Id);
-            ConnectionStopped?.Invoke(this);
-            Dispose();
-        }
-
         public void SetDefaultSink(IChannelSink sink) {
             _sink = sink.Required(nameof(sink));
             StopAllChannelSinks();
         }
 
-        public override void Stop() => _pipeline?.Stop();
-
-        internal Pipeline Pipeline => GetPipelineAsync().Result;
+        public override void Stop() {
+            _stopping = true;
+            _pipeline?.Stop();
+        }
 
         internal Task<bool> SendAsync(NetworkMessageSlice slice) => DoAsync(() => InnerSendAsync(slice));
 
@@ -90,6 +85,7 @@ namespace InterlockLedger.Peer2Peer
         protected abstract ISocket BuildSocket();
 
         protected override void DisposeManagedResources() {
+            _stopping = true;
             base.DisposeManagedResources();
             StopAllChannelSinks();
             Stop();
@@ -104,21 +100,23 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        protected void StartPipeline() => _ = Pipeline;
+        protected void StartPipeline() => _ = GetPipelineAsync().Result;
 
         private const int _hoursOfSilencedDuplicateErrors = 8;
         private static readonly Dictionary<string, DateTimeOffset> _errors = new();
         private readonly AsyncLock _pipelineLock = new();
+        private readonly ConcurrentQueue<NetworkMessageSlice> _sendingQueue = new();
         private long _lastChannelUsed = 0;
         private Pipeline _pipeline;
+        private bool _stopping;
 
         private async Task<Pipeline> GetPipelineAsync() {
             try {
-                if (_pipeline is null || _pipeline.Stopped)
+                if (_pipeline is null)
                     using (await _pipelineLock.LockAsync()) {
                         var socket = BuildSocket();
-                        _pipeline = new Pipeline(socket, _source, MessageTag, LivenessMessageTag, ListeningBufferSize, SinkAsync, OnPipelineStopped, _logger, InactivityTimeoutInMinutes); ;
-                        _pipeline.ListenAsync().RunOnThread($"Pipeline {Id} to {socket.RemoteEndPoint}", PipelineThreadDone);
+                        _pipeline = new Pipeline(socket, _source, MessageTag, LivenessMessageTag, ListeningBufferSize, SinkAsync, OnPipelineStopped, _logger, InactivityTimeoutInMinutes, _sendingQueue); ;
+                        _pipeline.ListenAsync().RunOnThread($"Pipeline {Id} to {socket.RemoteEndPoint}", OnPipelineStopped);
                     }
                 return _pipeline;
             } catch (Exception se) {
@@ -134,7 +132,8 @@ namespace InterlockLedger.Peer2Peer
             try {
                 try {
                     if (!slice.IsEmpty) {
-                        await Pipeline.SendAsync(slice);
+                        var pipeline = await GetPipelineAsync();
+                        return await pipeline.SendAsync(slice);
                     }
                     return true;
                 } catch (AggregateException ae) {
@@ -168,7 +167,17 @@ namespace InterlockLedger.Peer2Peer
             return Success.Next;
         }
 
-        private void PipelineThreadDone() => _logger.LogDebug("Pipeline {Id} thread stopped", Id);
+        private void OnPipelineStopped() {
+            if (CanReconnect && !_stopping) {
+                _pipeline = null;
+                if (!_sendingQueue.IsEmpty)
+                    StartPipeline();
+            } else {
+                _logger.LogTrace("Stopping connection on client {Id}", Id);
+                ConnectionStopped?.Invoke(this);
+                Dispose();
+            }
+        }
 
         private void StopAllChannelSinks() {
             foreach (var cs in _channelSinks.Values)

@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -45,12 +45,15 @@ namespace InterlockLedger.Peer2Peer
         public event Action<INetworkIdentity> ConnectionStopped;
 
         public bool Active => true;
+        public bool CanReconnect => false;
         public ulong Channel { get; private set; }
         public bool Connected => Pipeline?.Connected ?? false;
         public IConnection Connection => this;
         public string Id { get; }
         public int InactivityTimeoutInMinutes { get; }
+        public bool KeepReconnected { get; set; }
         public int ListeningBufferSize => 1024;
+        public ulong LivenessMessageTag { get; }
         public int MaxConcurrentConnections { get; }
         public ulong MessageTag { get; }
         public string NetworkName { get; }
@@ -83,10 +86,5 @@ namespace InterlockLedger.Peer2Peer
         protected override void DisposeManagedResources() => Stop();
 
         private IChannelSink _sink;
-
-        public bool KeepingAlive => false;
-
-        public ulong LivenessMessageTag { get; }
-
     }
 }

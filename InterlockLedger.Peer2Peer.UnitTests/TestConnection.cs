@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -33,6 +33,7 @@
 using System;
 using System.Buffers;
 using System.Threading;
+
 using Microsoft.Extensions.Logging;
 
 namespace InterlockLedger.Peer2Peer
@@ -45,6 +46,8 @@ namespace InterlockLedger.Peer2Peer
             _sink = sink;
             StartPipeline();
         }
+
+        public override bool CanReconnect => false;
 
         protected override ISocket BuildSocket() => _socket;
     }

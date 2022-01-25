@@ -46,6 +46,8 @@ namespace InterlockLedger.Peer2Peer
             StartPipeline();
         }
 
+        public override bool CanReconnect => false;
+
         protected override ISocket BuildSocket() => _socket;
     }
 }

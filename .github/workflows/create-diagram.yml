@@ -15,3 +15,7 @@ jobs:
       with:
           # A list of paths to exclude from the diagram, separated by commas.
           excluded_paths: .github,.editorconfig,.gitattributes,.gitignore,.nuget.config
+          should_push: false
+          
+    - name: Push
+      run: git push

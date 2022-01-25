@@ -69,7 +69,7 @@ namespace InterlockLedger.Peer2Peer
             StopAllChannelSinks();
         }
 
-         public override void Stop() => _pipeline?.Stop();
+        public override void Stop() => _pipeline?.Stop();
 
         internal Pipeline Pipeline => GetPipelineAsync().Result;
 

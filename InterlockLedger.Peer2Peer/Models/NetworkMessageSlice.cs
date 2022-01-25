@@ -40,7 +40,7 @@ namespace InterlockLedger.Peer2Peer
         }
 
         public NetworkMessageSlice(ulong livenessCode, ulong livenessMessageTag)
-            : this(livenessCode, ReadOnlySequence<byte>.Empty.Add(livenessMessageTag.ILIntEncode())) {}
+            : this(livenessCode, ReadOnlySequence<byte>.Empty.Add(livenessMessageTag.ILIntEncode())) { }
 
         public ulong Channel { get; }
 

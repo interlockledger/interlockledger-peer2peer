@@ -48,7 +48,7 @@ namespace InterlockLedger.Peer2Peer
                             int maxConcurrentConnections) {
             if (messageTag == livenessMessageTag)
                 throw new ArgumentException($"{nameof(livenessMessageTag)} (value: {livenessMessageTag}) must be different from {nameof(messageTag)} (value: {messageTag})! ");
-            MessageTag = messageTag; 
+            MessageTag = messageTag;
             LivenessMessageTag = livenessMessageTag;
             NetworkName = networkName.Required(nameof(networkName));
             NetworkProtocolName = networkProtocolName.Required(nameof(networkProtocolName));

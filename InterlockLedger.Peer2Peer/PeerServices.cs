@@ -1,5 +1,5 @@
 // ******************************************************************************************************************************
-//  
+//
 // Copyright (c) 2018-2021 InterlockLedger Network
 // All rights reserved.
 //
@@ -66,14 +66,13 @@ namespace InterlockLedger.Peer2Peer
         public int InactivityTimeoutInMinutes { get; }
         public IKnownNodesServices KnownNodes => this;
         public int ListeningBufferSize { get; }
+        public ulong LivenessMessageTag { get; }
         public int MaxConcurrentConnections { get; }
         public ulong MessageTag { get; }
         public string NetworkName { get; }
         public string NetworkProtocolName { get; }
         public IProxyingServices ProxyingServices => this;
         public CancellationTokenSource Source => _source ?? throw new InvalidOperationException("CancellationTokenSource was not set yet!");
-
-        public ulong LivenessMessageTag { get; }
 
         void IKnownNodesServices.Add(string nodeId, string address, int port, bool retain)
             => Do(() => _knownNodes[nodeId.Required(nameof(nodeId))] = (address.Required(nameof(address)), port, retain));
@@ -97,7 +96,7 @@ namespace InterlockLedger.Peer2Peer
                 var id = $"{address}:{port}#{MessageTag}";
                 try {
                     if (_clients.TryGetValue(id, out var existingClient))
-                        if (existingClient.Connected)
+                        if (IsConnected(existingClient))
                             return existingClient;
                         else {
                             _clients.TryRemove(id, out _);
@@ -140,11 +139,17 @@ namespace InterlockLedger.Peer2Peer
         }
 
         private readonly ConcurrentDictionary<string, IConnection> _clients;
+
         private readonly IExternalAccessDiscoverer _discoverer;
+
         private readonly ConcurrentDictionary<string, (string address, int port, bool retain)> _knownNodes;
+
         private readonly ILogger _logger;
+
         private readonly ILoggerFactory _loggerFactory;
+
         private readonly SocketFactory _socketFactory;
+
         private CancellationTokenSource _source;
 
         private static string Framed(string nodeId) => $"[{nodeId}]";
@@ -154,6 +159,14 @@ namespace InterlockLedger.Peer2Peer
 
         private IConnection GetResponder(string nodeId)
             => _knownNodes.TryGetValue(nodeId, out var n) ? n.port != 0 ? GetClient(n.address, n.port) : GetClient(nodeId) : null;
+
+        private bool IsConnected(IConnection existingClient) {
+            try {
+                return Do(() => existingClient.Connected);
+            } catch {
+                return false;
+            }
+        }
 
         private ILogger LoggerForClient(string id) => LoggerNamed($"{nameof(ConnectionToPeer)}@{id}");
 

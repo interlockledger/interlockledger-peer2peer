@@ -30,35 +30,6 @@
 //
 // ******************************************************************************************************************************
 
-using InterlockLedger.Peer2Peer;
+using System.Diagnostics.CodeAnalysis;
 
-using System.Buffers;
-using System.Threading.Tasks;
-
-namespace Demo.InterlockLedger.Peer2Peer
-{
-    public class ClientLivenessListener : IChannelSink
-    {
-        public ClientLivenessListener(IConnection client) => Start(client.AllocateChannel(this));
-
-        public bool Alive { get; private set; } = true;
-
-        public Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel)
-            => Task.FromResult(Success.Next);
-
-        private void Start(IActiveChannel channel)
-            => Task.Run(() => {
-                var livenessOnChannel0 = new NetworkMessageSlice(0, DemoClient.LivenessBytes).DataList;
-                try {
-                    while (channel.Connected) {
-                        channel.SendAsync(livenessOnChannel0).Wait();
-                        Task.Delay(1000).Wait();
-                    }
-                } catch {
-                } finally {
-                    Alive = false;
-                }
-            }).RunOnThread("Liveness");
-    }
-
-}
+[assembly: SuppressMessage("Style", "IDE0230:Use UTF-8 string literal", Justification = "Not text")]

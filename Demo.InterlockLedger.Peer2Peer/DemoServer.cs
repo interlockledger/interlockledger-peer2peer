@@ -1,6 +1,6 @@
 // ******************************************************************************************************************************
 //  
-// Copyright (c) 2018-2021 InterlockLedger Network
+// Copyright (c) 2018-2022 InterlockLedger Network
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -30,6 +30,8 @@
 //
 // ******************************************************************************************************************************
 
+using InterlockLedger.Peer2Peer;
+
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
@@ -38,7 +40,6 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using InterlockLedger.Peer2Peer;
 
 namespace Demo.InterlockLedger.Peer2Peer
 {

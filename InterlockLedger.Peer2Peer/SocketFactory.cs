@@ -1,6 +1,6 @@
 // ******************************************************************************************************************************
 //  
-// Copyright (c) 2018-2021 InterlockLedger Network
+// Copyright (c) 2018-2022 InterlockLedger Network
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -30,74 +30,69 @@
 //
 // ******************************************************************************************************************************
 
+#nullable enable
+
 using System.Net;
 using System.Net.Sockets;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public static class ILoggerFactoryExtensions
-    {
-        public static ILogger<T> NewLogger<T>(this ILoggerFactory loggerFactory)
-        => (loggerFactory.Required(nameof(loggerFactory))).CreateLogger<T>();
-    }
-
     public sealed class SocketFactory
     {
         public SocketFactory(ILoggerFactory loggerFactory, short portDelta, ushort howManyPortsToTry = 5) {
-            _logger = loggerFactory.NewLogger<SocketFactory>();
+            _logger = loggerFactory.Required().CreateLogger<SocketFactory>();
             PortDelta = portDelta;
             HowManyPortsToTry = howManyPortsToTry;
         }
 
         public ushort HowManyPortsToTry { get; }
         public short PortDelta { get; }
+        private readonly ILogger _logger;
 
-        public Socket GetSocket(string name, ushort portNumber) {
+        public Socket? GetSocket(string name, ushort portNumber) {
             return ScanAvailable(GetAddresses(name), portNumber);
 
             IEnumerable<IPAddress> GetAddresses(string name) {
                 try {
                     return IPAddress.TryParse(name, out var address)
-                           ? (new IPAddress[] { address })
-                           : Dns.GetHostEntry(name).AddressList.Where(ip => IsIPV4(ip.AddressFamily));
+                        ? (new IPAddress[] { address })
+                        : Dns.GetHostEntry(name).AddressList.Where(ip => IsIPV4(ip.AddressFamily));
                 } catch (SocketException e) {
                     _logger.LogError(e, "Couldn't get addresses for '{name}'", name);
                     return Enumerable.Empty<IPAddress>();
                 }
+
                 static bool IsIPV4(AddressFamily family) => family == AddressFamily.InterNetwork;
             }
 
-            Socket ScanForSocket(IEnumerable<IPAddress> localaddrs, ushort port) {
+        }
+
+        private Socket? ScanAvailable(IEnumerable<IPAddress> localaddrs, ushort portNumber) {
+            return localaddrs.None() ? null : (ScanForSocket(localaddrs, portNumber) ?? ScanForSocket(localaddrs, 0));
+
+            Socket? ScanForSocket(IEnumerable<IPAddress> localaddrs, ushort port) {
                 for (ushort tries = HowManyPortsToTry; tries > 0; tries--) {
-                    foreach (var localaddr in localaddrs) {
-                        var socket = BindSocket(localaddr, port);
-                        if (socket != null)
+                    foreach (var localaddr in localaddrs)
+                        if (TryBindSocket(localaddr, port, out var socket))
                             return socket;
-                    }
                     port = (ushort)(port - PortDelta);
                 }
                 return null;
 
-                Socket BindSocket(IPAddress localaddr, ushort port) {
+                bool TryBindSocket(IPAddress localaddr, ushort port, out Socket listenSocket) {
+                    listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
                     try {
-                        var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
                         listenSocket.Bind(new IPEndPoint(localaddr, port));
-                        listenSocket.Listen(120);
-                        return listenSocket;
+                        listenSocket.Listen();
+                        return true;
                     } catch (ArgumentOutOfRangeException aore) {
                         _logger.LogError(aore, "-- Bad port number while trying to bind a socket to listen at {localaddr}:{port}", localaddr, port);
-                        return null;
                     } catch (SocketException e) {
                         _logger.LogError(e, "-- Error while trying to bind a socket to listen at {localaddr}:{port}", localaddr, port);
-                        return null;
                     }
+                    return false;
                 }
             }
-
-            Socket ScanAvailable(IEnumerable<IPAddress> localaddrs, ushort portNumber)
-                => !localaddrs.Any() ? null : (ScanForSocket(localaddrs, portNumber) ?? ScanForSocket(localaddrs, 0));
         }
-
-        private readonly ILogger _logger;
     }
 }

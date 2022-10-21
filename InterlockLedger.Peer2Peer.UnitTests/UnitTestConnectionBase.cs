@@ -1,6 +1,6 @@
 // ******************************************************************************************************************************
 //  
-// Copyright (c) 2018-2021 InterlockLedger Network
+// Copyright (c) 2018-2022 InterlockLedger Network
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -30,10 +30,12 @@
 //
 // ******************************************************************************************************************************
 
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
 using System;
 using System.Buffers;
 using System.Threading;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+
 using static InterlockLedger.Peer2Peer.TestHelpers;
 
 namespace InterlockLedger.Peer2Peer

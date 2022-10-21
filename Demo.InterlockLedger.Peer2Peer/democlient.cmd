@@ -1,1 +1,1 @@
-@dotnet bin\Debug\net5.0\Demo.InterlockLedger.Peer2Peer.dll client
+@dotnet bin\Debug\net6.0\Demo.InterlockLedger.Peer2Peer.dll client

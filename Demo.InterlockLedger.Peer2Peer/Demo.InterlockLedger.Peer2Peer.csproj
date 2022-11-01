@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -20,5 +20,7 @@
     <ItemGroup>
         <ProjectReference Include="..\InterlockLedger.Peer2Peer\InterlockLedger.Peer2Peer.csproj" />
     </ItemGroup>
+    <Target Name="TagSources"/>
+    <Target Name="NugetOrg" />
 
 </Project>

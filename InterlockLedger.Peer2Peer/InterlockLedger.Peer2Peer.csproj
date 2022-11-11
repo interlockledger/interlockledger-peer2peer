@@ -1,8 +1,8 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net6.0</TargetFramework>
-        <Version>8.2.1</Version>
+        <TargetFramework>net7.0</TargetFramework>
+        <Version>9.0.0</Version>
         <Authors>Rafael Teixeira</Authors>
         <Company>InterlockLedger Network</Company>
         <Product>InterlockLedger</Product>
@@ -13,16 +13,16 @@
         <RepositoryUrl>https://github.com/interlockledger/interlockledger-peer2peer.git</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageReleaseNotes>Update/remove dependencies</PackageReleaseNotes>
+        <PackageReleaseNotes>.NET 7</PackageReleaseNotes>
         <LangVersion>preview</LangVersion>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="InterlockLedger.Tags.ILInt" Version="5.0.2" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.2" />
-        <PackageReference Include="System.IO.Pipelines" Version="6.0.3" />
+        <PackageReference Include="InterlockLedger.Tags.ILInt" Version="6.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" />
+        <PackageReference Include="System.IO.Pipelines" Version="7.0.0" />
     </ItemGroup>
 
     <ItemGroup>

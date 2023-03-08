@@ -100,7 +100,7 @@ namespace InterlockLedger.Peer2Peer
             }
         }
 
-        private const ulong _maxBytesToRead = 16 * 1024 * 1024;
+        private const ulong _maxBytesToRead = 64 * 1024 * 1024;
         private readonly ILIntReader _channelReader = new();
         private readonly ulong _expectedTag;
         private readonly ILIntReader _lengthReader = new();

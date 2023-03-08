@@ -146,7 +146,7 @@ namespace InterlockLedger.Peer2Peer
             public ulong ProxiedChannelId => _proxied.Channel;
 
             public async Task<bool> SendAsync(ReadOnlySequence<byte> messageBytes) {
-                return await SendThisAsync(messageBytes.Realloc());
+                return await SendThisAsync(messageBytes);
 
                 async Task<bool> SendThisAsync(ReadOnlySequence<byte> messageBytes) {
                     try {
@@ -159,7 +159,7 @@ namespace InterlockLedger.Peer2Peer
             }
 
             public async Task<Success> SinkAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel) {
-                return await SinkThisAsync(messageBytes.Realloc(), channel);
+                return await SinkThisAsync(messageBytes, channel);
 
                 async Task<Success> SinkThisAsync(ReadOnlySequence<byte> messageBytes, IActiveChannel channel) {
                     try {

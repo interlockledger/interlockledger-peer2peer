@@ -30,6 +30,8 @@
 //
 // ******************************************************************************************************************************
 
+#nullable enable
+
 using System.Collections.Concurrent;
 using System.Net.Sockets;
 
@@ -41,10 +43,10 @@ namespace InterlockLedger.Peer2Peer
         public const string ExceptionCantProxyWithSinkMessage = "Can't proxy a connection already with a default sink";
         public const string ExceptionChannelNotFoundFormat = "Channel {0} not found!!!";
 
-        public event Action<INetworkIdentity> ConnectionStopped;
+        public event Action<INetworkIdentity>? ConnectionStopped;
 
         public abstract bool CanReconnect { get; }
-        public bool Connected => !_stopping && GetPipelineAsync().Result.Connected;
+        public bool Connected => !_stopping && ResolvedPipeline.Connected;
         public long LastChannelUsed => _lastChannelUsed;
         public int NumberOfActiveChannels => _channelSinks.Count;
 
@@ -73,11 +75,15 @@ namespace InterlockLedger.Peer2Peer
         internal Task<Success> SinkAsync(NetworkMessageSlice slice) => DoAsync(() => InnerSinkAsync(slice));
 
         protected readonly ConcurrentDictionary<ulong, IActiveChannel> _channelSinks = new();
-        protected IChannelSink _sink;
-        protected ISocket _socket;
+        protected IChannelSink? _sink;
+        protected ISocket? _socket;
 
         protected ConnectionBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger)
-            : base(id, config, source, logger) => _pipeline = null;
+            : base(id, config, source, logger) {
+            _pipeline = null;
+            _errorCachingLogger = new ErrorCachingLogger(() => Abandon || _stopping, _logger);
+            NetworkAddress = "?";
+        }
 
         protected string NetworkAddress { get; set; }
         protected int NetworkPort { get; set; }
@@ -92,24 +98,18 @@ namespace InterlockLedger.Peer2Peer
             _socket?.Dispose();
         }
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2254:Template should be a static expression", Justification = "Nope")]
-        protected void LogError(string message) {
-            if (!(_errors.TryGetValue(message, out var dateTime) && (DateTimeOffset.Now - dateTime).Hours < _hoursOfSilencedDuplicateErrors)) {
-                _logger.LogError(message);
-                _errors[message] = DateTimeOffset.Now;
-            }
-        }
+ 
+        protected void StartPipeline() => _ = ResolvedPipeline;
 
-        protected void StartPipeline() => _ = GetPipelineAsync().Result;
-
-        private const int _hoursOfSilencedDuplicateErrors = 8;
-        private static readonly Dictionary<string, DateTimeOffset> _errors = new();
         private readonly AsyncLock _pipelineLock = new();
         private readonly ConcurrentQueue<NetworkMessageSlice> _sendingQueue = new();
-        private long _lastChannelUsed = 0;
-        private Pipeline _pipeline;
+        private readonly ErrorCachingLogger _errorCachingLogger;
+        private long _lastChannelUsed;
+        private Pipeline? _pipeline;
         private bool _stopping;
 
+
+        public Pipeline ResolvedPipeline => GetPipelineAsync().Result;
         private async Task<Pipeline> GetPipelineAsync() {
             try {
                 if (_pipeline is null)
@@ -140,13 +140,13 @@ namespace InterlockLedger.Peer2Peer
                     throw ae.Flatten().InnerExceptions.First();
                 }
             } catch (PeerException pe) {
-                LogError(pe.Message);
+                _errorCachingLogger.LogError(pe.Message);
             } catch (SocketException se) {
-                LogError($"Client could not communicate with address {NetworkAddress}:{NetworkPort}.{Environment.NewLine}{se.Message}");
+                _errorCachingLogger.LogError($"Client could not communicate with address {NetworkAddress}:{NetworkPort}.{Environment.NewLine}{se.Message}");
             } catch (TaskCanceledException) {
                 // just ignore
             } catch (Exception e) {
-                LogError($"Unexpected exception : {e}");
+                _errorCachingLogger.LogError($"Unexpected exception : {e}");
             }
             return false;
         }

@@ -1,6 +1,6 @@
-﻿// ******************************************************************************************************************************
+// ******************************************************************************************************************************
 //  
-// Copyright (c) 2018-2022 InterlockLedger Network
+// Copyright (c) 2018-2023 InterlockLedger Network
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -36,31 +36,9 @@ using System.Collections.Concurrent;
 
 namespace InterlockLedger.Peer2Peer
 {
-    public record ErrorCachingLogger(Func<bool> AbandonNow, ILogger Logger)
+    public class ErrorCachingLogger 
     {
-
-        private const int _hoursOfSilencedDuplicateErrors = 8;
-        private const int _tooManyErrors = 500;
-        private static readonly ConcurrentDictionary<string, DateTimeOffset> _errors = new();
-        public async Task CleanOldestErrors() {
-            while (!AbandonNow()) {
-                if (_errors.Count > 100) {
-                    var now = DateTimeOffset.Now;
-                    var oldestErrors = _errors.ToArray()
-                                              .OrderBy(pair => pair.Value)
-                                              .Where(pair => (now - pair.Value).TotalHours > _hoursOfSilencedDuplicateErrors * 2);
-                    Remove(oldestErrors);
-                }
-                await Task.Delay(5_000);
-                if (!AbandonNow() && _errors.Count > _tooManyErrors) {
-                    var oldestErrors = _errors.ToArray()
-                                              .OrderBy(pair => pair.Value)
-                                              .Take(_errors.Count - _tooManyErrors);
-                    Remove(oldestErrors);
-                }
-                await Task.Delay(10_000);
-            }
-        }
+        public ErrorCachingLogger(ILogger logger) => _logger = logger.Required();
 
         public void LogError(string message) {
             var now = DateTimeOffset.Now;
@@ -69,15 +47,44 @@ namespace InterlockLedger.Peer2Peer
             _ = _errors.AddOrUpdate(message, m => LogAt(now, m), (m, lastMoment) => now > lastMoment ? LogAt(now, m) : lastMoment);
         }
 
-        private DateTimeOffset LogAt(DateTimeOffset now, string message) {
-            Logger.LogError("{now} - {message}", now, message);
-            return now;
-        }
-        private static void Remove(IEnumerable<KeyValuePair<string, DateTimeOffset>> errorsToRemove) {
-            foreach (var error in errorsToRemove) {
-                if (!_errors.TryRemove(error))
-                    return;
+        public static void StopBackgroundProcessing() => _stop = true;
+
+        static ErrorCachingLogger() => CleanOldestErrors().RunOnThread(nameof(CleanOldestErrors));
+
+        private const int _hoursOfSilencedDuplicateErrors = 8;
+        private const int _tooManyErrors = 500;
+        private static readonly ConcurrentDictionary<string, DateTimeOffset> _errors = new();
+        private readonly ILogger _logger;
+        private static bool _stop;
+
+        private static async Task CleanOldestErrors() {
+            while (!_stop) {
+                if (_errors.Count > 100) {
+                    var now = DateTimeOffset.Now;
+                    var oldestErrors = _errors.ToArray()
+                                              .OrderBy(pair => pair.Value)
+                                              .Where(pair => (now - pair.Value).TotalHours > _hoursOfSilencedDuplicateErrors * 2);
+                    Remove(oldestErrors);
+                }
+                await Task.Delay(5_000);
+                if (_errors.Count > _tooManyErrors) {
+                    var oldestErrors = _errors.ToArray()
+                                              .OrderBy(pair => pair.Value)
+                                              .Take(_errors.Count - _tooManyErrors);
+                    Remove(oldestErrors);
+                }
+                await Task.Delay(10_000);
             }
+
+            static void Remove(IEnumerable<KeyValuePair<string, DateTimeOffset>> errorsToRemove) {
+                foreach (var error in errorsToRemove)
+                    _ = _errors.TryRemove(error);
+            }
+        }
+
+        private DateTimeOffset LogAt(DateTimeOffset now, string message) {
+            _logger.LogError("{now} - {message}", now, message);
+            return now;
         }
     }
 }

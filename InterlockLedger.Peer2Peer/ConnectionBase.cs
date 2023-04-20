@@ -1,6 +1,6 @@
 // ******************************************************************************************************************************
 //  
-// Copyright (c) 2018-2022 InterlockLedger Network
+// Copyright (c) 2018-2023 InterlockLedger Network
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -81,7 +81,7 @@ namespace InterlockLedger.Peer2Peer
         protected ConnectionBase(string id, INetworkConfig config, CancellationTokenSource source, ILogger logger)
             : base(id, config, source, logger) {
             _pipeline = null;
-            _errorCachingLogger = new ErrorCachingLogger(() => Abandon || _stopping, _logger);
+            _errorCachingLogger = new ErrorCachingLogger(_logger);
             NetworkAddress = "?";
         }
 

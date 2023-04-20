@@ -1,6 +1,6 @@
 // ******************************************************************************************************************************
 //  
-// Copyright (c) 2018-2022 InterlockLedger Network
+// Copyright (c) 2018-2023 InterlockLedger Network
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -136,20 +136,15 @@ namespace InterlockLedger.Peer2Peer
             foreach (var client in _clients.Values)
                 client?.Dispose();
             _clients.Clear();
+            ErrorCachingLogger.StopBackgroundProcessing();
         }
 
         private readonly ConcurrentDictionary<string, IConnection> _clients;
-
         private readonly IExternalAccessDiscoverer _discoverer;
-
         private readonly ConcurrentDictionary<string, (string address, int port, bool retain)> _knownNodes;
-
         private readonly ILogger _logger;
-
         private readonly ILoggerFactory _loggerFactory;
-
         private readonly SocketFactory _socketFactory;
-
         private CancellationTokenSource _source;
 
         private static string Framed(string nodeId) => $"[{nodeId}]";
